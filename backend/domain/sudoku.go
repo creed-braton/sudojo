@@ -107,6 +107,21 @@ func (s *Sudoku) ClearCell(row, col int) error {
 	return nil
 }
 
+// ClearCellWithInitialCheck clears a cell only if it wasn't part of the initial puzzle
+func (s *Sudoku) ClearCellWithInitialCheck(row, col int, initialBoard *Sudoku) error {
+	if row < 0 || row >= BoardSize || col < 0 || col >= BoardSize {
+		return errors.New("position out of bounds")
+	}
+
+	// Check if this cell was part of the initial puzzle
+	if initialBoard.Board[row][col] != EmptyCell {
+		return errors.New("cannot clear initial puzzle cells")
+	}
+
+	s.Board[row][col] = EmptyCell
+	return nil
+}
+
 func (s *Sudoku) IsComplete() bool {
 	for row := 0; row < BoardSize; row++ {
 		for col := 0; col < BoardSize; col++ {

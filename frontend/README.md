@@ -1,6 +1,6 @@
 # Sudojo Frontend - Multiplayer Sudoku Game
 
-This is the frontend application for Sudojo, a real-time multiplayer Sudoku game. The frontend is built with React and TypeScript, and communicates with the backend via HTTP and WebSocket APIs.
+This is the frontend application for Sudojo, a real-time multiplayer Sudoku game. The frontend is built with React (v19.1.1) and TypeScript, using Vite (v7.1.2) as the build tool. It communicates with the backend via HTTP and WebSocket APIs.
 
 ---
 
@@ -12,6 +12,21 @@ The frontend follows a component-based architecture with an emphasis on:
 - **Custom Hooks**: All business logic and communication with the backend is encapsulated in custom hooks.
 - **Prop Drilling**: State is passed down through props rather than using global state management.
 - **Clean Separation**: UI components are separated from business logic.
+
+---
+
+## User Experience
+
+The frontend aims to provide a zen-like experience for users:
+
+- **Minimal Distraction**: Clean interface that keeps users focused on the game without unnecessary elements.
+- **Glassmorphism Design**: Utilizing glassmorphism as the primary visual theme for a modern, elegant look.
+- **Smooth Interactions**: Carefully designed animations and transitions that feel natural and unobtrusive.
+- **Responsive Feedback**: Subtle visual and audio cues that provide feedback without breaking immersion.
+- **Adaptive Layout**: Seamless experience across different device sizes while maintaining the zen aesthetic.
+- **Visual Consistency**: Maintaining cohesive visual language, spacing, and interaction patterns throughout the application to create a harmonious and predictable experience.
+
+The goal is to create an environment where players can enjoy the intellectual challenge of Sudoku while feeling calm and focused.
 
 ---
 
@@ -50,9 +65,11 @@ const Button = ({ children, variant, ...props }) => (
 
 All components should be designed to be testable in isolation:
 
+- **Testing Framework**: Vitest (v3.2.4) is used as the testing framework.
 - **Dependency Injection**: Pass dependencies as props rather than importing them directly.
 - **Testable Props**: Ensure all behavior can be controlled via props.
 - **Mock APIs**: Design components to work with mock API implementations for testing.
+- **Colocated Tests**: Test files should be placed in the same directory as the file they are testing.
 
 ---
 
@@ -183,6 +200,7 @@ Note:
    - Use custom hooks to handle all side effects
 
 4. **Testing**:
+   - Write tests colocated with the files they're testing
    - Test components in isolation with mock hooks
    - Test hooks with mock API services
    - Verify both component rendering and hook behavior independently
@@ -214,12 +232,15 @@ Note:
 
 - **TypeScript with Strict Typing**: Only TypeScript shall be used with strict typing. The `any` type is not allowed under any circumstances.
 
+- **Type over Interface**: Always use `type` instead of `interface` for defining TypeScript types. This provides better consistency and avoids potential issues with declaration merging.
+
 - **Component Structure**: Each component should follow this structure:
 
   ```
   ComponentName/
-    ComponentName.tsx  // Component logic and JSX
-    styles.module.css  // All styles for the component
+    ComponentName.tsx        // Component logic and JSX
+    ComponentName.test.tsx   // Component tests
+    styles.module.css        // All styles for the component
   ```
 
 - **CSS Modules**: All styles must be defined in the CSS file, using CSS modules for scoping. No inline styles or styled-components should be used.

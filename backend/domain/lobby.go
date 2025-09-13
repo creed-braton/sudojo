@@ -7,9 +7,10 @@ import (
 )
 
 type Lobby struct {
-	ID       string
-	Puzzle   *Sudoku
-	Solution *Sudoku
+	ID            string
+	Puzzle        *Sudoku
+	InitialPuzzle *Sudoku  // Stores the initial state of the puzzle
+	Solution      *Sudoku
 }
 
 func NewLobby() (*Lobby, error) {
@@ -20,6 +21,9 @@ func NewLobby() (*Lobby, error) {
 	
 	puzzle := GeneratePuzzle(5)
 	
+	// Store a copy of the initial puzzle state
+	initialPuzzle := puzzle.Copy()
+	
 	solution := puzzle.Copy()
 	
 	// Solve the puzzle completely to get the solution
@@ -29,9 +33,10 @@ func NewLobby() (*Lobby, error) {
 	}
 	
 	return &Lobby{
-		ID:       id,
-		Puzzle:   puzzle,
-		Solution: solution,
+		ID:            id,
+		Puzzle:        puzzle,
+		InitialPuzzle: initialPuzzle,
+		Solution:      solution,
 	}, nil
 }
 

@@ -1,0 +1,46 @@
+.inputBar {
+  width: auto;
+  height: auto;
+  border-radius: 16px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 20px auto 0;
+  padding: 16px 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.rowsContainer {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  gap: 16px;
+}
+
+.buttonRow {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 24px;
+  width: 100%;
+}
+
+@media (max-width: 560px) {
+  .inputBar {
+    width: 90%;
+    height: auto;
+    padding: 16px;
+  }
+
+  .buttonRow {
+    flex-wrap: wrap;
+    gap: 24px;
+    margin-bottom: 8px;
+  }
+}
