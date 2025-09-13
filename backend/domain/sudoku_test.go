@@ -375,61 +375,62 @@ func TestCopy(t *testing.T) {
 		}
 	}
 	
-	func TestGeneratePuzzle(t *testing.T) {
-		// Test with different difficulty levels
-		difficulties := []int{1, 5, 10}
-		
-		for _, difficulty := range difficulties {
-			t.Run(fmt.Sprintf("Difficulty %d", difficulty), func(t *testing.T) {
-				puzzle := GeneratePuzzle(difficulty)
-				
-				// Verify the puzzle is valid
-				if !puzzle.IsValid() {
-					t.Errorf("Generated puzzle is not valid")
-				}
-				
-				// Count empty cells
-				emptyCells := 0
-				for row := 0; row < BoardSize; row++ {
-					for col := 0; col < BoardSize; col++ {
-						if puzzle.Board[row][col] == EmptyCell {
-							emptyCells++
-						}
-					}
-				}
-				
-				// Verify puzzle has the expected number of empty cells based on difficulty
-				// Higher difficulty should have more empty cells
-				switch difficulty {
-				case 1:
-					if emptyCells < 20 || emptyCells > 30 {
-						t.Errorf("Expected 20-30 empty cells for difficulty 1, got %d", emptyCells)
-					}
-				case 5:
-					if emptyCells < 30 || emptyCells > 45 {
-						t.Errorf("Expected 30-45 empty cells for difficulty 5, got %d", emptyCells)
-					}
-				case 10:
-					if emptyCells < 45 || emptyCells > 60 {
-						t.Errorf("Expected 45-60 empty cells for difficulty 10, got %d", emptyCells)
-					}
-				}
-				
-				// Verify the puzzle has a unique solution
-				solutions := 0
-				emptyCellPositions := findEmptyCells(puzzle)
-				solve(puzzle.Copy(), emptyCellPositions, 0, &solutions)
-				
-				if solutions != 1 {
-					t.Errorf("Expected exactly 1 solution, got %d", solutions)
-				}
-			})
-		}
-	}
-	
 	copy.Board[0][0] = 9
 	if original.Board[0][0] == copy.Board[0][0] {
-		t.Errorf("Copy should be independent of original, but both have value %d at (0,0)", 
+		t.Errorf("Copy should be independent of original, but both have value %d at (0,0)",
 			copy.Board[0][0])
+	}
+}
+
+func TestGeneratePuzzle(t *testing.T) {
+	// Test with different difficulty levels
+	difficulties := []int{1, 5, 10}
+	
+	for _, difficulty := range difficulties {
+		t.Run(fmt.Sprintf("Difficulty %d", difficulty), func(t *testing.T) {
+			puzzle := GeneratePuzzle(difficulty)
+			
+			// Verify the puzzle is valid
+			if !puzzle.IsValid() {
+				t.Errorf("Generated puzzle is not valid")
+			}
+			
+			// Count empty cells
+			emptyCells := 0
+			for row := 0; row < BoardSize; row++ {
+				for col := 0; col < BoardSize; col++ {
+					if puzzle.Board[row][col] == EmptyCell {
+						emptyCells++
+					}
+				}
+			}
+			
+			// Verify puzzle has the expected number of empty cells based on difficulty
+			// Higher difficulty should have more empty cells
+			switch difficulty {
+			case 1:
+				if emptyCells < 20 || emptyCells > 30 {
+					t.Errorf("Expected 20-30 empty cells for difficulty 1, got %d", emptyCells)
+				}
+			case 5:
+				if emptyCells < 30 || emptyCells > 45 {
+					t.Errorf("Expected 30-45 empty cells for difficulty 5, got %d", emptyCells)
+				}
+			case 10:
+				if emptyCells < 45 || emptyCells > 60 {
+					t.Errorf("Expected 45-60 empty cells for difficulty 10, got %d", emptyCells)
+				}
+			}
+			
+			// Verify the puzzle has a unique solution
+			solutions := 0
+			emptyCellPositions := findEmptyCells(puzzle)
+			puzzleCopy := puzzle.Copy() // Make a copy to not modify the original
+			solve(puzzleCopy, emptyCellPositions, 0, &solutions)
+			
+			if solutions != 1 {
+				t.Errorf("Expected exactly 1 solution, got %d", solutions)
+			}
+		})
 	}
 }

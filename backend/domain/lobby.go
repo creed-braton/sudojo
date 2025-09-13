@@ -3,6 +3,7 @@ package domain
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"errors"
 )
 
 type Lobby struct {
@@ -21,9 +22,11 @@ func NewLobby() (*Lobby, error) {
 	
 	solution := puzzle.Copy()
 	
-	emptyCells := findEmptyCells(solution)
-	solutions := 0
-	solve(solution, emptyCells, 0, &solutions)
+	// Solve the puzzle completely to get the solution
+	if !SolvePuzzle(solution) {
+		// This should never happen with a valid puzzle, but just in case
+		return nil, errors.New("failed to solve the puzzle")
+	}
 	
 	return &Lobby{
 		ID:       id,
