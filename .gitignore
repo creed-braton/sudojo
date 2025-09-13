@@ -1,0 +1,53 @@
+# Secret files
+**/.env
+**/.env.*
+**/*.env
+**/*.pem
+**/*.key
+**/*.crt
+**/*.cert
+**/*.secret
+**/*.credentials
+**/credentials.*
+**/*.token
+**/secrets.*
+
+# AI Agent files
+**/.roorules
+**/.rooignore
+
+# Log files and directorires
+**/logs
+**/*.log
+**/*.log*
+
+# Terraform files and directorires
+**/.terraform/*
+**/*.tfstate
+**/*.tfstate.*
+**/*.tfvars
+**/*.tfvars.json
+**/override.tf
+**/override.tf.json
+**/*_override.tf
+**/*_override.tf.json
+**/*tfplan*
+**/.terraformrc
+**/terraform.rc
+
+# React directories and files
+frontend/node_modules
+frontend/dist
+frontend/dist-ssr
+frontend/*.local
+
+# Editor directories and files
+**/.vscode/*
+**/!.vscode/extensions.json
+**/.idea
+**/.DS_Store
+**/*.suo
+**/*.ntvs*
+**/*.njsproj
+**/*.sln
+**/*.sw?

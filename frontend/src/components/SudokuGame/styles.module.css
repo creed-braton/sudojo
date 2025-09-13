@@ -1,0 +1,162 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.title {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.status {
+  margin-bottom: 1rem;
+  font-weight: bold;
+}
+
+.error {
+  color: #ff0000;
+  margin-bottom: 1rem;
+}
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  grid-template-rows: repeat(9, 1fr);
+  gap: 1px;
+  border: 2px solid #000;
+  background-color: #000;
+  width: 100%;
+  aspect-ratio: 1/1;
+}
+
+.cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #fff;
+  font-size: 1.2rem;
+  font-weight: bold;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s;
+}
+
+.cell:hover {
+  background-color: #f0f0f0;
+}
+
+.cell.selected {
+  background-color: #e0e0ff;
+}
+
+/* Add borders for 3x3 boxes */
+.cell:nth-child(3n) {
+  border-right: 1px solid #000;
+}
+
+.cell:nth-child(9n) {
+  border-right: none;
+}
+
+.cell:nth-child(n + 19):nth-child(-n + 27),
+.cell:nth-child(n + 46):nth-child(-n + 54) {
+  border-bottom: 1px solid #000;
+}
+
+.initialCell {
+  background-color: #f0f0f0;
+  font-weight: bold;
+}
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 1rem;
+  width: 100%;
+}
+
+.numberButtons {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.5rem;
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+.numberButton {
+  padding: 0.5rem;
+  font-size: 1.2rem;
+  font-weight: bold;
+  border: 1px solid #ccc;
+  background-color: #f8f8f8;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.numberButton:hover {
+  background-color: #e0e0e0;
+}
+
+.clearButton {
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  background-color: #f8f8f8;
+  border: 1px solid #ccc;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-right: 0.5rem;
+}
+
+.clearButton:hover {
+  background-color: #e0e0e0;
+}
+
+.backButton {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  background-color: #f0f0f0;
+  border: 1px solid #ccc;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.backButton:hover {
+  background-color: #e0e0e0;
+}
+
+.connectionError {
+  background-color: #ffebee;
+  padding: 20px;
+  border-radius: 8px;
+  margin: 20px 0;
+  text-align: center;
+  max-width: 400px;
+  border: 1px solid #ef9a9a;
+}
+
+.connectionError p {
+  margin: 8px 0;
+  color: #b71c1c;
+}
+
+.retryButton {
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  margin-top: 15px;
+  border-radius: 4px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.retryButton:hover {
+  background-color: #388e3c;
+}

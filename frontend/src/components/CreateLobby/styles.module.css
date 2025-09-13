@@ -1,0 +1,120 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 0 1rem;
+}
+
+.buttonContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 300px;
+  margin-top: 20px;
+}
+
+.title {
+  font-size: 2.5rem;
+  margin-bottom: 2rem;
+  color: #333;
+}
+
+.loading {
+  font-size: 1.2rem;
+  color: #666;
+}
+
+.error {
+  color: #d32f2f;
+  font-size: 1.2rem;
+  margin: 1rem 0;
+  padding: 0.5rem 1rem;
+  background-color: rgba(211, 47, 47, 0.1);
+  border-radius: 4px;
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+}
+
+.lobbyInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 2rem;
+  width: 100%;
+  max-width: 400px;
+}
+
+.infoText {
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.idContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f0f0f0;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+.lobbyId {
+  font-size: 1.2rem;
+  font-weight: bold;
+  margin-right: 1rem;
+  letter-spacing: 1px;
+  word-break: break-all;
+}
+
+.copyButton {
+  padding: 0.5rem 1rem;
+  background-color: #4a90e2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.copyButton:hover {
+  background-color: #357ae8;
+}
+
+.joinButton {
+  padding: 0.75rem 1.5rem;
+  font-size: 1.1rem;
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  width: 100%;
+}
+
+.joinButton:hover {
+  background-color: #45a049;
+}
+
+.backButton {
+  padding: 0.75rem 1.5rem;
+  font-size: 1.1rem;
+  background-color: #f0f0f0;
+  color: #333;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  width: 100%;
+}
+
+.backButton:hover {
+  background-color: #e0e0e0;
+}
