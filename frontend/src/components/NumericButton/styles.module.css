@@ -1,0 +1,51 @@
+.numericButton {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  margin: 0;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+  aspect-ratio: 1 / 1;
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: none !important;
+  position: relative;
+}
+
+.numericButton span,
+.numericButton svg {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  transition: none !important;
+}
+
+.numericButton:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+.numericButton:active {
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.numericButton svg {
+  width: 20px;
+  height: 20px;
+}
+
+.numericButton:hover {
+  transform: translateY(-2px);
+}
+
+.numericButton:active {
+  transform: translateY(0);
+}
