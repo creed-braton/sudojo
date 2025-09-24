@@ -1,0 +1,17 @@
+services:
+  api:
+    build:
+      context: ./backend
+
+  proxy:
+    build:
+      context: ./frontend
+      args:
+        DOMAIN: localhost:3000
+        DEVELOPMENT: true
+    ports:
+      - 3000:80
+
+  tunnel:
+    image: cloudflare/cloudflared:1710-3f6b1f24d036
+    command: tunnel run --token ${TUNNEL_TOKEN}

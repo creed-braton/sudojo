@@ -1,13 +1,11 @@
-all: build run clean
+test:
+	@go test -v ./...
 
 build:
 	@go build -o ./bin
 
-run:
+run: build
 	@./bin
 
 clean:
 	@rm ./bin
-
-test:
-	@go test ./...

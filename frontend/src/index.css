@@ -9,6 +9,7 @@ body,
   height: 100%;
   margin: 0;
   padding: 0;
+  color: #fff;
 }
 
 body {
@@ -23,11 +24,11 @@ body {
   min-height: 100vh;
 }
 
-/* Shared glassmorphism effect */
 .glassmorphism {
   background-color: rgba(70, 70, 70, 0.45);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
 }

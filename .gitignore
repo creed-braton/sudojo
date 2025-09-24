@@ -12,10 +12,6 @@
 **/*.token
 **/secrets.*
 
-# AI Agent files
-**/.roorules
-**/.rooignore
-
 # Log files and directorires
 **/logs
 **/*.log
