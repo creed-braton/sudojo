@@ -7,6 +7,7 @@ import (
 	"sudojo/domain/game"
 	"sudojo/domain/sudoku"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -97,10 +98,11 @@ func (s *service) getLobby(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	lobby.lock.Lock()
-	lobby.clients[conn] = &client{conn: conn}
+	client := &client{conn: conn}
+	lobby.clients[conn] = client
 	lobby.lock.Unlock()
 
-	go s.handleConnection(conn, lobby)
+	go s.handleConnection(client, lobby)
 }
 
 const (
@@ -121,16 +123,42 @@ type Response struct {
 	Error   string         `json:"error,omitempty"`
 }
 
-func (s *service) handleConnection(conn *websocket.Conn, lobby *lobby) {
+func (s *service) handleConnection(client *client, lobby *lobby) {
 	defer func() {
-		conn.Close()
+		log.Println("closing client connection")
+		client.conn.Close()
 		lobby.lock.Lock()
-		delete(lobby.clients, conn)
+		delete(lobby.clients, client.conn)
 		lobby.lock.Unlock()
 	}()
 
+	client.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	client.conn.SetPongHandler(func(string) error {
+		client.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		return nil
+	})
+
+	// ping go routine
+	go func() {
+		ticker := time.NewTicker(20 * time.Second)
+		defer func() {
+			ticker.Stop()
+			client.conn.Close()
+		}()
+		for {
+			select {
+			case <-ticker.C:
+				client.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+				if err := client.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+					log.Printf("couldn't send a ping: %v\n", err)
+					return
+				}
+			}
+		}
+	}()
+
 	for {
-		msgType, message, err := conn.ReadMessage()
+		msgType, message, err := client.conn.ReadMessage()
 		if err != nil {
 			log.Println(err.Error())
 			break
@@ -138,26 +166,20 @@ func (s *service) handleConnection(conn *websocket.Conn, lobby *lobby) {
 
 		if msgType == websocket.TextMessage {
 			msg := &Request{}
-			client, exists := lobby.clients[conn]
-			if !exists {
-				log.Println("websocket connection not found in lobby clients")
-				return
-			}
 
 			if err := json.Unmarshal(message, msg); err != nil {
 				client.send(&Response{Error: "invalid json format"})
 				continue
 			}
 
-			if msg.Type == MsgTypeState {
+			switch msg.Type {
+			case MsgTypeState:
 				s.handleStateMsg(lobby, client)
-				continue
-			}
-			if msg.Type == MsgTypeMove {
+			case MsgTypeMove:
 				s.handleMoveMsg(msg, lobby, client)
-				continue
+			default:
+				client.send(&Response{Error: "invalid message type"})
 			}
-			client.send(&Response{Error: "invalid message type"})
 		}
 	}
 }
