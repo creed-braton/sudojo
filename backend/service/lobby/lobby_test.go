@@ -63,7 +63,7 @@ func joinLobby(t *testing.T, server *httptest.Server, id uuid.UUID) *websocket.C
 	return ws
 }
 
-func sendMessage(t *testing.T, ws *websocket.Conn, msg *Request) {
+func sendMessage(t *testing.T, ws *websocket.Conn, msg *Inbound) {
 	b, err := json.Marshal(msg)
 	if err != nil {
 		t.Fatalf("failed to serialize request: %v", err)
@@ -74,18 +74,18 @@ func sendMessage(t *testing.T, ws *websocket.Conn, msg *Request) {
 	}
 }
 
-func readMessage(t *testing.T, ws *websocket.Conn) *Response {
-	_, msg, err := ws.ReadMessage()
+func readMessage(t *testing.T, ws *websocket.Conn) *Outbound {
+	_, data, err := ws.ReadMessage()
 	if err != nil {
 		t.Fatalf("failed to read message: %v", err)
 	}
 
-	r := &Response{}
-	if err := json.Unmarshal(msg, r); err != nil {
+	msg := &Outbound{}
+	if err := json.Unmarshal(data, msg); err != nil {
 		t.Fatalf("failed to serialize response: %v", err)
 	}
 
-	return r
+	return msg
 }
 
 func TestInvalidJson(t *testing.T) {
@@ -129,7 +129,7 @@ func TestSoloLobby(t *testing.T) {
 	ws := joinLobby(t, server, id)
 	defer ws.Close()
 
-	req := &Request{Type: "state"}
+	req := &Inbound{Type: "state"}
 	sendMessage(t, ws, req)
 	msg := readMessage(t, ws)
 	puzzle := msg.Current
@@ -147,7 +147,7 @@ func TestSoloLobby(t *testing.T) {
 			for col := 0; col < sudoku.BoardSize; col++ {
 				if puzzle[row][col] == sudoku.EmptyCell {
 					puzzle[row][col] = solution[row][col]
-					req := &Request{Type: "move", Row: row, Column: col, Value: solution[row][col]}
+					req := &Inbound{Type: "move", Row: row, Column: col, Value: solution[row][col]}
 					sendMessage(t, ws, req)
 					msg := readMessage(t, ws)
 					if !msg.Current.Is(puzzle) {

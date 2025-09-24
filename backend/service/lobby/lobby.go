@@ -12,16 +12,27 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type client struct {
-	conn *websocket.Conn
-	lock sync.Mutex
+const (
+	MsgTypeMove  = "move"
+	MsgTypeState = "state"
+)
+
+type Inbound struct {
+	Type   string `json:"type"`
+	Row    int    `json:"row"`
+	Column int    `json:"column"`
+	Value  int    `json:"value"`
 }
 
-func (c *client) send(r *Response) {
-	res, _ := json.Marshal(r)
-	c.lock.Lock()
-	c.conn.WriteMessage(websocket.TextMessage, res)
-	c.lock.Unlock()
+type Outbound struct {
+	Initial *sudoku.Sudoku `json:"initial_state,omitempty"`
+	Current *sudoku.Sudoku `json:"current_state,omitempty"`
+	Error   string         `json:"error,omitempty"`
+}
+
+type client struct {
+	conn *websocket.Conn
+	out  chan *Outbound
 }
 
 type lobby struct {
@@ -30,10 +41,10 @@ type lobby struct {
 	lock    sync.RWMutex
 }
 
-func (l *lobby) broadcast(r *Response) {
+func (l *lobby) broadcast(msg *Outbound) {
 	l.lock.RLock()
 	for _, c := range l.clients {
-		c.send(r)
+		c.out <- msg
 	}
 	l.lock.RUnlock()
 }
@@ -68,6 +79,106 @@ func (s *service) Routes() map[string]map[string]http.HandlerFunc {
 	}
 }
 
+func (c *client) writePump() {
+	ticker := time.NewTicker(20 * time.Second)
+	defer func() {
+		ticker.Stop()
+		c.conn.Close()
+	}()
+
+	for {
+		select {
+		case msg, ok := <-c.out:
+			if !ok {
+				c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+				if err := c.conn.WriteMessage(websocket.CloseMessage, []byte{}); err != nil {
+					log.Printf("failed to send connection close message: %v\n", err)
+				}
+				return
+			}
+
+			data, err := json.Marshal(msg)
+			if err != nil {
+				log.Printf("failed serializing outbound message: %v\n", err)
+				continue
+			}
+			c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			if err := c.conn.WriteMessage(websocket.TextMessage, data); err != nil {
+				log.Printf("failed to send message: %v\n", err)
+			}
+
+		case <-ticker.C:
+			c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				log.Printf("failed to send ping: %v\n", err)
+			}
+		}
+	}
+}
+
+func (c *client) readPump(lobby *lobby) {
+	defer func() {
+		close(c.out)
+		lobby.lock.Lock()
+		delete(lobby.clients, c.conn)
+		lobby.lock.Unlock()
+	}()
+
+	c.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	c.conn.SetPongHandler(func(string) error {
+		c.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		return nil
+	})
+
+	for {
+		msgType, data, err := c.conn.ReadMessage()
+		if err != nil {
+			if websocket.IsCloseError(err,
+				websocket.CloseNormalClosure,
+				websocket.CloseGoingAway,
+				websocket.CloseAbnormalClosure,
+				websocket.CloseProtocolError,
+				websocket.CloseUnsupportedData,
+				websocket.CloseNoStatusReceived,
+			) {
+				log.Printf("websocket closed by client: %v", err)
+				break
+			}
+			log.Printf("failed to read message: %v\n", err)
+			break
+		}
+
+		if msgType == websocket.TextMessage {
+			msg := &Inbound{}
+
+			if err := json.Unmarshal(data, msg); err != nil {
+				c.out <- &Outbound{Error: "invalid json format"}
+				continue
+			}
+
+			switch msg.Type {
+			case MsgTypeState:
+				c.out <- &Outbound{
+					Initial: lobby.game.Initial,
+					Current: lobby.game.Current,
+				}
+
+			case MsgTypeMove:
+				update, err := lobby.game.Move(msg.Row, msg.Column, msg.Value)
+				if err != nil {
+					c.out <- &Outbound{Error: err.Error()}
+				}
+				if update {
+					lobby.broadcast(&Outbound{Current: lobby.game.Current})
+				}
+
+			default:
+				c.out <- &Outbound{Error: "invalid message type"}
+			}
+		}
+	}
+}
+
 func (s *service) postLobby(w http.ResponseWriter, r *http.Request) {
 	l := &lobby{
 		game:    game.New(),
@@ -98,106 +209,10 @@ func (s *service) getLobby(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	lobby.lock.Lock()
-	client := &client{conn: conn}
+	client := &client{conn: conn, out: make(chan *Outbound, 256)}
 	lobby.clients[conn] = client
 	lobby.lock.Unlock()
 
-	go s.handleConnection(client, lobby)
-}
-
-const (
-	MsgTypeMove  = "move"
-	MsgTypeState = "state"
-)
-
-type Request struct {
-	Type   string `json:"type"`
-	Row    int    `json:"row"`
-	Column int    `json:"column"`
-	Value  int    `json:"value"`
-}
-
-type Response struct {
-	Initial *sudoku.Sudoku `json:"initial_state,omitempty"`
-	Current *sudoku.Sudoku `json:"current_state,omitempty"`
-	Error   string         `json:"error,omitempty"`
-}
-
-func (s *service) handleConnection(client *client, lobby *lobby) {
-	defer func() {
-		log.Println("closing client connection")
-		client.conn.Close()
-		lobby.lock.Lock()
-		delete(lobby.clients, client.conn)
-		lobby.lock.Unlock()
-	}()
-
-	client.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
-	client.conn.SetPongHandler(func(string) error {
-		client.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
-		return nil
-	})
-
-	// ping go routine
-	go func() {
-		ticker := time.NewTicker(20 * time.Second)
-		defer func() {
-			ticker.Stop()
-			client.conn.Close()
-		}()
-		for {
-			select {
-			case <-ticker.C:
-				client.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-				if err := client.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
-					log.Printf("couldn't send a ping: %v\n", err)
-					return
-				}
-			}
-		}
-	}()
-
-	for {
-		msgType, message, err := client.conn.ReadMessage()
-		if err != nil {
-			log.Println(err.Error())
-			break
-		}
-
-		if msgType == websocket.TextMessage {
-			msg := &Request{}
-
-			if err := json.Unmarshal(message, msg); err != nil {
-				client.send(&Response{Error: "invalid json format"})
-				continue
-			}
-
-			switch msg.Type {
-			case MsgTypeState:
-				s.handleStateMsg(lobby, client)
-			case MsgTypeMove:
-				s.handleMoveMsg(msg, lobby, client)
-			default:
-				client.send(&Response{Error: "invalid message type"})
-			}
-		}
-	}
-}
-
-func (s *service) handleStateMsg(lobby *lobby, client *client) {
-	client.send(&Response{
-		Initial: lobby.game.Initial,
-		Current: lobby.game.Current,
-	})
-}
-
-func (s *service) handleMoveMsg(msg *Request, lobby *lobby, client *client) {
-	update, err := lobby.game.Move(msg.Row, msg.Column, msg.Value)
-	if err != nil {
-		client.send(&Response{Error: err.Error()})
-		return
-	}
-	if update {
-		lobby.broadcast(&Response{Current: lobby.game.Current})
-	}
+	go client.writePump()
+	go client.readPump(lobby)
 }
