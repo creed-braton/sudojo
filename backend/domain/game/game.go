@@ -45,7 +45,7 @@ func New() *Game {
 	}
 }
 
-func (g *Game) Move(row, col, val int) (bool, error) {
+func (g *Game) Insert(row, col, val int) (bool, error) {
 	if g.Finished != nil {
 		return false, errors.New("game is already finished")
 	}
@@ -53,15 +53,20 @@ func (g *Game) Move(row, col, val int) (bool, error) {
 	g.Lock.Lock()
 	defer g.Lock.Unlock()
 
-	update, err := g.Current.Insert(row, col, val)
-	if err != nil {
-		return update, err
+	if g.Current[row][col] == val {
+		return false, nil
 	}
 
-	if update && g.Current.Complete() {
+	err := g.Current.Validate(row, col, val)
+	if err != nil {
+		return false, err
+	}
+	g.Current[row][col] = val
+
+	if g.Current.Complete() {
 		solved := time.Now().UTC().UnixNano()
 		g.Finished = &solved
 	}
 
-	return update, nil
+	return true, nil
 }

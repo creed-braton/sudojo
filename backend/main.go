@@ -3,13 +3,13 @@ package main
 import (
 	"sudojo/adapter/server"
 	"sudojo/service"
-	"sudojo/service/lobby"
+	"sudojo/service/conn"
 )
 
 func main() {
 	err := server.New(
 		":8080",
-		[]service.Service{lobby.New()},
+		[]service.Service{conn.New()},
 	).Listen()
 
 	if err != nil {

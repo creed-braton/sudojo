@@ -116,35 +116,34 @@ func (s *Sudoku) Fill(seed int64) {
 	s.fill()
 }
 
-func (s *Sudoku) Insert(row, col, val int) (bool, error) {
+func (s *Sudoku) Validate(row, col, val int) error {
 	if row < 0 || row >= BoardSize || col < 0 || col >= BoardSize {
-		return false, errors.New("position out of bounds")
+		return errors.New("position out of bounds")
 	}
 
 	if s[row][col] == val {
-		return false, nil
+		return nil
 	}
 
 	if val != EmptyCell && s[row][col] != val {
 		if !validVal(val) {
-			return false, fmt.Errorf("value must be between %d and %d", MinValue, MaxValue)
+			return fmt.Errorf("value must be between %d and %d", MinValue, MaxValue)
 		}
 
 		if !s.validRow(row, val) {
-			return false, errors.New("value already exists in this row")
+			return errors.New("value already exists in this row")
 		}
 
 		if !s.validCol(col, val) {
-			return false, errors.New("value already exists in this column")
+			return errors.New("value already exists in this column")
 		}
 
 		if !s.validBox(row, col, val) {
-			return false, errors.New("value already exists in this box")
+			return errors.New("value already exists in this box")
 		}
 	}
 
-	s[row][col] = val
-	return true, nil
+	return nil
 }
 
 func (s *Sudoku) Copy(c *Sudoku) {
