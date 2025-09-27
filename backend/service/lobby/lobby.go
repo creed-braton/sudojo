@@ -1,7 +1,10 @@
 package lobby
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"sudojo/domain/game"
@@ -30,14 +33,22 @@ type Outbound struct {
 	Error   string         `json:"error,omitempty"`
 }
 
-type client struct {
-	conn *websocket.Conn
-	out  chan *Outbound
+type Client struct {
+	token  string
+	conn   *websocket.Conn
+	out    chan *Outbound
+	closed sync.Once
+}
+
+func (c *Client) Close() {
+	c.closed.Do(func() {
+		c.conn.Close()
+	})
 }
 
 type lobby struct {
 	game    *game.Game
-	clients map[*websocket.Conn]*client
+	clients map[string]*Client
 	lock    sync.RWMutex
 }
 
@@ -79,72 +90,49 @@ func (s *service) Routes() map[string]map[string]http.HandlerFunc {
 	}
 }
 
-func (c *client) writePump() {
+func (s *service) writePump(client *Client) {
 	ticker := time.NewTicker(20 * time.Second)
 	defer func() {
 		ticker.Stop()
-		c.conn.Close()
+		client.Close()
 	}()
 
 	for {
 		select {
-		case msg, ok := <-c.out:
-			if !ok {
-				c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-				if err := c.conn.WriteMessage(websocket.CloseMessage, []byte{}); err != nil {
-					log.Printf("failed to send connection close message: %v\n", err)
-				}
-				return
-			}
-
+		case msg := <-client.out:
 			data, err := json.Marshal(msg)
 			if err != nil {
-				log.Printf("failed serializing outbound message: %v\n", err)
+				log.Printf("failed serializing outbound message: %v", err)
 				continue
 			}
-			c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-			if err := c.conn.WriteMessage(websocket.TextMessage, data); err != nil {
-				log.Printf("failed to send message: %v\n", err)
+			client.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			if err := client.conn.WriteMessage(websocket.TextMessage, data); err != nil {
+				log.Printf("failed to send message: %v", err)
 			}
 
 		case <-ticker.C:
-			c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
-				log.Printf("failed to send ping: %v\n", err)
+			client.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			if err := client.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				log.Printf("failed to send ping: %v", err)
 			}
 		}
 	}
 }
 
-func (c *client) readPump(lobby *lobby) {
+func (s *service) readPump(lobby *lobby, client *Client) {
 	defer func() {
-		close(c.out)
-		lobby.lock.Lock()
-		delete(lobby.clients, c.conn)
-		lobby.lock.Unlock()
+		client.Close()
 	}()
 
-	c.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
-	c.conn.SetPongHandler(func(string) error {
-		c.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	client.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	client.conn.SetPongHandler(func(string) error {
+		client.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 		return nil
 	})
 
 	for {
-		msgType, data, err := c.conn.ReadMessage()
+		msgType, data, err := client.conn.ReadMessage()
 		if err != nil {
-			if websocket.IsCloseError(err,
-				websocket.CloseNormalClosure,
-				websocket.CloseGoingAway,
-				websocket.CloseAbnormalClosure,
-				websocket.CloseProtocolError,
-				websocket.CloseUnsupportedData,
-				websocket.CloseNoStatusReceived,
-			) {
-				log.Printf("websocket closed by client: %v", err)
-				break
-			}
-			log.Printf("failed to read message: %v\n", err)
 			break
 		}
 
@@ -152,13 +140,13 @@ func (c *client) readPump(lobby *lobby) {
 			msg := &Inbound{}
 
 			if err := json.Unmarshal(data, msg); err != nil {
-				c.out <- &Outbound{Error: "invalid json format"}
+				client.out <- &Outbound{Error: "invalid json format"}
 				continue
 			}
 
 			switch msg.Type {
 			case MsgTypeState:
-				c.out <- &Outbound{
+				client.out <- &Outbound{
 					Initial: lobby.game.Initial,
 					Current: lobby.game.Current,
 				}
@@ -166,14 +154,27 @@ func (c *client) readPump(lobby *lobby) {
 			case MsgTypeMove:
 				update, err := lobby.game.Move(msg.Row, msg.Column, msg.Value)
 				if err != nil {
-					c.out <- &Outbound{Error: err.Error()}
+					client.out <- &Outbound{Error: err.Error()}
 				}
+
 				if update {
 					lobby.broadcast(&Outbound{Current: lobby.game.Current})
 				}
 
+				if lobby.game.Finished != nil {
+					lobby.lock.Lock()
+					for _, c := range lobby.clients {
+						c.Close()
+					}
+					lobby.lock.Unlock()
+
+					s.lock.Lock()
+					delete(s.lobbies, lobby.game.Id.String())
+					s.lock.Unlock()
+				}
+
 			default:
-				c.out <- &Outbound{Error: "invalid message type"}
+				client.out <- &Outbound{Error: "invalid message type"}
 			}
 		}
 	}
@@ -182,7 +183,7 @@ func (c *client) readPump(lobby *lobby) {
 func (s *service) postLobby(w http.ResponseWriter, r *http.Request) {
 	l := &lobby{
 		game:    game.New(),
-		clients: make(map[*websocket.Conn]*client),
+		clients: make(map[string]*Client),
 	}
 	s.lock.Lock()
 	s.lobbies[l.game.Id.String()] = l
@@ -191,6 +192,15 @@ func (s *service) postLobby(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(l.game.Id.String()))
+}
+
+func newToken() string {
+	b := make([]byte, 32)
+	_, err := rand.Read(b)
+	if err != nil {
+		panic(err)
+	}
+	return hex.EncodeToString(b)
 }
 
 func (s *service) getLobby(w http.ResponseWriter, r *http.Request) {
@@ -203,16 +213,43 @@ func (s *service) getLobby(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conn, err := s.upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Println(err.Error())
-		return
+	var token string
+	cookie, err := r.Cookie("session_token")
+	if err == nil {
+		token = cookie.Value
 	}
 	lobby.lock.Lock()
-	client := &client{conn: conn, out: make(chan *Outbound, 256)}
-	lobby.clients[conn] = client
-	lobby.lock.Unlock()
+	defer func() {
+		lobby.lock.Unlock()
+	}()
 
-	go client.writePump()
-	go client.readPump(lobby)
+	client := lobby.clients[token]
+	if client == nil {
+		token = newToken()
+		client = &Client{token: token, out: make(chan *Outbound, 256)}
+	} else {
+		client.Close()
+	}
+
+	conn, err := s.upgrader.Upgrade(w, r, http.Header{
+		"Set-Cookie": {(&http.Cookie{
+			Name:     "session_token",
+			Value:    token,
+			Path:     fmt.Sprintf("/api/lobbies/%s", id),
+			HttpOnly: true,
+			Secure:   true,
+			SameSite: http.SameSiteStrictMode,
+			MaxAge:   86400, // 1 day, experimental
+		}).String()},
+	})
+	if err != nil {
+		log.Printf("failed to create connection: %v", err)
+		return
+	}
+	client.conn = conn
+
+	lobby.clients[token] = client
+
+	go s.writePump(client)
+	go s.readPump(lobby, client)
 }
