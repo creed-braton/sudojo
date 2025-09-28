@@ -80,19 +80,24 @@ func New() *Lobby {
 	return l
 }
 
+func (l *Lobby) close() {
+	l.once.Do(func() {
+		close(l.done)
+		for _, p := range l.players {
+			close(p.Out)
+		}
+	})
+}
+
 func (l *Lobby) Player(token string) *Player {
 	l.lock.RLock()
-	defer func() {
-		l.lock.RUnlock()
-	}()
+	defer l.lock.RUnlock()
 	return l.players[token]
 }
 
 func (l *Lobby) Join(name string) (*Player, error) {
 	l.lock.Lock()
-	defer func() {
-		l.lock.Unlock()
-	}()
+	defer l.lock.Unlock()
 
 	select {
 	case <-l.done:
@@ -117,9 +122,7 @@ func (l *Lobby) Join(name string) (*Player, error) {
 
 func (l *Lobby) Rejoin(p *Player) error {
 	l.lock.Lock()
-	defer func() {
-		l.lock.Unlock()
-	}()
+	defer l.lock.Unlock()
 
 	select {
 	case <-l.done:
@@ -137,35 +140,37 @@ func (l *Lobby) Leave(p *Player) {
 	l.lock.Unlock()
 }
 
-func (l *Lobby) Idle() (bool, func()) {
+func (l *Lobby) Idle() bool {
 	l.lock.Lock()
+	defer l.lock.Unlock()
+
 	for _, p := range l.players {
 		if p.active {
-			l.lock.Unlock()
-			return false, nil
+			return false
 		}
 	}
 
-	return true, func() {
-		l.once.Do(
-			func() {
-				close(l.done)
-				for _, p := range l.players {
-					close(p.Out)
-				}
-			})
-		l.lock.Unlock()
-	}
+	l.close()
+	return true
 }
 
-func (p *Player) send(msg []byte) {
-	p.Out <- msg
+func (l *Lobby) send(msg []byte, p *Player) {
+	l.lock.RLock()
+	defer l.lock.RUnlock()
+
+	// check if lobby is not getting closed and channel is still safe to use
+	select {
+	case <-l.done:
+		return
+	default:
+		p.Out <- msg
+	}
 }
 
 func (l *Lobby) broadcast(msg []byte) {
 	l.lock.RLock()
 	for _, p := range l.players {
-		p.send(msg)
+		l.send(msg, p)
 	}
 	l.lock.RUnlock()
 }
@@ -177,29 +182,38 @@ func (l *Lobby) move(msg *inbound, player *Player) error {
 		if err != nil {
 			return err
 		}
-		player.send(res)
+		l.send(res, player)
 	}
 
-	if update {
-		res, err := (&outbound{Current: l.game.Current}).marshal()
+	if update != nil {
+		res, err := (&outbound{Current: update}).marshal()
 		if err != nil {
 			return err
 		}
 		l.broadcast(res)
 	}
 
+	if l.game.Finished != nil {
+		l.lock.Lock()
+		l.close()
+		l.lock.Unlock()
+	}
+
 	return nil
 }
 
 func (l *Lobby) state(player *Player) error {
+	initial, current := l.game.State()
+
 	res, err := (&outbound{
-		Initial: l.game.Initial,
-		Current: l.game.Current,
+		Initial: initial,
+		Current: current,
 	}).marshal()
 	if err != nil {
 		return err
 	}
-	player.send(res)
+
+	l.send(res, player)
 	return nil
 }
 
@@ -210,7 +224,7 @@ func (l *Lobby) Process(msg []byte, player *Player) error {
 		if err != nil {
 			return err
 		}
-		player.send(res)
+		l.send(res, player)
 		return nil
 	}
 
@@ -224,7 +238,7 @@ func (l *Lobby) Process(msg []byte, player *Player) error {
 		if err != nil {
 			return err
 		}
-		player.send(res)
+		l.send(res, player)
 		return nil
 	}
 }

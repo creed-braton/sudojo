@@ -14,7 +14,7 @@ type Game struct {
 	Current  *sudoku.Sudoku
 	Initial  *sudoku.Sudoku
 	Solution *sudoku.Sudoku
-	Lock     sync.RWMutex
+	lock     sync.RWMutex
 	Created  int64
 	Finished *int64
 }
@@ -45,21 +45,21 @@ func New() *Game {
 	}
 }
 
-func (g *Game) Insert(row, col, val int) (bool, error) {
+func (g *Game) Insert(row, col, val int) (*sudoku.Sudoku, error) {
+	g.lock.Lock()
+	defer g.lock.Unlock()
+
 	if g.Finished != nil {
-		return false, errors.New("game is already finished")
+		return nil, errors.New("game is already finished")
 	}
 
-	g.Lock.Lock()
-	defer g.Lock.Unlock()
-
 	if g.Current[row][col] == val {
-		return false, nil
+		return nil, nil
 	}
 
 	err := g.Current.Validate(row, col, val)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 	g.Current[row][col] = val
 
@@ -68,5 +68,20 @@ func (g *Game) Insert(row, col, val int) (bool, error) {
 		g.Finished = &solved
 	}
 
-	return true, nil
+	current := sudoku.New()
+	g.Current.Copy(current)
+
+	return current, nil
+}
+
+func (g *Game) State() (*sudoku.Sudoku, *sudoku.Sudoku) {
+	g.lock.RLock()
+	defer g.lock.RUnlock()
+
+	initial := sudoku.New()
+	g.Initial.Copy(initial)
+	current := sudoku.New()
+	g.Current.Copy(current)
+
+	return initial, current
 }

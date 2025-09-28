@@ -34,9 +34,7 @@ type service struct {
 
 func (s *service) cleaner() {
 	ticker := time.NewTicker(45 * time.Second)
-	defer func() {
-		ticker.Stop()
-	}()
+	defer ticker.Stop()
 
 	for range ticker.C {
 		s.lock.Lock()
@@ -52,9 +50,8 @@ func (s *service) cleaner() {
 
 		// clean up idle lobbies
 		for id, lobby := range s.lobbies {
-			if idle, unlock := lobby.Idle(); idle {
+			if idle := lobby.Idle(); idle {
 				delete(s.lobbies, id)
-				unlock()
 			}
 		}
 		s.lock.Unlock()
