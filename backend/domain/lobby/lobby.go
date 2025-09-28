@@ -46,9 +46,10 @@ func (o *outbound) marshal() ([]byte, error) {
 }
 
 type Player struct {
-	Token string
-	Name  string
-	Out   chan []byte
+	Token  string
+	name   string
+	Out    chan []byte
+	active bool
 }
 
 type Lobby struct {
@@ -56,6 +57,8 @@ type Lobby struct {
 	game    *game.Game
 	players map[string]*Player
 	lock    sync.RWMutex
+	done    chan struct{}
+	once    sync.Once
 }
 
 func newToken() string {
@@ -71,6 +74,7 @@ func New() *Lobby {
 	l := &Lobby{
 		game:    game.New(),
 		players: make(map[string]*Player),
+		done:    make(chan struct{}),
 	}
 	l.Id = l.game.Id.String()
 	return l
@@ -90,18 +94,68 @@ func (l *Lobby) Join(name string) (*Player, error) {
 		l.lock.Unlock()
 	}()
 
+	select {
+	case <-l.done:
+		return nil, errors.New("lobby is getting closed")
+	default:
+	}
+
 	if len(l.players) >= 8 {
 		return nil, errors.New("lobby is already full")
 	}
 
 	p := &Player{
-		Token: newToken(),
-		Name:  name,
-		Out:   make(chan []byte, 256),
+		Token:  newToken(),
+		name:   name,
+		Out:    make(chan []byte, 256),
+		active: true,
 	}
 	l.players[p.Token] = p
 
 	return p, nil
+}
+
+func (l *Lobby) Rejoin(p *Player) error {
+	l.lock.Lock()
+	defer func() {
+		l.lock.Unlock()
+	}()
+
+	select {
+	case <-l.done:
+		return errors.New("lobby is getting closed")
+	default:
+	}
+
+	p.active = true
+	return nil
+}
+
+func (l *Lobby) Leave(p *Player) {
+	l.lock.Lock()
+	p.active = false
+	l.lock.Unlock()
+}
+
+func (l *Lobby) Idle() (bool, func()) {
+	l.lock.Lock()
+	for _, p := range l.players {
+		if p.active {
+			l.lock.Unlock()
+			return false, nil
+		}
+	}
+
+	return true, func() {
+		l.once.Do(
+			func() {
+				close(l.done)
+				for _, p := range l.players {
+					close(p.Out)
+				}
+			})
+		l.lock.Unlock()
+	}
 }
 
 func (p *Player) send(msg []byte) {
