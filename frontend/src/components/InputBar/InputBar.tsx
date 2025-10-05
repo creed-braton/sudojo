@@ -5,15 +5,20 @@ import type { Position } from "../Lobby/Lobby";
 const InputBar = ({
   position,
   sendMove,
+  pencilMode,
+  setPencilMode,
 }: {
   position: Position | undefined;
   sendMove: (row: number, column: number, value: number) => void;
+  pencilMode: boolean;
+  setPencilMode: (mode: boolean) => void;
 }): ReactElement => {
   return (
     <div className={`glassmorphism ${styles.inputbar}`}>
       <div className={styles.row}>
-        {[1, 2, 3, 4, 5].map((num: number) => (
+        {[1, 2, 3, 4, 5, 6].map((num: number) => (
           <button
+            key={num}
             className={styles.button}
             onClick={() => {
               position && sendMove(position.row, position.column, num);
@@ -24,8 +29,9 @@ const InputBar = ({
         ))}
       </div>
       <div className={styles.row}>
-        {[6, 7, 8, 9, 0].map((num: number) => (
+        {[7, 8, 9, 0].map((num: number) => (
           <button
+            key={num}
             className={styles.button}
             onClick={() => {
               position && sendMove(position.row, position.column, num);
@@ -51,6 +57,25 @@ const InputBar = ({
             )}
           </button>
         ))}
+        <button
+          className={`${styles.button} ${pencilMode ? styles.active : ""}`}
+          onClick={() => setPencilMode(!pencilMode)}
+          title={pencilMode ? "Switch to normal mode" : "Switch to pencil mode"}
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+            <path d="m15 5 4 4" />
+          </svg>
+        </button>
       </div>
     </div>
   );
