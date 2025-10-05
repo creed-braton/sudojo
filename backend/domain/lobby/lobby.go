@@ -12,8 +12,9 @@ import (
 )
 
 const (
-	MsgTypeMove  = "move"
-	MsgTypeState = "state"
+	msgTypeMove  = "move"
+	msgTypeState = "state"
+	maxPlayer    = 8
 )
 
 type inbound struct {
@@ -105,7 +106,7 @@ func (l *Lobby) Join(name string) (*Player, error) {
 	default:
 	}
 
-	if len(l.players) >= 8 {
+	if len(l.players) >= maxPlayer {
 		return nil, errors.New("lobby is already full")
 	}
 
@@ -229,9 +230,9 @@ func (l *Lobby) Process(msg []byte, player *Player) error {
 	}
 
 	switch req.Type {
-	case MsgTypeState:
+	case msgTypeState:
 		return l.state(player)
-	case MsgTypeMove:
+	case msgTypeMove:
 		return l.move(req, player)
 	default:
 		res, err := (&outbound{Error: "invalid json format"}).marshal()
