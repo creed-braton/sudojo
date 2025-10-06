@@ -49,9 +49,18 @@ func (o *outbound) marshal() ([]byte, error) {
 
 type Player struct {
 	Token  string
-	name   string
+	Name   string
 	Out    chan []byte
 	active bool
+}
+
+type Log struct {
+	LobbyId string
+	Row     int
+	Column  int
+	Value   int
+	Player  string
+	Time    int64
 }
 
 type Lobby struct {
@@ -61,7 +70,7 @@ type Lobby struct {
 	lock    sync.RWMutex
 	done    chan struct{}
 	once    sync.Once
-	logger  *Logger
+	logger  chan *Log
 }
 
 func newToken() string {
@@ -73,22 +82,20 @@ func newToken() string {
 	return hex.EncodeToString(b)
 }
 
-func New() *Lobby {
+func New(logger chan *Log) *Lobby {
 	l := &Lobby{
 		Game:    game.New(),
 		players: make(map[string]*Player),
 		done:    make(chan struct{}),
-		logger:  newLogger(),
+		logger:  logger,
 	}
 	l.Id = l.Game.Id.String()
-	go l.logger.storer()
 	return l
 }
 
 func (l *Lobby) close() {
 	l.once.Do(func() {
 		close(l.done)
-		close(l.logger.msgs)
 		for _, p := range l.players {
 			close(p.Out)
 		}
@@ -117,7 +124,7 @@ func (l *Lobby) Join(name string) (*Player, error) {
 
 	p := &Player{
 		Token:  newToken(),
-		name:   name,
+		Name:   name,
 		Out:    make(chan []byte, 256),
 		active: true,
 	}
@@ -200,13 +207,14 @@ func (l *Lobby) move(msg *inbound, player *Player) error {
 	}
 
 	if update != nil || err != nil {
-		l.log(&logMsg{
-			Row:    msg.Row,
-			Column: msg.Column,
-			Value:  msg.Value,
-			Player: player.Token,
-			Time:   time.Now().UTC().UnixNano(),
-		})
+		l.logger <- &Log{
+			LobbyId: l.Id,
+			Row:     msg.Row,
+			Column:  msg.Column,
+			Value:   msg.Value,
+			Player:  player.Token,
+			Time:    time.Now().UTC().UnixNano(),
+		}
 	}
 
 	if l.Game.Finished != nil {

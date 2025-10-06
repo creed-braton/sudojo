@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sudojo/adapter/database"
 	"sudojo/domain/lobby"
 	"sync"
 	"time"
@@ -28,7 +29,8 @@ func (c *client) close() {
 type service struct {
 	upgrader websocket.Upgrader
 	lobbies  map[string]*lobby.Lobby
-	complete chan *lobby.Lobby
+	logger   chan *lobby.Log
+	db       database.Database
 	clients  map[string]*client
 	lock     sync.RWMutex
 }
@@ -52,21 +54,22 @@ func (s *service) cleaner() {
 		// clean up idle lobbies
 		for id, lobby := range s.lobbies {
 			if idle := lobby.Idle(); idle {
-				if lobby.Game.Finished != nil {
-					s.complete <- lobby
-				}
 				delete(s.lobbies, id)
+				if err := s.db.UpdateLobby(lobby); err != nil {
+					log.Printf("failed to offload lobby: %v", err)
+				}
 			}
 		}
 		s.lock.Unlock()
 	}
 }
 
-func New(complete chan *lobby.Lobby) *service {
+func New(logger chan *lobby.Log, db database.Database) *service {
 	s := &service{
-		lobbies:  make(map[string]*lobby.Lobby),
-		complete: complete,
-		clients:  make(map[string]*client),
+		lobbies: make(map[string]*lobby.Lobby),
+		logger:  logger,
+		db:      db,
+		clients: make(map[string]*client),
 		upgrader: websocket.Upgrader{
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,
@@ -173,6 +176,12 @@ func (s *service) getLobby(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), 409)
 			return
 		}
+		err = s.db.InsertPlayer(lobby.Id, player)
+		if err != nil {
+			log.Printf("failed writing player to db: %v", err)
+			http.Error(w, "internal server error", 500)
+			return
+		}
 	} else {
 		err := lobby.Rejoin(player)
 		if err != nil {
@@ -213,7 +222,14 @@ func (s *service) getLobby(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *service) postLobby(w http.ResponseWriter, r *http.Request) {
-	l := lobby.New()
+	l := lobby.New(s.logger)
+	err := s.db.InsertLobby(l)
+	if err != nil {
+		log.Printf("failed writing lobby to db: %v", err)
+		http.Error(w, "internal server error", 500)
+		return
+	}
+
 	s.lock.Lock()
 	s.lobbies[l.Id] = l
 	s.lock.Unlock()

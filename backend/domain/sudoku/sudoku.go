@@ -21,6 +21,14 @@ func New() *Sudoku {
 	return &Sudoku{}
 }
 
+func (s *Sudoku) Int() [][]int {
+	c := make([][]int, 9)
+	for i := range s {
+		c[i] = s[i][:]
+	}
+	return c
+}
+
 // Compares two Sudoku boards for equality by checking if all cells contain
 // identical values at corresponding positions. It returns true if both boards
 // are exactly the same, false otherwise. It doesn't check validity of either board.
