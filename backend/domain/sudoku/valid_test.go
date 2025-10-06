@@ -93,7 +93,7 @@ func TestValidVal(t *testing.T) {
 		},
 		{
 			name:  "empty value",
-			input: emptyCell,
+			input: EmptyCell,
 			want:  false,
 		},
 		{

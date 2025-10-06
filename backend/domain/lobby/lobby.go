@@ -9,6 +9,7 @@ import (
 	"sudojo/domain/game"
 	"sudojo/domain/sudoku"
 	"sync"
+	"time"
 )
 
 const (
@@ -55,11 +56,12 @@ type Player struct {
 
 type Lobby struct {
 	Id      string
-	game    *game.Game
+	Game    *game.Game
 	players map[string]*Player
 	lock    sync.RWMutex
 	done    chan struct{}
 	once    sync.Once
+	logger  *Logger
 }
 
 func newToken() string {
@@ -73,17 +75,20 @@ func newToken() string {
 
 func New() *Lobby {
 	l := &Lobby{
-		game:    game.New(),
+		Game:    game.New(),
 		players: make(map[string]*Player),
 		done:    make(chan struct{}),
+		logger:  newLogger(),
 	}
-	l.Id = l.game.Id.String()
+	l.Id = l.Game.Id.String()
+	go l.logger.storer()
 	return l
 }
 
 func (l *Lobby) close() {
 	l.once.Do(func() {
 		close(l.done)
+		close(l.logger.msgs)
 		for _, p := range l.players {
 			close(p.Out)
 		}
@@ -177,7 +182,7 @@ func (l *Lobby) broadcast(msg []byte) {
 }
 
 func (l *Lobby) move(msg *inbound, player *Player) error {
-	update, err := l.game.Insert(msg.Row, msg.Column, msg.Value)
+	update, err := l.Game.Insert(msg.Row, msg.Column, msg.Value)
 	if err != nil {
 		res, err := (&outbound{Error: err.Error()}).marshal()
 		if err != nil {
@@ -194,7 +199,17 @@ func (l *Lobby) move(msg *inbound, player *Player) error {
 		l.broadcast(res)
 	}
 
-	if l.game.Finished != nil {
+	if update != nil || err != nil {
+		l.log(&logMsg{
+			Row:    msg.Row,
+			Column: msg.Column,
+			Value:  msg.Value,
+			Player: player.Token,
+			Time:   time.Now().UTC().UnixNano(),
+		})
+	}
+
+	if l.Game.Finished != nil {
 		l.lock.Lock()
 		l.close()
 		l.lock.Unlock()
@@ -204,7 +219,7 @@ func (l *Lobby) move(msg *inbound, player *Player) error {
 }
 
 func (l *Lobby) state(player *Player) error {
-	initial, current := l.game.State()
+	initial, current := l.Game.State()
 
 	res, err := (&outbound{
 		Initial: initial,

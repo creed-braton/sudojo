@@ -9,7 +9,7 @@ import (
 const (
 	boardSize = 9
 	boxSize   = 3
-	emptyCell = 0
+	EmptyCell = 0
 	minValue  = 1
 	maxValue  = 9
 	minClues  = 17 // https://arxiv.org/abs/1201.0749
@@ -111,7 +111,7 @@ func (s *Sudoku) Validate(row, col, val int) error {
 		return errors.New("position out of bounds")
 	}
 
-	if val == emptyCell {
+	if val == EmptyCell {
 		return nil
 	}
 
@@ -140,7 +140,7 @@ func (s *Sudoku) Validate(row, col, val int) error {
 func (s *Sudoku) Complete() bool {
 	for row := 0; row < boardSize; row++ {
 		for col := 0; col < boardSize; col++ {
-			if s[row][col] == emptyCell {
+			if s[row][col] == EmptyCell {
 				return false
 			}
 		}
@@ -152,7 +152,7 @@ func (s *Sudoku) Complete() bool {
 func (s *Sudoku) fill() bool {
 	for row := 0; row < boardSize; row++ {
 		for col := 0; col < boardSize; col++ {
-			if s[row][col] == emptyCell {
+			if s[row][col] == EmptyCell {
 				nums := rand.Perm(maxValue)
 				for _, n := range nums {
 					val := n + 1
@@ -161,7 +161,7 @@ func (s *Sudoku) fill() bool {
 						if s.fill() {
 							return true
 						}
-						s[row][col] = emptyCell // backtrack
+						s[row][col] = EmptyCell // backtrack
 					}
 				}
 				return false
@@ -206,7 +206,7 @@ func (s *Sudoku) solve(emptyCells [][2]int, index int, count *int, solution *Sud
 		if s.validRow(row, val) && s.validCol(col, val) && s.validBox(row, col, val) {
 			s[row][col] = val
 			s.solve(emptyCells, index+1, count, solution)
-			s[row][col] = emptyCell
+			s[row][col] = EmptyCell
 		}
 	}
 }
@@ -216,7 +216,7 @@ func (s *Sudoku) clues() int {
 	clues := 0
 	for row := 0; row < boardSize; row++ {
 		for col := 0; col < boardSize; col++ {
-			if s[row][col] != emptyCell {
+			if s[row][col] != EmptyCell {
 				clues++
 			}
 		}
@@ -235,7 +235,7 @@ func (s *Sudoku) UniqueSolution() bool {
 	var emptyCells [][2]int
 	for row := 0; row < boardSize; row++ {
 		for col := 0; col < boardSize; col++ {
-			if s[row][col] == emptyCell {
+			if s[row][col] == EmptyCell {
 				emptyCells = append(emptyCells, [2]int{row, col})
 			}
 		}
@@ -269,7 +269,7 @@ func (s *Sudoku) GeneratePuzzle(seed int64) {
 	for _, cell := range cells {
 		row, col := cell[0], cell[1]
 		backup := s[row][col]
-		s[row][col] = emptyCell
+		s[row][col] = EmptyCell
 		c := New()
 		s.Copy(c)
 		if !c.UniqueSolution() {

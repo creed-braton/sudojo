@@ -28,6 +28,7 @@ func (c *client) close() {
 type service struct {
 	upgrader websocket.Upgrader
 	lobbies  map[string]*lobby.Lobby
+	complete chan *lobby.Lobby
 	clients  map[string]*client
 	lock     sync.RWMutex
 }
@@ -51,6 +52,9 @@ func (s *service) cleaner() {
 		// clean up idle lobbies
 		for id, lobby := range s.lobbies {
 			if idle := lobby.Idle(); idle {
+				if lobby.Game.Finished != nil {
+					s.complete <- lobby
+				}
 				delete(s.lobbies, id)
 			}
 		}
@@ -58,10 +62,11 @@ func (s *service) cleaner() {
 	}
 }
 
-func New() *service {
+func New(complete chan *lobby.Lobby) *service {
 	s := &service{
-		lobbies: make(map[string]*lobby.Lobby),
-		clients: make(map[string]*client),
+		lobbies:  make(map[string]*lobby.Lobby),
+		complete: complete,
+		clients:  make(map[string]*client),
 		upgrader: websocket.Upgrader{
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,
