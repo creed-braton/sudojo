@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sudojo/domain/lobby"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -60,6 +61,32 @@ func (db *postgres) InsertPlayer(id string, player *lobby.Player) error {
 		id,
 		player.Token,
 		player.Name,
+	)
+	return err
+}
+
+func (db *postgres) InsertLogs(logs []*lobby.Log) error {
+	if len(logs) < 1 {
+		return nil
+	}
+
+	rows := make([][]interface{}, 0, len(logs))
+	for _, log := range logs {
+		rows = append(rows, []interface{}{
+			log.LobbyId,
+			log.Player,
+			log.Time,
+			log.Row,
+			log.Column,
+			log.Value,
+		})
+	}
+
+	_, err := db.conn.CopyFrom(
+		context.Background(),
+		pgx.Identifier{"logs"},
+		[]string{"lobby_id", "player_token", "timestamp", "row", "col", "value"},
+		pgx.CopyFromRows(rows),
 	)
 	return err
 }

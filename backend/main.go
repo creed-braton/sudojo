@@ -8,6 +8,7 @@ import (
 	"sudojo/domain/lobby"
 	"sudojo/service"
 	"sudojo/service/conn"
+	"sudojo/service/stats"
 )
 
 func main() {
@@ -26,6 +27,7 @@ func main() {
 	err = server.New(
 		":8080", []service.Service{
 			conn.New(logger, db),
+			stats.New(logger, db),
 		}).Listen()
 
 	if err != nil {

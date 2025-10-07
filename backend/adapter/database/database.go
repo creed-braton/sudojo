@@ -7,4 +7,5 @@ type Database interface {
 	InsertLobby(lobby *lobby.Lobby) error
 	UpdateLobby(lobby *lobby.Lobby) error
 	InsertPlayer(id string, player *lobby.Player) error
+	InsertLogs(logs []*lobby.Log) error
 }
