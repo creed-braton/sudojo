@@ -1,5 +1,3 @@
-//go:build dev
-
 package database
 
 import "sudojo/domain/lobby"
