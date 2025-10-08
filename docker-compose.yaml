@@ -33,8 +33,7 @@ services:
     build:
       context: ./frontend
       args:
-        DOMAIN: sudojo.io
-        DEVELOPMENT: false
+        API_ENDPOINT: sudojo.io/api
     depends_on:
       database:
         condition: "service_healthy"

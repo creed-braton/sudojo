@@ -1,7 +1,6 @@
 package conn
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"sudojo/adapter/database"
@@ -33,6 +32,7 @@ type service struct {
 	db       database.Database
 	clients  map[string]*client
 	lock     sync.RWMutex
+	insecure bool
 }
 
 func (s *service) cleaner() {
@@ -64,7 +64,7 @@ func (s *service) cleaner() {
 	}
 }
 
-func New(logger chan *lobby.Log, db database.Database) *service {
+func New(logger chan *lobby.Log, db database.Database, insecure bool) *service {
 	s := &service{
 		lobbies: make(map[string]*lobby.Lobby),
 		logger:  logger,
@@ -77,6 +77,7 @@ func New(logger chan *lobby.Log, db database.Database) *service {
 				return true
 			},
 		},
+		insecure: insecure,
 	}
 	go s.cleaner()
 	return s
@@ -194,9 +195,9 @@ func (s *service) getLobby(w http.ResponseWriter, r *http.Request) {
 		"Set-Cookie": {(&http.Cookie{
 			Name:     "session_token",
 			Value:    player.Token,
-			Path:     fmt.Sprintf("/api/lobbies/%s", id),
+			Path:     r.URL.Path,
 			HttpOnly: true,
-			Secure:   true,
+			Secure:   !s.insecure,
 			SameSite: http.SameSiteStrictMode,
 			MaxAge:   86400, // 1 day, experimental
 		}).String()},

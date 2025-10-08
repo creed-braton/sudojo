@@ -1,10 +1,10 @@
 import { useRef, useState } from "react";
 import { type Sudoku } from "../types";
 
-const DOMAIN: string = import.meta.env.VITE_DOMAIN;
-const DEV: boolean = import.meta.env.VITE_DEV === "true";
-const API_URL: string = `${DEV ? "http" : "https"}://${DOMAIN}/api`;
-const WS_URL: string = `${DEV ? "ws" : "wss"}://${DOMAIN}/api`;
+const API_ENDPOINT: string = import.meta.env.VITE_API_ENDPOINT;
+const INSECURE: boolean = import.meta.env.VITE_INSECURE === "true";
+const HTTP_URL: string = `${INSECURE ? "http" : "https"}://${API_ENDPOINT}`;
+const WS_URL: string = `${INSECURE ? "ws" : "wss"}://${API_ENDPOINT}`;
 
 class ApiError extends Error {
   status: number;
@@ -17,7 +17,7 @@ class ApiError extends Error {
 }
 
 const postLobby = async (): Promise<string> => {
-  const response: Response = await fetch(API_URL + "/lobbies", {
+  const response: Response = await fetch(HTTP_URL + "/lobbies", {
     method: "POST",
   });
 

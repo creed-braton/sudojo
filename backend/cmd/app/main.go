@@ -25,8 +25,10 @@ func main() {
 
 	logger := make(chan *lobby.Log, 1048576) // 2^20
 	err = server.New(
-		":8080", []service.Service{
-			conn.New(logger, db),
+		envOrPanic("PORT"),
+		os.Getenv("ORIGIN"),
+		[]service.Service{
+			conn.New(logger, db, false),
 			stats.New(logger, db),
 		}).Listen()
 
