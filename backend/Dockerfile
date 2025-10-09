@@ -6,7 +6,7 @@ COPY go.mod go.sum ./
 
 RUN go mod download
 
-COPY cmd ./cmd
+COPY main.go ./main.go
 
 COPY domain ./domain
 
@@ -14,7 +14,7 @@ COPY adapter ./adapter
 
 COPY service ./service
 
-RUN go build -o bin cmd/app/main.go
+RUN go build -o ./bin ./main.go
 
 FROM alpine:3.22
 

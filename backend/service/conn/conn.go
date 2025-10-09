@@ -56,7 +56,7 @@ func (s *service) cleaner() {
 			if idle := lobby.Idle(); idle {
 				delete(s.lobbies, id)
 				if err := s.db.UpdateLobby(lobby); err != nil {
-					log.Printf("failed to offload lobby: %v", err)
+					log.Printf("ERROR: failed writing lobby to db: %v", err)
 				}
 			}
 		}
@@ -113,14 +113,14 @@ func (s *service) writePump(player *lobby.Player, client *client) {
 
 			client.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 			if err := client.conn.WriteMessage(websocket.TextMessage, msg); err != nil {
-				log.Printf("failed to send message: %v", err)
+				log.Printf("ERROR: failed sending message: %v", err)
 				return
 			}
 
 		case <-ticker.C:
 			client.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 			if err := client.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
-				log.Printf("failed to send ping: %v", err)
+				log.Printf("ERROR: failed sending ping: %v", err)
 				return
 			}
 		}
@@ -148,7 +148,7 @@ func (s *service) readPump(lobby *lobby.Lobby, player *lobby.Player, client *cli
 		if t == websocket.TextMessage {
 			err := lobby.Process(msg, player)
 			if err != nil {
-				log.Println(err.Error())
+				log.Printf("ERROR: %v", err)
 			}
 		}
 	}
@@ -179,7 +179,7 @@ func (s *service) getLobby(w http.ResponseWriter, r *http.Request) {
 		}
 		err = s.db.InsertPlayer(lobby.Id, player)
 		if err != nil {
-			log.Printf("failed writing player to db: %v", err)
+			log.Printf("ERROR: failed writing player to db: %v", err)
 			http.Error(w, "internal server error", 500)
 			return
 		}
@@ -203,7 +203,7 @@ func (s *service) getLobby(w http.ResponseWriter, r *http.Request) {
 		}).String()},
 	})
 	if err != nil {
-		log.Printf("failed to create connection: %v", err)
+		log.Printf("ERROR: failed creating connection: %v", err)
 		return
 	}
 	client := &client{token: player.Token, conn: conn, done: make(chan struct{})}
@@ -226,7 +226,7 @@ func (s *service) postLobby(w http.ResponseWriter, r *http.Request) {
 	l := lobby.New(s.logger)
 	err := s.db.InsertLobby(l)
 	if err != nil {
-		log.Printf("failed writing lobby to db: %v", err)
+		log.Printf("ERROR: failed writing lobby to db: %v", err)
 		http.Error(w, "internal server error", 500)
 		return
 	}

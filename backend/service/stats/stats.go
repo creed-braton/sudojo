@@ -17,7 +17,7 @@ func (s *service) storer() {
 	buffer := make([]*lobby.Log, 0, 1024)
 	flush := func() {
 		if err := s.db.InsertLogs(buffer); err != nil {
-			log.Printf("failed to offload logs: %v", err)
+			log.Printf("ERROR: failed writing logs to db: %v", err)
 		}
 		buffer = buffer[:0]
 	}
