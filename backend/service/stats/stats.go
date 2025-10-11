@@ -6,6 +6,8 @@ import (
 	"sudojo/adapter/database"
 	"sudojo/domain/lobby"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type service struct {
@@ -53,5 +55,47 @@ func New(logger chan *lobby.Log, db database.Database) *service {
 }
 
 func (s *service) Routes() map[string]map[string]http.HandlerFunc {
-	return map[string]map[string]http.HandlerFunc{}
+	return map[string]map[string]http.HandlerFunc{
+		"/lobbies/{id}/stats": {
+			"GET": s.getStats,
+		},
+	}
+}
+
+func (s *service) getStats(w http.ResponseWriter, r *http.Request) {
+	input := r.PathValue("id")
+	id, err := uuid.Parse(input)
+	if err != nil {
+		http.Error(w, "invalid lobby id format", 400)
+		return
+	}
+
+	lobby, err := s.db.Lobby(id)
+	if err != nil {
+		log.Printf("ERROR: failed loading lobby from db: %v", err)
+		http.Error(w, "internal server error", 500)
+		return
+	}
+	if lobby == nil {
+		http.Error(w, "lobby not found", 404)
+		return
+	}
+
+	logs, err := s.db.Logs(id.String())
+	if err != nil {
+		log.Printf("ERROR: failed loading logs from db: %v", err)
+		http.Error(w, "internal server error", 500)
+		return
+	}
+
+	b, err := lobby.Summary(logs)
+	if err != nil {
+		log.Printf("ERROR: failed serializing summary: %v", err)
+		http.Error(w, "internal server error", 500)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(b)
 }

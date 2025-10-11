@@ -11,8 +11,6 @@ import (
 	"sync"
 	"time"
 	"unicode"
-
-	"github.com/google/uuid"
 )
 
 const (
@@ -28,9 +26,9 @@ type inbound struct {
 	Value  int    `json:"value"`
 }
 
-func unmarshal(data []byte) (*inbound, error) {
+func unmarshal(b []byte) (*inbound, error) {
 	in := &inbound{}
-	if err := json.Unmarshal(data, in); err != nil {
+	if err := json.Unmarshal(b, in); err != nil {
 		return nil, fmt.Errorf("failed deserializing inbound message: %v", err)
 	}
 	return in, nil
@@ -43,11 +41,11 @@ type outbound struct {
 }
 
 func (o *outbound) marshal() ([]byte, error) {
-	data, err := json.Marshal(o)
+	b, err := json.Marshal(o)
 	if err != nil {
 		return nil, fmt.Errorf("failed serializing outbound message: %v", err)
 	}
-	return data, nil
+	return b, nil
 }
 
 type Player struct {
@@ -57,19 +55,10 @@ type Player struct {
 	active bool
 }
 
-type Log struct {
-	LobbyId string
-	Row     int
-	Column  int
-	Value   int
-	Player  string
-	Time    int64
-}
-
 type Lobby struct {
 	Id      string
 	Game    *game.Game
-	players map[string]*Player
+	Players map[string]*Player
 	lock    sync.RWMutex
 	done    chan struct{}
 	once    sync.Once
@@ -85,42 +74,25 @@ func newToken() string {
 	return hex.EncodeToString(b)
 }
 
+func (l *Lobby) Init(logger chan *Log) {
+	l.logger = logger
+	l.done = make(chan struct{})
+}
+
 func New(logger chan *Log) *Lobby {
 	l := &Lobby{
 		Game:    game.New(),
-		players: make(map[string]*Player),
-		done:    make(chan struct{}),
-		logger:  logger,
+		Players: make(map[string]*Player),
 	}
 	l.Id = l.Game.Id.String()
+	l.Init(logger)
 	return l
-}
-
-func Load(
-	id uuid.UUID, logger chan *Log,
-	created int64, finished *int64,
-	initial, current, solution [][]int,
-) *Lobby {
-	return &Lobby{
-		Id: id.String(),
-		Game: &game.Game{
-			Id:       id,
-			Created:  created,
-			Finished: finished,
-			Initial:  sudoku.Load(initial),
-			Current:  sudoku.Load(current),
-			Solution: sudoku.Load(solution),
-		},
-		players: make(map[string]*Player),
-		done:    make(chan struct{}),
-		logger:  logger,
-	}
 }
 
 func (l *Lobby) close() {
 	l.once.Do(func() {
 		close(l.done)
-		for _, p := range l.players {
+		for _, p := range l.Players {
 			close(p.Out)
 		}
 	})
@@ -129,7 +101,7 @@ func (l *Lobby) close() {
 func (l *Lobby) Player(token string) *Player {
 	l.lock.RLock()
 	defer l.lock.RUnlock()
-	return l.players[token]
+	return l.Players[token]
 }
 
 func validName(name string) error {
@@ -161,7 +133,7 @@ func (l *Lobby) Create(name string) (*Player, error) {
 	default:
 	}
 
-	if len(l.players) >= maxPlayer {
+	if len(l.Players) >= maxPlayer {
 		return nil, errors.New("lobby is already full")
 	}
 
@@ -171,7 +143,7 @@ func (l *Lobby) Create(name string) (*Player, error) {
 		Out:    make(chan []byte, 256),
 		active: false,
 	}
-	l.players[p.Token] = p
+	l.Players[p.Token] = p
 
 	return p, nil
 }
@@ -196,15 +168,11 @@ func (l *Lobby) Leave(p *Player) {
 	l.lock.Unlock()
 }
 
-func (l *Lobby) Load(p *Player) {
-	l.players[p.Token] = p
-}
-
 func (l *Lobby) Idle() bool {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 
-	for _, p := range l.players {
+	for _, p := range l.Players {
 		if p.active {
 			return false
 		}
@@ -229,7 +197,7 @@ func (l *Lobby) send(msg []byte, p *Player) {
 
 func (l *Lobby) broadcast(msg []byte) {
 	l.lock.RLock()
-	for _, p := range l.players {
+	for _, p := range l.Players {
 		l.send(msg, p)
 	}
 	l.lock.RUnlock()

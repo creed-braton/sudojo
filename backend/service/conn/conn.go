@@ -190,7 +190,7 @@ func (s *service) patchLobby(w http.ResponseWriter, r *http.Request) {
 	lobby, exists := s.lobbies[id.String()]
 	s.lock.RUnlock()
 	if !exists {
-		lobby, err = s.db.Lobby(id, s.logger)
+		lobby, err = s.db.Lobby(id)
 		if err != nil {
 			log.Printf("ERROR: failed loading lobby from db: %v", err)
 			http.Error(w, "internal server error", 500)
@@ -202,6 +202,7 @@ func (s *service) patchLobby(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		lobby.Init(s.logger)
 		s.lock.Lock()
 		s.lobbies[id.String()] = lobby
 		s.lock.Unlock()

@@ -3,7 +3,9 @@ package database
 import (
 	"context"
 	"fmt"
+	"sudojo/domain/game"
 	"sudojo/domain/lobby"
+	"sudojo/domain/sudoku"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -30,7 +32,7 @@ func (db *postgres) Close() {
 	db.conn.Close()
 }
 
-func (db *postgres) Lobby(id uuid.UUID, logger chan *lobby.Log) (*lobby.Lobby, error) {
+func (db *postgres) Lobby(id uuid.UUID) (*lobby.Lobby, error) {
 	var created int64
 	var finished pgtype.Int8
 	var initial, current, solution [][]int
@@ -54,36 +56,38 @@ func (db *postgres) Lobby(id uuid.UUID, logger chan *lobby.Log) (*lobby.Lobby, e
 		return nil, err
 	}
 
-	var l *lobby.Lobby
+	l := &lobby.Lobby{
+		Id: id.String(),
+		Game: &game.Game{
+			Id:       id,
+			Created:  created,
+			Initial:  sudoku.Load(initial),
+			Current:  sudoku.Load(current),
+			Solution: sudoku.Load(solution),
+		},
+		Players: make(map[string]*lobby.Player),
+	}
 	if finished.Valid {
-		l = lobby.Load(
-			id, logger, created, &finished.Int64,
-			initial, current, solution,
-		)
-	} else {
-		l = lobby.Load(
-			id, logger, created, nil,
-			initial, current, solution,
-		)
+		l.Game.Finished = &finished.Int64
 	}
 
 	rows, err := db.conn.Query(
 		context.Background(),
 		`SELECT token, name FROM players WHERE lobby_id = $1;`,
-		id.String(),
+		id,
 	)
 	defer rows.Close()
 
 	if err != nil {
-		return nil, err
+		return nil, nil
 	}
 
 	for rows.Next() {
-		p := &lobby.Player{Out: make(chan []byte)}
+		p := &lobby.Player{}
 		if err := rows.Scan(&p.Token, &p.Name); err != nil {
 			return nil, err
 		}
-		l.Load(p)
+		l.Players[p.Token] = p
 	}
 
 	return l, nil
@@ -124,6 +128,34 @@ func (db *postgres) InsertPlayer(id string, player *lobby.Player) error {
 		player.Name,
 	)
 	return err
+}
+
+func (db *postgres) Logs(id string) ([]*lobby.Log, error) {
+	rows, err := db.conn.Query(
+		context.Background(),
+		`SELECT player_token, timestamp, row, col, value FROM logs 
+		WHERE lobby_id = $1 ORDER BY timestamp ASC;`,
+		id,
+	)
+	defer rows.Close()
+
+	if err != nil {
+		return nil, err
+	}
+
+	logs := []*lobby.Log{}
+	for rows.Next() {
+		l := &lobby.Log{LobbyId: id}
+		if err := rows.Scan(
+			&l.Player, &l.Time, &l.Row,
+			&l.Column, &l.Value,
+		); err != nil {
+			return nil, err
+		}
+		logs = append(logs, l)
+	}
+
+	return logs, nil
 }
 
 func (db *postgres) InsertLogs(logs []*lobby.Log) error {
