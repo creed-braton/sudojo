@@ -77,6 +77,9 @@ func newToken() string {
 func (l *Lobby) Init(logger chan *Log) {
 	l.logger = logger
 	l.done = make(chan struct{})
+	for _, p := range l.Players {
+		p.Out = make(chan []byte)
+	}
 }
 
 func New(logger chan *Log) *Lobby {

@@ -73,7 +73,7 @@ const useApi = (): ApiProps => {
 
     try {
       const ws: WebSocket = new WebSocket(
-        `${WS_URL}/lobbies/${id}?token=${token}`,
+        `${WS_URL}/lobbies/${id}/ws?token=${token}`,
       );
       wsRef.current = ws;
 

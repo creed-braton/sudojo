@@ -7,15 +7,14 @@ import (
 	"strings"
 	"sudojo/adapter/database"
 	"sudojo/adapter/server"
-	"sudojo/domain/lobby"
 	"sudojo/service"
+	"sudojo/service/api"
 	"sudojo/service/conn"
+	"sudojo/service/data"
 	"sudojo/service/health"
-	"sudojo/service/stats"
 )
 
 func main() {
-	logger := make(chan *lobby.Log, 1048576) // 2^20
 	var db database.Database
 	var err error
 
@@ -37,12 +36,13 @@ func main() {
 		}
 	}
 
+	data := data.New(db)
 	err = server.New(
 		envOrPanic("PORT"),
 		os.Getenv("ORIGIN"),
 		[]service.Service{
-			conn.New(logger, db),
-			stats.New(logger, db),
+			conn.New(data),
+			api.New(data),
 			health.New(),
 		}).Listen()
 

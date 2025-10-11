@@ -3,8 +3,8 @@ package conn
 import (
 	"log"
 	"net/http"
-	"sudojo/adapter/database"
 	"sudojo/domain/lobby"
+	"sudojo/service/data"
 	"sync"
 	"time"
 
@@ -28,47 +28,14 @@ func (c *client) close() {
 
 type service struct {
 	upgrader websocket.Upgrader
-	lobbies  map[string]*lobby.Lobby
-	logger   chan *lobby.Log
-	db       database.Database
 	clients  map[string]*client
+	data     *data.Service
 	lock     sync.RWMutex
 }
 
-func (s *service) cleaner() {
-	ticker := time.NewTicker(45 * time.Second)
-	defer ticker.Stop()
-
-	for range ticker.C {
-		s.lock.Lock()
-		// clean up idle clients
-		for token, client := range s.clients {
-			select {
-			case <-client.done:
-				delete(s.clients, token)
-			default:
-				continue
-			}
-		}
-
-		// clean up idle lobbies
-		for id, lobby := range s.lobbies {
-			if idle := lobby.Idle(); idle {
-				delete(s.lobbies, id)
-				if err := s.db.UpdateLobby(lobby); err != nil {
-					log.Printf("ERROR: failed writing lobby to db: %v", err)
-				}
-			}
-		}
-		s.lock.Unlock()
-	}
-}
-
-func New(logger chan *lobby.Log, db database.Database) *service {
+func New(data *data.Service) *service {
 	s := &service{
-		lobbies: make(map[string]*lobby.Lobby),
-		logger:  logger,
-		db:      db,
+		data:    data,
 		clients: make(map[string]*client),
 		upgrader: websocket.Upgrader{
 			ReadBufferSize:  1024,
@@ -78,18 +45,32 @@ func New(logger chan *lobby.Log, db database.Database) *service {
 			},
 		},
 	}
-	go s.cleaner()
+
+	go func() {
+		ticker := time.NewTicker(45 * time.Second)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			s.lock.Lock()
+			for token, client := range s.clients {
+				select {
+				case <-client.done:
+					delete(s.clients, token)
+				default:
+					continue
+				}
+			}
+			s.lock.Unlock()
+		}
+	}()
+
 	return s
 }
 
 func (s *service) Routes() map[string]map[string]http.HandlerFunc {
 	return map[string]map[string]http.HandlerFunc{
-		"/lobbies": {
-			"POST": s.postLobby,
-		},
-		"/lobbies/{id}": {
-			"PATCH": s.patchLobby,
-			"GET":   s.getLobby,
+		"/lobbies/{id}/ws": {
+			"GET": s.connect,
 		},
 	}
 }
@@ -154,88 +135,7 @@ func (s *service) readPump(lobby *lobby.Lobby, player *lobby.Player, client *cli
 	}
 }
 
-func (s *service) postLobby(w http.ResponseWriter, r *http.Request) {
-	l := lobby.New(s.logger)
-	err := s.db.InsertLobby(l)
-	if err != nil {
-		log.Printf("ERROR: failed writing lobby to db: %v", err)
-		http.Error(w, "internal server error", 500)
-		return
-	}
-
-	s.lock.Lock()
-	s.lobbies[l.Id] = l
-	s.lock.Unlock()
-
-	w.Header().Set("Content-Type", "text/plain")
-	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(l.Id))
-}
-
-func (s *service) patchLobby(w http.ResponseWriter, r *http.Request) {
-	input := r.PathValue("id")
-	id, err := uuid.Parse(input)
-	if err != nil {
-		http.Error(w, "invalid lobby id format", 400)
-		return
-	}
-
-	token := r.URL.Query().Get("token")
-	if len(token) != 32 && len(token) != 0 {
-		http.Error(w, "invalid token format", 400)
-		return
-	}
-
-	s.lock.RLock()
-	lobby, exists := s.lobbies[id.String()]
-	s.lock.RUnlock()
-	if !exists {
-		lobby, err = s.db.Lobby(id)
-		if err != nil {
-			log.Printf("ERROR: failed loading lobby from db: %v", err)
-			http.Error(w, "internal server error", 500)
-			return
-		}
-
-		if lobby == nil {
-			http.Error(w, "lobby not found", 404)
-			return
-		}
-
-		lobby.Init(s.logger)
-		s.lock.Lock()
-		s.lobbies[id.String()] = lobby
-		s.lock.Unlock()
-	}
-
-	player := lobby.Player(token)
-	if player == nil {
-		player, err = lobby.Create(
-			r.URL.Query().Get("name"),
-		)
-		if err != nil {
-			http.Error(w, err.Error(), 409)
-			return
-		}
-
-		err = s.db.InsertPlayer(lobby.Id, player)
-		if err != nil {
-			log.Printf("ERROR: failed writing player to db: %v", err)
-			http.Error(w, "internal server error", 500)
-			return
-		}
-
-		w.Header().Set("Content-Type", "text/plain")
-		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte(player.Token))
-	} else {
-		w.Header().Set("Content-Type", "text/plain")
-		w.WriteHeader(http.StatusNoContent)
-		w.Write([]byte(""))
-	}
-}
-
-func (s *service) getLobby(w http.ResponseWriter, r *http.Request) {
+func (s *service) connect(w http.ResponseWriter, r *http.Request) {
 	input := r.PathValue("id")
 	id, err := uuid.Parse(input)
 	if err != nil {
@@ -249,10 +149,8 @@ func (s *service) getLobby(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.lock.RLock()
-	lobby, exists := s.lobbies[id.String()]
-	s.lock.RUnlock()
-	if !exists {
+	lobby, err := s.data.Lobby(id)
+	if err != nil {
 		log.Printf("WARNING: failed looking up lobby for ws connection")
 		http.Error(w, "lobby not found", 404)
 		return
