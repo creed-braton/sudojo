@@ -209,7 +209,9 @@ func (s *service) patchLobby(w http.ResponseWriter, r *http.Request) {
 
 	player := lobby.Player(token)
 	if player == nil {
-		player, err = lobby.Join("")
+		player, err = lobby.Create(
+			r.URL.Query().Get("name"),
+		)
 		if err != nil {
 			http.Error(w, err.Error(), 409)
 			return
@@ -261,7 +263,7 @@ func (s *service) getLobby(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "player not found", 404)
 		return
 	}
-	err = lobby.Rejoin(player)
+	err = lobby.Join(player)
 	if err != nil {
 		log.Printf("WARNING: failed rejoining lobby: %v", err)
 		http.Error(w, "internal server error", 500)

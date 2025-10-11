@@ -10,6 +10,7 @@ import (
 	"sudojo/domain/sudoku"
 	"sync"
 	"time"
+	"unicode"
 
 	"github.com/google/uuid"
 )
@@ -131,7 +132,26 @@ func (l *Lobby) Player(token string) *Player {
 	return l.players[token]
 }
 
-func (l *Lobby) Join(name string) (*Player, error) {
+func validName(name string) error {
+	if len(name) > 12 {
+		return errors.New("player name too long")
+	}
+	for _, c := range name {
+		if unicode.IsDigit(c) || unicode.IsLetter(c) {
+			continue
+		}
+		if string(c) != "-" && string(c) != "_" {
+			return errors.New("player name contains invalid character")
+		}
+	}
+	return nil
+}
+
+func (l *Lobby) Create(name string) (*Player, error) {
+	if err := validName(name); err != nil {
+		return nil, err
+	}
+
 	l.lock.Lock()
 	defer l.lock.Unlock()
 
@@ -156,7 +176,7 @@ func (l *Lobby) Join(name string) (*Player, error) {
 	return p, nil
 }
 
-func (l *Lobby) Rejoin(p *Player) error {
+func (l *Lobby) Join(p *Player) error {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 

@@ -10,6 +10,7 @@ import (
 	"sudojo/domain/lobby"
 	"sudojo/service"
 	"sudojo/service/conn"
+	"sudojo/service/health"
 	"sudojo/service/stats"
 )
 
@@ -42,6 +43,7 @@ func main() {
 		[]service.Service{
 			conn.New(logger, db),
 			stats.New(logger, db),
+			health.New(),
 		}).Listen()
 
 	if err != nil {
