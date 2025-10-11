@@ -40,7 +40,7 @@ func main() {
 		envOrPanic("PORT"),
 		os.Getenv("ORIGIN"),
 		[]service.Service{
-			conn.New(logger, db, dev()),
+			conn.New(logger, db),
 			stats.New(logger, db),
 		}).Listen()
 

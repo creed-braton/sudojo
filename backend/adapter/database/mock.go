@@ -1,6 +1,10 @@
 package database
 
-import "sudojo/domain/lobby"
+import (
+	"sudojo/domain/lobby"
+
+	"github.com/google/uuid"
+)
 
 type mock struct{}
 
@@ -9,6 +13,10 @@ func NewMock() *mock {
 }
 
 func (db *mock) Close() {}
+
+func (db *mock) Lobby(id uuid.UUID, logger chan *lobby.Log) (*lobby.Lobby, error) {
+	return nil, nil
+}
 
 func (db *mock) InsertLobby(lobby *lobby.Lobby) error {
 	return nil

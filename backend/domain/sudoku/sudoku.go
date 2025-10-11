@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	boardSize = 9
+	BoardSize = 9
 	boxSize   = 3
 	EmptyCell = 0
 	minValue  = 1
@@ -15,7 +15,7 @@ const (
 	minClues  = 17 // https://arxiv.org/abs/1201.0749
 )
 
-type Sudoku [boardSize][boardSize]int
+type Sudoku [BoardSize][BoardSize]int
 
 func New() *Sudoku {
 	return &Sudoku{}
@@ -29,12 +29,22 @@ func (s *Sudoku) Int() [][]int {
 	return c
 }
 
+func Load(array [][]int) *Sudoku {
+	s := New()
+	for i := 0; i < len(array) && i < BoardSize; i++ {
+		for j := 0; j < len(array[i]) && j < BoardSize; j++ {
+			s[i][j] = array[i][j]
+		}
+	}
+	return s
+}
+
 // Compares two Sudoku boards for equality by checking if all cells contain
 // identical values at corresponding positions. It returns true if both boards
 // are exactly the same, false otherwise. It doesn't check validity of either board.
 func (org *Sudoku) equal(comp *Sudoku) bool {
-	for row := 0; row < boardSize; row++ {
-		for col := 0; col < boardSize; col++ {
+	for row := 0; row < BoardSize; row++ {
+		for col := 0; col < BoardSize; col++ {
 			if org[row][col] != comp[row][col] {
 				return false
 			}
@@ -47,7 +57,7 @@ func (org *Sudoku) equal(comp *Sudoku) bool {
 // of the Sudoku board. Returns true if both coordinates are within the valid
 // range, false otherwise.
 func validBounds(row, col int) bool {
-	if row < 0 || row >= boardSize || col < 0 || col >= boardSize {
+	if row < 0 || row >= BoardSize || col < 0 || col >= BoardSize {
 		return false
 	}
 	return true
@@ -69,7 +79,7 @@ func validVal(val int) bool {
 // violating Sudoku row constraints. Returns true if the value doesn't
 // already exist in that row, false otherwise.
 func (s *Sudoku) validRow(row, val int) bool {
-	for col := 0; col < boardSize; col++ {
+	for col := 0; col < BoardSize; col++ {
 		if s[row][col] == val {
 			return false
 		}
@@ -82,7 +92,7 @@ func (s *Sudoku) validRow(row, val int) bool {
 // violating Sudoku column constraints. Returns true if the value doesn't
 // already exist in that column, false otherwise.
 func (s *Sudoku) validCol(col, val int) bool {
-	for row := 0; row < boardSize; row++ {
+	for row := 0; row < BoardSize; row++ {
 		if s[row][col] == val {
 			return false
 		}
@@ -146,8 +156,8 @@ func (s *Sudoku) Validate(row, col, val int) error {
 // contain non-empty values. Returns true if no empty cells are found, false otherwise.
 // It doesn't check validity of the board.
 func (s *Sudoku) Complete() bool {
-	for row := 0; row < boardSize; row++ {
-		for col := 0; col < boardSize; col++ {
+	for row := 0; row < BoardSize; row++ {
+		for col := 0; col < BoardSize; col++ {
 			if s[row][col] == EmptyCell {
 				return false
 			}
@@ -158,8 +168,8 @@ func (s *Sudoku) Complete() bool {
 }
 
 func (s *Sudoku) fill() bool {
-	for row := 0; row < boardSize; row++ {
-		for col := 0; col < boardSize; col++ {
+	for row := 0; row < BoardSize; row++ {
+		for col := 0; col < BoardSize; col++ {
 			if s[row][col] == EmptyCell {
 				nums := rand.Perm(maxValue)
 				for _, n := range nums {
@@ -189,8 +199,8 @@ func (s *Sudoku) Fill(seed int64) {
 // Copies all cell values from the current Sudoku board s to the
 // provided destination board c.
 func (s *Sudoku) Copy(c *Sudoku) {
-	for row := 0; row < boardSize; row++ {
-		for col := 0; col < boardSize; col++ {
+	for row := 0; row < BoardSize; row++ {
+		for col := 0; col < BoardSize; col++ {
 			c[row][col] = s[row][col]
 		}
 	}
@@ -222,8 +232,8 @@ func (s *Sudoku) solve(emptyCells [][2]int, index int, count *int, solution *Sud
 // Returns the number of non-empty values on the Sudoku board.
 func (s *Sudoku) clues() int {
 	clues := 0
-	for row := 0; row < boardSize; row++ {
-		for col := 0; col < boardSize; col++ {
+	for row := 0; row < BoardSize; row++ {
+		for col := 0; col < BoardSize; col++ {
 			if s[row][col] != EmptyCell {
 				clues++
 			}
@@ -241,8 +251,8 @@ func (s *Sudoku) UniqueSolution() bool {
 	}
 
 	var emptyCells [][2]int
-	for row := 0; row < boardSize; row++ {
-		for col := 0; col < boardSize; col++ {
+	for row := 0; row < BoardSize; row++ {
+		for col := 0; col < BoardSize; col++ {
 			if s[row][col] == EmptyCell {
 				emptyCells = append(emptyCells, [2]int{row, col})
 			}
@@ -266,9 +276,9 @@ func (s *Sudoku) UniqueSolution() bool {
 func (s *Sudoku) GeneratePuzzle(seed int64) {
 	rand.New(rand.NewSource(seed))
 
-	cells := make([][2]int, 0, boardSize*boardSize)
-	for row := 0; row < boardSize; row++ {
-		for col := 0; col < boardSize; col++ {
+	cells := make([][2]int, 0, BoardSize*BoardSize)
+	for row := 0; row < BoardSize; row++ {
+		for col := 0; col < BoardSize; col++ {
 			cells = append(cells, [2]int{row, col})
 		}
 	}

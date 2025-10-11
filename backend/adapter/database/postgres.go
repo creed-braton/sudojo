@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"sudojo/domain/lobby"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -26,6 +28,65 @@ func New(host, port, name, user, pass string) (*postgres, error) {
 
 func (db *postgres) Close() {
 	db.conn.Close()
+}
+
+func (db *postgres) Lobby(id uuid.UUID, logger chan *lobby.Log) (*lobby.Lobby, error) {
+	var created int64
+	var finished pgtype.Int8
+	var initial, current, solution [][]int
+
+	err := db.conn.QueryRow(
+		context.Background(),
+		`SELECT created_at, initial_board, current_board, 
+		solution, finished_at FROM lobbies WHERE id = $1;`,
+		id.String(),
+	).Scan(
+		&created,
+		&initial,
+		&current,
+		&solution,
+		&finished,
+	)
+
+	if err != nil && err == pgx.ErrNoRows {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	var l *lobby.Lobby
+	if finished.Valid {
+		l = lobby.Load(
+			id, logger, created, &finished.Int64,
+			initial, current, solution,
+		)
+	} else {
+		l = lobby.Load(
+			id, logger, created, nil,
+			initial, current, solution,
+		)
+	}
+
+	rows, err := db.conn.Query(
+		context.Background(),
+		`SELECT token, name FROM players WHERE lobby_id = $1;`,
+		id.String(),
+	)
+	defer rows.Close()
+
+	if err != nil {
+		return nil, err
+	}
+
+	for rows.Next() {
+		p := &lobby.Player{Out: make(chan []byte)}
+		if err := rows.Scan(&p.Token, &p.Name); err != nil {
+			return nil, err
+		}
+		l.Load(p)
+	}
+
+	return l, nil
 }
 
 func (db *postgres) InsertLobby(lobby *lobby.Lobby) error {

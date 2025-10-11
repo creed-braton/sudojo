@@ -35,8 +35,7 @@ func New() *Game {
 	current := sudoku.New()
 	initial.Copy(current)
 
-	return &Game{
-		Id:       uuid.New(),
+	return &Game{Id: uuid.New(),
 		Current:  current,
 		Initial:  initial,
 		Solution: solution,

@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
@@ -32,7 +33,6 @@ type service struct {
 	db       database.Database
 	clients  map[string]*client
 	lock     sync.RWMutex
-	insecure bool
 }
 
 func (s *service) cleaner() {
@@ -64,7 +64,7 @@ func (s *service) cleaner() {
 	}
 }
 
-func New(logger chan *lobby.Log, db database.Database, insecure bool) *service {
+func New(logger chan *lobby.Log, db database.Database) *service {
 	s := &service{
 		lobbies: make(map[string]*lobby.Lobby),
 		logger:  logger,
@@ -77,7 +77,6 @@ func New(logger chan *lobby.Log, db database.Database, insecure bool) *service {
 				return true
 			},
 		},
-		insecure: insecure,
 	}
 	go s.cleaner()
 	return s
@@ -89,7 +88,8 @@ func (s *service) Routes() map[string]map[string]http.HandlerFunc {
 			"POST": s.postLobby,
 		},
 		"/lobbies/{id}": {
-			"GET": s.getLobby,
+			"PATCH": s.patchLobby,
+			"GET":   s.getLobby,
 		},
 	}
 }
@@ -154,74 +154,6 @@ func (s *service) readPump(lobby *lobby.Lobby, player *lobby.Player, client *cli
 	}
 }
 
-func (s *service) getLobby(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	s.lock.RLock()
-	lobby, exists := s.lobbies[id]
-	s.lock.RUnlock()
-	if !exists {
-		http.Error(w, "lobby not found", 404)
-		return
-	}
-
-	var token string
-	cookie, err := r.Cookie("session_token")
-	if err == nil {
-		token = cookie.Value
-	}
-
-	player := lobby.Player(token)
-	if player == nil {
-		player, err = lobby.Join("")
-		if err != nil {
-			http.Error(w, err.Error(), 409)
-			return
-		}
-		err = s.db.InsertPlayer(lobby.Id, player)
-		if err != nil {
-			log.Printf("ERROR: failed writing player to db: %v", err)
-			http.Error(w, "internal server error", 500)
-			return
-		}
-	} else {
-		err := lobby.Rejoin(player)
-		if err != nil {
-			http.Error(w, err.Error(), 409)
-			return
-		}
-	}
-
-	conn, err := s.upgrader.Upgrade(w, r, http.Header{
-		"Set-Cookie": {(&http.Cookie{
-			Name:     "session_token",
-			Value:    player.Token,
-			Path:     r.URL.Path,
-			HttpOnly: true,
-			Secure:   !s.insecure,
-			SameSite: http.SameSiteStrictMode,
-			MaxAge:   86400, // 1 day, experimental
-		}).String()},
-	})
-	if err != nil {
-		log.Printf("ERROR: failed creating connection: %v", err)
-		return
-	}
-	client := &client{token: player.Token, conn: conn, done: make(chan struct{})}
-
-	s.lock.Lock()
-	// clean up old client if there is any
-	old := s.clients[player.Token]
-	if old != nil {
-		old.close()
-	}
-	// register new client
-	s.clients[player.Token] = client
-	s.lock.Unlock()
-
-	go s.writePump(player, client)
-	go s.readPump(lobby, player, client)
-}
-
 func (s *service) postLobby(w http.ResponseWriter, r *http.Request) {
 	l := lobby.New(s.logger)
 	err := s.db.InsertLobby(l)
@@ -238,4 +170,122 @@ func (s *service) postLobby(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(l.Id))
+}
+
+func (s *service) patchLobby(w http.ResponseWriter, r *http.Request) {
+	input := r.PathValue("id")
+	id, err := uuid.Parse(input)
+	if err != nil {
+		http.Error(w, "invalid lobby id format", 400)
+		return
+	}
+
+	token := r.URL.Query().Get("token")
+	if len(token) != 32 && len(token) != 0 {
+		http.Error(w, "invalid token format", 400)
+		return
+	}
+
+	s.lock.RLock()
+	lobby, exists := s.lobbies[id.String()]
+	s.lock.RUnlock()
+	if !exists {
+		lobby, err = s.db.Lobby(id, s.logger)
+		if err != nil {
+			log.Printf("ERROR: failed loading lobby from db: %v", err)
+			http.Error(w, "internal server error", 500)
+			return
+		}
+
+		if lobby == nil {
+			http.Error(w, "lobby not found", 404)
+			return
+		}
+
+		s.lock.Lock()
+		s.lobbies[id.String()] = lobby
+		s.lock.Unlock()
+	}
+
+	player := lobby.Player(token)
+	if player == nil {
+		player, err = lobby.Join("")
+		if err != nil {
+			http.Error(w, err.Error(), 409)
+			return
+		}
+
+		err = s.db.InsertPlayer(lobby.Id, player)
+		if err != nil {
+			log.Printf("ERROR: failed writing player to db: %v", err)
+			http.Error(w, "internal server error", 500)
+			return
+		}
+
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte(player.Token))
+	} else {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusNoContent)
+		w.Write([]byte(""))
+	}
+}
+
+func (s *service) getLobby(w http.ResponseWriter, r *http.Request) {
+	input := r.PathValue("id")
+	id, err := uuid.Parse(input)
+	if err != nil {
+		http.Error(w, "invalid lobby id format", 400)
+		return
+	}
+
+	token := r.URL.Query().Get("token")
+	if len(token) != 32 {
+		http.Error(w, "invalid token format", 400)
+		return
+	}
+
+	s.lock.RLock()
+	lobby, exists := s.lobbies[id.String()]
+	s.lock.RUnlock()
+	if !exists {
+		log.Printf("WARNING: failed looking up lobby for ws connection")
+		http.Error(w, "lobby not found", 404)
+		return
+	}
+
+	player := lobby.Player(token)
+	if player == nil {
+		log.Printf("WARNING: failed looking up player for ws connection")
+		http.Error(w, "player not found", 404)
+		return
+	}
+	err = lobby.Rejoin(player)
+	if err != nil {
+		log.Printf("WARNING: failed rejoining lobby: %v", err)
+		http.Error(w, "internal server error", 500)
+		return
+	}
+
+	conn, err := s.upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Printf("ERROR: failed creating connection: %v", err)
+		http.Error(w, "internal server error", 500)
+		return
+	}
+	client := &client{token: player.Token, conn: conn, done: make(chan struct{})}
+
+	s.lock.Lock()
+	// clean up old client if there is any
+	old := s.clients[player.Token]
+	if old != nil {
+		old.close()
+	}
+	// register new client
+	s.clients[player.Token] = client
+	s.lock.Unlock()
+
+	go s.writePump(player, client)
+	go s.readPump(lobby, player, client)
 }

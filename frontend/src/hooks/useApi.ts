@@ -28,6 +28,19 @@ const postLobby = async (): Promise<string> => {
   return response.text();
 };
 
+const patchLobby = async (id: string, token: string): Promise<string> => {
+  const response: Response = await fetch(
+    HTTP_URL + `/lobbies/${id}?token=${token}`,
+    { method: "PATCH" },
+  );
+
+  if (!response.ok) {
+    throw new ApiError(response.status, await response.text());
+  }
+
+  return response.text();
+};
+
 type ApiProps = {
   lobbyId: string;
   initialState: Sudoku | undefined;
@@ -53,13 +66,15 @@ const useApi = (): ApiProps => {
     undefined,
   );
 
-  const joinLobby = (id: string): void => {
+  const connect = (id: string, token: string): void => {
     if (wsRef.current) {
       wsRef.current.close();
     }
 
     try {
-      const ws: WebSocket = new WebSocket(`${WS_URL}/lobbies/${id}`);
+      const ws: WebSocket = new WebSocket(
+        `${WS_URL}/lobbies/${id}?token=${token}`,
+      );
       wsRef.current = ws;
 
       ws.onopen = (): void => {
@@ -97,6 +112,12 @@ const useApi = (): ApiProps => {
   const createLobby = (): void => {
     postLobby()
       .then((id: string) => setLobbyId(id))
+      .catch((error: Error) => console.error(error));
+  };
+
+  const joinLobby = (id: string): void => {
+    patchLobby(id, "")
+      .then((token: string) => connect(id, token))
       .catch((error: Error) => console.error(error));
   };
 

@@ -10,6 +10,8 @@ import (
 	"sudojo/domain/sudoku"
 	"sync"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 const (
@@ -93,6 +95,27 @@ func New(logger chan *Log) *Lobby {
 	return l
 }
 
+func Load(
+	id uuid.UUID, logger chan *Log,
+	created int64, finished *int64,
+	initial, current, solution [][]int,
+) *Lobby {
+	return &Lobby{
+		Id: id.String(),
+		Game: &game.Game{
+			Id:       id,
+			Created:  created,
+			Finished: finished,
+			Initial:  sudoku.Load(initial),
+			Current:  sudoku.Load(current),
+			Solution: sudoku.Load(solution),
+		},
+		players: make(map[string]*Player),
+		done:    make(chan struct{}),
+		logger:  logger,
+	}
+}
+
 func (l *Lobby) close() {
 	l.once.Do(func() {
 		close(l.done)
@@ -126,7 +149,7 @@ func (l *Lobby) Join(name string) (*Player, error) {
 		Token:  newToken(),
 		Name:   name,
 		Out:    make(chan []byte, 256),
-		active: true,
+		active: false,
 	}
 	l.players[p.Token] = p
 
@@ -151,6 +174,10 @@ func (l *Lobby) Leave(p *Player) {
 	l.lock.Lock()
 	p.active = false
 	l.lock.Unlock()
+}
+
+func (l *Lobby) Load(p *Player) {
+	l.players[p.Token] = p
 }
 
 func (l *Lobby) Idle() bool {
