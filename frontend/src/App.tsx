@@ -20,7 +20,7 @@ const App = (): ReactElement => {
         <Route path="/" element={<Home createLobby={lobby.create} />} />
         <Route
           path="/l/:id"
-          element={<Lobby joinLobby={lobby.join} getPlayer={lobby.getPlayer} />}
+          element={<Lobby joinLobby={lobby.join} getToken={lobby.getToken} />}
         />
       </Routes>
       <Background />

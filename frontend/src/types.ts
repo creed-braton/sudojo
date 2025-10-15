@@ -32,8 +32,3 @@ export type Message = {
   conflict: string | null;
   cell: number[];
 };
-
-export type Player = {
-  token: string;
-  name: string;
-};

@@ -151,14 +151,16 @@ func (s *service) connect(w http.ResponseWriter, r *http.Request) {
 
 	lobby, err := s.data.Lobby(id)
 	if err != nil {
-		log.Printf("WARNING: failed looking up lobby for ws connection")
+		http.Error(w, "internal server error", 500)
+		return
+	}
+	if lobby == nil {
 		http.Error(w, "lobby not found", 404)
 		return
 	}
 
 	player := lobby.Player(token)
 	if player == nil {
-		log.Printf("WARNING: failed looking up player for ws connection")
 		http.Error(w, "player not found", 404)
 		return
 	}

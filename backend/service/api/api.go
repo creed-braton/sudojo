@@ -53,6 +53,10 @@ func (s *service) patchLobby(w http.ResponseWriter, r *http.Request) {
 	token, err := s.data.CreatePlayer(
 		id, r.URL.Query().Get("name"),
 	)
+	if err != nil {
+		http.Error(w, "internal server error", 500)
+		return
+	}
 
 	w.Header().Set("content-type", "text/plain")
 	w.WriteHeader(http.StatusCreated)

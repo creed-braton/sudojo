@@ -1,32 +1,49 @@
 import { useEffect, useState, type ReactElement } from "react";
-import { useLocation } from "react-router-dom";
-import type { Cell, Player } from "../../types";
+import { useLocation, type Location } from "react-router-dom";
+import type { Cell } from "../../types";
 import Board from "../Board/Board";
 import styles from "./Lobby.module.css";
 import InputBar from "../InputBar/InputBar";
 import useSudoku, { type SudokuProps } from "../../hooks/useSudoku";
+import NameInput from "../NameInput/NameInput";
 
 const Lobby = ({
   joinLobby,
-  getPlayer,
+  getToken,
 }: {
   joinLobby: (id: string, name: string) => Promise<string>;
-  getPlayer: (id: string) => Player | undefined;
+  getToken: (id: string) => string | undefined;
 }): ReactElement => {
   const [position, setPosition] = useState<Cell | undefined>(undefined);
-  const location = useLocation();
+  const [nameInput, setNameInput] = useState<boolean>(false);
+  const [id, setId] = useState<string>("");
+  const [token, setToken] = useState<string | undefined>(undefined);
+  const location: Location = useLocation();
   const sudoku: SudokuProps = useSudoku();
 
   useEffect((): void => {
     const id: string = location.pathname.split("/")[2];
-    const player: Player | undefined = getPlayer(id);
-    player
-      ? sudoku.connect(id, player.token)
-      : joinLobby(id, "").then((token: string) => sudoku.connect(id, token));
+    setId(id);
+    const token: string | undefined = getToken(id);
+    !token && setNameInput(true);
+    setToken(token);
   }, [location.pathname]);
+
+  useEffect((): void => {
+    const id: string = location.pathname.split("/")[2];
+    token && sudoku.connect(id, token);
+  }, [token]);
 
   return (
     <div className={styles.lobby}>
+      {nameInput && (
+        <NameInput
+          lobbyId={id}
+          joinLobby={joinLobby}
+          setToken={setToken}
+          close={() => setNameInput(false)}
+        />
+      )}
       {sudoku.initialBoard && sudoku.currentBoard && (
         <>
           <Board

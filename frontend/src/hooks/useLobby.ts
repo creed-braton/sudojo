@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { HTTP_URL } from "../config";
-import { ApiError, type Player } from "../types";
+import { ApiError } from "../types";
 
 const postLobby = async (): Promise<string> => {
   const response: Response = await fetch(HTTP_URL + "/lobbies", {
@@ -30,7 +30,7 @@ const patchLobby = async (id: string, name?: string): Promise<string> => {
 export type LobbyProps = {
   id: string | null;
   setId: (state: string | null) => void;
-  getPlayer: (id: string) => Player | undefined;
+  getToken: (id: string) => string | undefined;
   create: () => void;
   join: (id: string, name: string) => Promise<string>;
 };
@@ -38,16 +38,12 @@ export type LobbyProps = {
 const useLobby = (): LobbyProps => {
   const [id, setId] = useState<string | null>(null);
 
-  const getPlayer = (id: string): Player | undefined => {
-    try {
-      return JSON.parse(localStorage.getItem(id) || "") as Player;
-    } catch {
-      return undefined;
-    }
+  const getToken = (id: string): string | undefined => {
+    return localStorage.getItem(id) || undefined;
   };
 
-  const setPlayer = (id: string, player: Player): void => {
-    localStorage.setItem(id, JSON.stringify(player));
+  const setToken = (id: string, token: string): void => {
+    localStorage.setItem(id, token);
   };
 
   const create = (): void => {
@@ -59,7 +55,7 @@ const useLobby = (): LobbyProps => {
   const join = async (id: string, name: string): Promise<string> => {
     try {
       const token: string = await patchLobby(id, name);
-      setPlayer(id, { token, name } as Player);
+      setToken(id, token);
       return token;
     } catch (error) {
       console.error(error);
@@ -67,7 +63,7 @@ const useLobby = (): LobbyProps => {
     }
   };
 
-  return { id, setId, getPlayer, create, join };
+  return { id, setId, getToken, create, join };
 };
 
 export default useLobby;
