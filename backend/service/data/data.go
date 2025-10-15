@@ -1,6 +1,7 @@
 package data
 
 import (
+	"errors"
 	"log"
 	"sudojo/adapter/database"
 	"sudojo/domain/lobby"
@@ -123,6 +124,9 @@ func (s *Service) CreatePlayer(id uuid.UUID, name string) (string, error) {
 	lobby, err := s.Lobby(id)
 	if err != nil {
 		return "", err
+	}
+	if lobby == nil {
+		return "", errors.New("lobby not found")
 	}
 
 	player, err := lobby.Create(name)

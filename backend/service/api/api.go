@@ -37,7 +37,7 @@ func (s *service) postLobby(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal server error", 500)
 	}
 
-	w.Header().Set("Content-Type", "text/plain")
+	w.Header().Set("content-type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(id))
 }
@@ -50,32 +50,13 @@ func (s *service) patchLobby(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token := r.URL.Query().Get("token")
-	if len(token) != 32 && len(token) != 0 {
-		http.Error(w, "invalid token format", 400)
-		return
-	}
+	token, err := s.data.CreatePlayer(
+		id, r.URL.Query().Get("name"),
+	)
 
-	lobby, err := s.data.Lobby(id)
-	if err != nil {
-		http.Error(w, "lobby not found", 404)
-		return
-	}
-
-	player := lobby.Player(token)
-	if player == nil {
-		token, err = s.data.CreatePlayer(
-			id, r.URL.Query().Get("name"),
-		)
-
-		w.Header().Set("Content-Type", "text/plain")
-		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte(token))
-	} else {
-		w.Header().Set("Content-Type", "text/plain")
-		w.WriteHeader(http.StatusNoContent)
-		w.Write([]byte(""))
-	}
+	w.Header().Set("content-type", "text/plain")
+	w.WriteHeader(http.StatusCreated)
+	w.Write([]byte(token))
 }
 
 func (s *service) getStats(w http.ResponseWriter, r *http.Request) {
@@ -96,7 +77,7 @@ func (s *service) getStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("content-type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(b)
 }

@@ -58,6 +58,26 @@
   background-color: rgba(65, 105, 225, 0.35);
 }
 
+@keyframes conflict {
+  0% {
+    background-color: rgba(220, 20, 60, 0.5);
+    box-shadow: inset 0 0 10px rgba(220, 20, 60, 0.7);
+  }
+  50% {
+    background-color: rgba(220, 20, 60, 0.2);
+    box-shadow: inset 0 0 6px rgba(220, 20, 60, 0.4);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: none;
+  }
+}
+
+.conflict {
+  animation: conflict 600ms ease-in-out;
+  border: 1px solid rgba(255, 255, 255, 0.08); /* Keep border fixed */
+}
+
 .initialValue {
   font-weight: 700;
   color: rgba(255, 255, 255, 0.9);

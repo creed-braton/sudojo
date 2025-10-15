@@ -1,108 +1,47 @@
 import { useEffect, useState, type ReactElement } from "react";
 import { useLocation } from "react-router-dom";
-import type { Sudoku, PencilMarks } from "../../types";
+import type { Cell, Player } from "../../types";
 import Board from "../Board/Board";
 import styles from "./Lobby.module.css";
 import InputBar from "../InputBar/InputBar";
-
-type Position = {
-  row: number;
-  column: number;
-};
+import useSudoku, { type SudokuProps } from "../../hooks/useSudoku";
 
 const Lobby = ({
   joinLobby,
-  sendMove,
-  initialState,
-  currentState,
+  getPlayer,
 }: {
-  joinLobby: (id: string) => void;
-  sendMove: (row: number, column: number, value: number) => void;
-  initialState: Sudoku | undefined;
-  currentState: Sudoku | undefined;
+  joinLobby: (id: string, name: string) => Promise<string>;
+  getPlayer: (id: string) => Player | undefined;
 }): ReactElement => {
-  const [position, setPosition] = useState<Position | undefined>(undefined);
-  const [pencilMode, setPencilMode] = useState<boolean>(false);
-  const [pencilMarks, setPencilMarks] = useState<PencilMarks>({});
+  const [position, setPosition] = useState<Cell | undefined>(undefined);
   const location = useLocation();
-
-  const handlePencilInput = (row: number, column: number, value: number) => {
-    if (!currentState || !initialState) return;
-
-    // Don't allow pencil marks if there's already a big number in the cell
-    if (currentState[row][column] !== 0) return;
-
-    const key = `${row}-${column}`;
-    setPencilMarks((prev) => {
-      const newMarks = { ...prev };
-      if (!newMarks[key]) {
-        newMarks[key] = new Set();
-      }
-
-      // Toggle the pencil mark
-      if (newMarks[key].has(value)) {
-        newMarks[key].delete(value);
-        if (newMarks[key].size === 0) {
-          delete newMarks[key];
-        }
-      } else {
-        newMarks[key].add(value);
-      }
-
-      return newMarks;
-    });
-  };
-
-  const handleMove = (row: number, column: number, value: number) => {
-    if (pencilMode) {
-      if (value === 0) {
-        // Delete button in pencil mode: clear all pencil marks in the cell
-        // but only if there's no big number in the cell
-        if (currentState && currentState[row][column] === 0) {
-          const key = `${row}-${column}`;
-          setPencilMarks((prev) => {
-            const newMarks = { ...prev };
-            delete newMarks[key];
-            return newMarks;
-          });
-        }
-        // Don't send delete to server in pencil mode
-      } else {
-        handlePencilInput(row, column, value);
-      }
-    } else {
-      // Clear pencil marks when placing a big number
-      const key = `${row}-${column}`;
-      setPencilMarks((prev) => {
-        const newMarks = { ...prev };
-        delete newMarks[key];
-        return newMarks;
-      });
-      sendMove(row, column, value);
-    }
-  };
+  const sudoku: SudokuProps = useSudoku();
 
   useEffect((): void => {
-    const id = location.pathname.split("/")[2];
-    joinLobby(id);
+    const id: string = location.pathname.split("/")[2];
+    const player: Player | undefined = getPlayer(id);
+    player
+      ? sudoku.connect(id, player.token)
+      : joinLobby(id, "").then((token: string) => sudoku.connect(id, token));
   }, [location.pathname]);
 
   return (
     <div className={styles.lobby}>
-      {initialState && currentState && (
+      {sudoku.initialBoard && sudoku.currentBoard && (
         <>
           <Board
             position={position}
             setPosition={setPosition}
-            initialState={initialState}
-            currentState={currentState}
-            pencilMarks={pencilMarks}
+            initialBoard={sudoku.initialBoard}
+            currentBoard={sudoku.currentBoard}
+            notes={sudoku.notes}
+            conflictEvent={sudoku.conflictEvent}
           />
           <InputBar
             position={position}
-            sendMove={handleMove}
-            pencilMode={pencilMode}
-            setPencilMode={setPencilMode}
+            input={sudoku.input}
+            pencilMode={sudoku.pencilMode}
+            toggleMode={sudoku.toggleMode}
           />
         </>
       )}
@@ -111,4 +50,3 @@ const Lobby = ({
 };
 
 export default Lobby;
-export type { Position };

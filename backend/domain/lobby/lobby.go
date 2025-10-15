@@ -35,9 +35,11 @@ func unmarshal(b []byte) (*inbound, error) {
 }
 
 type outbound struct {
-	Initial *sudoku.Sudoku `json:"initial_state,omitempty"`
-	Current *sudoku.Sudoku `json:"current_state,omitempty"`
-	Error   string         `json:"error,omitempty"`
+	Initial  *sudoku.Sudoku `json:"initial_state,omitempty"`
+	Current  *sudoku.Sudoku `json:"current_state,omitempty"`
+	Cell     [2]int         `json:"cell,omitempty"`
+	Error    string         `json:"error,omitempty"`
+	Conflict string         `json:"conflict,omitempty"`
 }
 
 func (o *outbound) marshal() ([]byte, error) {
@@ -209,7 +211,10 @@ func (l *Lobby) broadcast(msg []byte) {
 func (l *Lobby) move(msg *inbound, player *Player) error {
 	update, err := l.Game.Insert(msg.Row, msg.Column, msg.Value)
 	if err != nil {
-		res, err := (&outbound{Error: err.Error()}).marshal()
+		res, err := (&outbound{
+			Conflict: err.Error(),
+			Cell:     [2]int{msg.Row, msg.Column},
+		}).marshal()
 		if err != nil {
 			return err
 		}
