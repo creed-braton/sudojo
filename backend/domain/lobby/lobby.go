@@ -138,6 +138,10 @@ func (l *Lobby) Create(name string) (*Player, error) {
 	default:
 	}
 
+	if l.Game.Finished != nil {
+		return nil, errors.New("game is already finished")
+	}
+
 	if len(l.Players) >= maxPlayer {
 		return nil, errors.New("lobby is already full")
 	}

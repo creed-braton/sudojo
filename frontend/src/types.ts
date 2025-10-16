@@ -32,3 +32,28 @@ export type Message = {
   conflict: string | null;
   cell: number[];
 };
+
+type Log = {
+  timestamp: number;
+  row: number;
+  column: number;
+  value: number;
+};
+
+export type Score = {
+  points: Log[];
+  mistakes: Log[];
+  player_name: string;
+};
+
+export type GameStats = {
+  board: Sudoku;
+  created_at: number;
+  finished_at: number | null;
+  scores: Score[];
+};
+
+export type Points = {
+  player: string;
+  points: number;
+};

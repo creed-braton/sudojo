@@ -5,6 +5,7 @@ import Home from "./components/Home/Home";
 import Lobby from "./components/Lobby/Lobby";
 import type { LobbyProps } from "./hooks/useLobby";
 import useLobby from "./hooks/useLobby";
+import Statistic from "./components/Statistic/Statistic";
 
 const App = (): ReactElement => {
   const lobby: LobbyProps = useLobby();
@@ -22,6 +23,7 @@ const App = (): ReactElement => {
           path="/l/:id"
           element={<Lobby joinLobby={lobby.join} getToken={lobby.getToken} />}
         />
+        <Route path="/s/:id" element={<Statistic />} />
       </Routes>
       <Background />
     </>

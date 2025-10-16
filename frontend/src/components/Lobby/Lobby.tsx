@@ -1,5 +1,10 @@
 import { useEffect, useState, type ReactElement } from "react";
-import { useLocation, type Location } from "react-router-dom";
+import {
+  useLocation,
+  useNavigate,
+  type Location,
+  type NavigateFunction,
+} from "react-router-dom";
 import type { Cell } from "../../types";
 import Board from "../Board/Board";
 import styles from "./Lobby.module.css";
@@ -19,6 +24,7 @@ const Lobby = ({
   const [id, setId] = useState<string>("");
   const [token, setToken] = useState<string | undefined>(undefined);
   const location: Location = useLocation();
+  const navigate: NavigateFunction = useNavigate();
   const sudoku: SudokuProps = useSudoku();
 
   useEffect((): void => {
@@ -33,6 +39,16 @@ const Lobby = ({
     const id: string = location.pathname.split("/")[2];
     token && sudoku.connect(id, token);
   }, [token]);
+
+  useEffect((): void => {
+    if (!sudoku.currentBoard) return;
+    for (let i: number = 0; i < sudoku.currentBoard.length; i++) {
+      for (let j: number = 0; j < sudoku.currentBoard[i].length; j++) {
+        if (sudoku.currentBoard[i][j] === 0) return;
+      }
+    }
+    navigate(`/s/${id}`);
+  }, [sudoku.currentBoard]);
 
   return (
     <div className={styles.lobby}>

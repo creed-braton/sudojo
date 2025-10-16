@@ -38,16 +38,12 @@ const useClient = (): ClientProps => {
       ws.onclose = (_: CloseEvent): void => {
         if (wsRef.current === ws) {
           wsRef.current = null;
-          setInitialBoard(null);
-          setCurrentBoard(null);
         }
       };
 
       ws.onerror = (_: Event): void => {
         if (wsRef.current === ws) {
           wsRef.current = null;
-          setInitialBoard(null);
-          setCurrentBoard(null);
         }
       };
 
