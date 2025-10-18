@@ -4,5 +4,8 @@
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 25px;
+  gap: clamp(15px, 4vw, 25px);
+  padding: clamp(10px, 2vw, 20px);
+  min-height: 100vh;
+  box-sizing: border-box;
 }

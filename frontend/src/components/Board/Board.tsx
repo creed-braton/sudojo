@@ -1,38 +1,73 @@
 import type { ReactElement } from "react";
-import type { Position } from "../Lobby/Lobby";
-import type { Sudoku } from "../../types";
+import type { Cell, ConflictEvent, Sudoku } from "../../types";
 import styles from "./Board.module.css";
 
 const Board = ({
   position,
   setPosition,
-  initialState,
-  currentState,
+  initialBoard,
+  currentBoard,
+  notes,
+  conflictEvent,
 }: {
-  position: Position | undefined;
-  setPosition: (state: Position) => void;
-  initialState: Sudoku;
-  currentState: Sudoku;
+  position: Cell | undefined;
+  setPosition: (state: Cell) => void;
+  initialBoard: Sudoku;
+  currentBoard: Sudoku;
+  notes: Map<string, Set<number>>;
+  conflictEvent: ConflictEvent | undefined;
 }): ReactElement => {
   return (
     <div className={`glassmorphism ${styles.board}`}>
       <div className={styles.sudoku}>
-        {currentState.map((row: number[], rowIndex: number) => (
+        {currentBoard.map((row: number[], rowIndex: number) => (
           <div key={`${rowIndex}`} className={styles.row}>
             {row.map((cell: number, colIndex: number) => (
               <div
-                key={`${rowIndex}-${colIndex}`}
-                className={`${styles.cell}${position && position.row === rowIndex && position.column === colIndex ? " " + styles.selected : ""} ${initialState[rowIndex][colIndex] === 0 ? styles.userValue : styles.initialValue}`}
+                key={`${rowIndex}-${colIndex}-${conflictEvent?.timeStamp}`}
+                className={`
+    ${styles.cell}
+    ${position && position.row === rowIndex && position.column === colIndex ? " " + styles.selected : ""}
+    ${initialBoard[rowIndex][colIndex] === 0 ? styles.userValue : styles.initialValue}
+    ${
+      conflictEvent &&
+      conflictEvent.cell &&
+      conflictEvent.cell[0] === rowIndex &&
+      conflictEvent.cell[1] === colIndex
+        ? " " + styles.conflict
+        : ""
+    }
+  `}
                 onClick={() => {
-                  initialState &&
-                    initialState[rowIndex][colIndex] === 0 &&
+                  initialBoard &&
+                    initialBoard[rowIndex][colIndex] === 0 &&
                     setPosition({
                       row: rowIndex,
                       column: colIndex,
-                    } as Position);
+                    } as Cell);
                 }}
               >
-                {cell > 0 && cell}
+                {cell > 0 ? (
+                  cell
+                ) : (
+                  <div className={styles.pencilGrid}>
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((value: number) => {
+                      const key: string = `${rowIndex}-${colIndex}`;
+                      const hasNote: boolean =
+                        notes.get(key)?.has(value) || false;
+                      return (
+                        <div
+                          key={value}
+                          className={`${styles.pencilCell} ${
+                            hasNote ? styles.pencilMark : ""
+                          }`}
+                        >
+                          {hasNote ? value : ""}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             ))}
           </div>

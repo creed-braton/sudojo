@@ -1,4 +1,4 @@
-FROM golang:1.25.1-alpine3.21 AS build
+FROM golang:1.25.1-alpine3.22 AS build
 
 WORKDIR /app
 
@@ -14,10 +14,12 @@ COPY adapter ./adapter
 
 COPY service ./service
 
-RUN go build -o bin main.go
+RUN go build -o ./bin ./main.go
 
-FROM alpine:3.21
+FROM alpine:3.22
 
 COPY --from=build /app/bin /main
+
+ENV PORT=8080
 
 ENTRYPOINT [ "/main" ]

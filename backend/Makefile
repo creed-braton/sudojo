@@ -1,11 +1,13 @@
-test:
-	@go test -v ./...
+dev: build dev-run clean
 
 build:
-	@go build -o ./bin
+	@go build -o ./bin ./main.go
 
-run: build
-	@./bin
+dev-run:
+	@DEV=true ORIGIN=http://localhost:5173 PORT="8080" ./bin
+
+test:
+	@go test -v ./...
 
 clean:
 	@rm ./bin

@@ -1,15 +1,47 @@
 services:
+  database:
+    container_name: database
+    build:
+      context: ./database
+    restart: unless-stopped
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASS}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
   api:
+    container_name: api
     build:
       context: ./backend
+    environment:
+      DB_HOST: database
+      DB_PORT: 5432
+      DB_NAME: postgres
+      DB_USER: postgres
+      DB_PASS: ${DB_PASS}
+    depends_on:
+      database:
+        condition: "service_healthy"
 
   proxy:
+    container_name: proxy
     build:
       context: ./frontend
       args:
-        DOMAIN: sudojo.io
-        DEVELOPMENT: false
+        API_ENDPOINT: sudojo.io/api
+    depends_on:
+      database:
+        condition: "service_healthy"
 
   tunnel:
+    container_name: tunnel
     image: cloudflare/cloudflared:1710-3f6b1f24d036
     command: tunnel run --token ${TUNNEL_TOKEN}
+    depends_on:
+      database:
+        condition: "service_healthy"
