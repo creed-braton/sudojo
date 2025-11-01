@@ -16,18 +16,21 @@ import (
 )
 
 const (
-	msgTypeMove  = "move"
-	msgTypeState = "state"
-	msgTypePing  = "ping"
+	msgTypeMove  = "move"  // Message type for player moves
+	msgTypeState = "state" // Message type for game state requests
+	msgTypePing  = "ping"  // Message type for cell highlighting
 )
 
+// Represents incoming messages from players containing move data,
+// state requests, or ping commands for cell highlighting.
 type inbound struct {
-	Type   string `json:"type"`
-	Row    int    `json:"row"`
-	Column int    `json:"column"`
-	Value  int    `json:"value"`
+	Type   string `json:"type"`   // message type (move, state, ping)
+	Row    int    `json:"row"`    // target row coordinate
+	Column int    `json:"column"` // target column coordinate
+	Value  int    `json:"value"`  // value to place in cell
 }
 
+// Deserializes bytes into an inbound message structure.
 func unmarshal(b []byte) (*inbound, error) {
 	in := &inbound{}
 	if err := json.Unmarshal(b, in); err != nil {
@@ -36,14 +39,17 @@ func unmarshal(b []byte) (*inbound, error) {
 	return in, nil
 }
 
+// Represents outgoing messages sent to players containing game state
+// updates, error messages, or conflict notifications.
 type outbound struct {
-	Initial  *sudoku.Sudoku `json:"initial_state,omitempty"`
-	Current  *sudoku.Sudoku `json:"current_state,omitempty"`
-	Cell     [2]int         `json:"cell,omitempty"`
-	Error    string         `json:"error,omitempty"`
-	Conflict string         `json:"conflict,omitempty"`
+	Initial  *sudoku.Sudoku `json:"initial_state,omitempty"` // initial puzzle state
+	Current  *sudoku.Sudoku `json:"current_state,omitempty"` // current game state
+	Cell     [2]int         `json:"cell,omitempty"`          // highlighted cell coordinates
+	Error    string         `json:"error,omitempty"`         // error message
+	Conflict string         `json:"conflict,omitempty"`      // conflict description
 }
 
+// Serializes the outbound message structure into bytes.
 func (o *outbound) marshal() ([]byte, error) {
 	b, err := json.Marshal(o)
 	if err != nil {
@@ -52,38 +58,45 @@ func (o *outbound) marshal() ([]byte, error) {
 	return b, nil
 }
 
+// Represents a game move log entry containing player action details and
+// metadata for audit and replay purposes.
 type Log struct {
-	Id     string `json:"id"`
-	Lobby  string `json:"lobby_id"`
-	Row    int    `json:"row"`
-	Column int    `json:"column"`
-	Value  int    `json:"value"`
-	Player string `json:"player_token"`
-	Time   int64  `json:"timestamp"`
+	Id     string `json:"id"`           // unique log entry identifier
+	Lobby  string `json:"lobby_id"`     // lobby identifier
+	Row    int    `json:"row"`          // row coordinate
+	Column int    `json:"column"`       // column coordinate
+	Value  int    `json:"value"`        // placed value
+	Player string `json:"player_token"` // player token who made the move
+	Time   int64  `json:"timestamp"`    // timestamp when move was made
 }
 
+// Represents a player in the lobby with communication channel and status tracking.
 type Player struct {
-	Token  string `json:"token"`
-	Name   string `json:"name"`
-	Out    chan []byte
-	active bool
+	Token  string      `json:"token"` // unique player identifier
+	Name   string      `json:"name"`  // player display name
+	Out    chan []byte // outbound message channel
+	active bool        // connection status
 }
 
+// Represents a multiplayer Sudoku game lobby that manages players, game state,
+// and message routing. Provides thread-safe operations for player management
+// and game interaction.
 type Lobby struct {
-	Id        string             `json:"id"`
-	Game      *game.Game         `json:"game"`
-	Players   map[string]*Player `json:"players"`
-	MaxPlayer int                `json:"max_player"`
-	Strict    bool               `json:"strict"`
-	Created   int64              `json:"created_at"`
-	Finished  *int64             `json:"finished_at"`
-	activity  int64
-	lock      sync.RWMutex
-	done      chan struct{}
-	once      sync.Once
-	logger    chan *Log
+	Id        string             `json:"id"`          // unique lobby identifier
+	Game      *game.Game         `json:"game"`        // underlying Sudoku game
+	Players   map[string]*Player `json:"players"`     // players indexed by token
+	MaxPlayer int                `json:"max_player"`  // maximum allowed players
+	Strict    bool               `json:"strict"`      // validation mode (strict/lax)
+	Created   int64              `json:"created_at"`  // creation timestamp
+	Finished  *int64             `json:"finished_at"` // completion timestamp, nil if ongoing
+	activity  int64              // last activity timestamp for idle detection
+	lock      sync.RWMutex       // mutex for thread-safe operations
+	done      chan struct{}      // channel to signal lobby closure
+	once      sync.Once          // ensures cleanup happens only once
+	logger    chan *Log          // channel for sending logs
 }
 
+// Generates a cryptographically secure random token for player identification.
 func newToken() string {
 	b := make([]byte, 16)
 	_, err := rand.Read(b)
@@ -93,15 +106,20 @@ func newToken() string {
 	return hex.EncodeToString(b)
 }
 
+// Initializes lobby channels and sets up player communication channels.
 func (l *Lobby) Init(logger chan *Log) {
 	l.logger = logger
+	l.lock = sync.RWMutex{}
 	l.done = make(chan struct{})
+	l.once = sync.Once{}
 	l.activity = time.Now().UTC().UnixNano()
 	for _, p := range l.Players {
-		p.Out = make(chan []byte)
+		p.Out = make(chan []byte, 256)
 	}
 }
 
+// Creates a new lobby with specified validation mode, player limit, and logger.
+// Generates a new Sudoku game and starts it immediately.
 func New(strict bool, maxPlayer int, logger chan *Log) *Lobby {
 	seed := time.Now().UTC().UnixNano()
 	l := &Lobby{
@@ -115,6 +133,7 @@ func New(strict bool, maxPlayer int, logger chan *Log) *Lobby {
 	return l
 }
 
+// Closes the lobby by signaling shutdown and closing all player channels.
 func (l *Lobby) close() {
 	l.once.Do(func() {
 		close(l.done)
@@ -124,6 +143,7 @@ func (l *Lobby) close() {
 	})
 }
 
+// Returns the player associated with the given token in a thread-safe manner.
 func (l *Lobby) Player(token string) *Player {
 	l.lock.RLock()
 	defer l.lock.RUnlock()
@@ -137,21 +157,24 @@ var (
 	ErrLobbyFull   = errors.New("lobby is already full")
 )
 
+// Validates player name length and character restrictions.
 func validName(name string) error {
-	if len(name) > 12 {
+	if len(name) > 16 {
 		return ErrNameTooLong
 	}
 	for _, c := range name {
 		if unicode.IsDigit(c) || unicode.IsLetter(c) {
 			continue
 		}
-		if string(c) != "-" && string(c) != "_" {
+		if string(c) != "-" && string(c) != "_" && string(c) != " " {
 			return ErrInvalidChar
 		}
 	}
 	return nil
 }
 
+// Creates a new player with the given name and adds them to the lobby.
+// Returns an error if the lobby is closed, full, finished, or name is invalid.
 func (l *Lobby) Create(name string) (*Player, error) {
 	if err := validName(name); err != nil {
 		return nil, err
@@ -185,6 +208,8 @@ func (l *Lobby) Create(name string) (*Player, error) {
 	return p, nil
 }
 
+// Marks a player as active and updates lobby activity timestamp.
+// Returns an error if the lobby is being closed.
 func (l *Lobby) Join(p *Player) error {
 	l.lock.Lock()
 	defer l.lock.Unlock()
@@ -200,6 +225,7 @@ func (l *Lobby) Join(p *Player) error {
 	return nil
 }
 
+// Marks a player as inactive and updates lobby activity timestamp.
 func (l *Lobby) Leave(p *Player) {
 	l.lock.Lock()
 	p.active = false
@@ -207,6 +233,8 @@ func (l *Lobby) Leave(p *Player) {
 	l.lock.Unlock()
 }
 
+// Checks if the lobby has been idle longer than the specified interval.
+// If idle, closes the lobby and returns true.
 func (l *Lobby) Idle(interval int64) bool {
 	l.lock.Lock()
 	defer l.lock.Unlock()
@@ -220,6 +248,7 @@ func (l *Lobby) Idle(interval int64) bool {
 	return true
 }
 
+// Sends a message to a specific player if the lobby is not being closed.
 func (l *Lobby) send(msg []byte, p *Player) {
 	l.lock.RLock()
 	defer l.lock.RUnlock()
@@ -233,6 +262,7 @@ func (l *Lobby) send(msg []byte, p *Player) {
 	}
 }
 
+// Sends a message to all players in the lobby.
 func (l *Lobby) broadcast(msg []byte) {
 	l.lock.RLock()
 	for _, p := range l.Players {
@@ -241,13 +271,15 @@ func (l *Lobby) broadcast(msg []byte) {
 	l.lock.RUnlock()
 }
 
+// Processes a move in strict mode where only correct values are accepted.
+// Logs legal moves and broadcasts updates to all players.
 func (l *Lobby) strictMove(msg *inbound, player *Player) error {
 	var conflict string
 	var cell [2]int
 	update, err := l.Game.Strict(msg.Row, msg.Column, msg.Value)
-	incorrect := err != nil && err == game.ErrIncorrect
+	illegal := err != nil && err != game.ErrIncorrect
 
-	if update != nil || incorrect {
+	if update != nil || !illegal {
 		id := uuid.NewString()
 		l.logger <- &Log{
 			Id:     id,
@@ -261,7 +293,7 @@ func (l *Lobby) strictMove(msg *inbound, player *Player) error {
 	}
 
 	if err != nil {
-		if incorrect {
+		if illegal {
 			conflict = err.Error()
 			cell = [2]int{msg.Row, msg.Column}
 		} else {
@@ -288,11 +320,13 @@ func (l *Lobby) strictMove(msg *inbound, player *Player) error {
 	return nil
 }
 
+// Processes a move in lax mode where incorrect but non conflicting values are allowed.
+// Logs legal moves and sends conflict notifications for rule violations.
 func (l *Lobby) laxMove(msg *inbound, player *Player) error {
 	update, err := l.Game.Lax(msg.Row, msg.Column, msg.Value)
-	invalid := err != nil && (err == game.ErrRowConflict || err == game.ErrColConflict || err == game.ErrBoxConflict)
+	illegal := err != nil && (err != game.ErrRowConflict && err != game.ErrColConflict && err != game.ErrBoxConflict)
 
-	if update != nil || invalid {
+	if update != nil || !illegal {
 		id := uuid.NewString()
 		l.logger <- &Log{
 			Id:     id,
@@ -327,6 +361,7 @@ func (l *Lobby) laxMove(msg *inbound, player *Player) error {
 	return nil
 }
 
+// Sends the game state (initial and current board) to a player.
 func (l *Lobby) state(player *Player) error {
 	res, err := (&outbound{
 		Initial: l.Game.Initial,
@@ -340,6 +375,8 @@ func (l *Lobby) state(player *Player) error {
 	return nil
 }
 
+// Processes a ping message to highlight a cell for all players.
+// Validates cell coordinates and broadcasts the cell position.
 func (l *Lobby) ping(msg *inbound, player *Player) error {
 	if !sudoku.ValidBounds(msg.Row, msg.Column) {
 		res, err := (&outbound{
@@ -362,6 +399,8 @@ func (l *Lobby) ping(msg *inbound, player *Player) error {
 	return nil
 }
 
+// Processes incoming messages from players and routes them to
+// appropriate handlers based on message type.
 func (l *Lobby) Process(msg []byte, player *Player) error {
 	req, err := unmarshal(msg)
 	if err != nil {
