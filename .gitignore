@@ -37,6 +37,9 @@ frontend/dist
 frontend/dist-ssr
 frontend/*.local
 
+# Go binaries
+**/bin
+
 # Editor directories and files
 **/.vscode/*
 **/!.vscode/extensions.json
