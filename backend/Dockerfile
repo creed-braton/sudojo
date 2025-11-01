@@ -1,25 +1,18 @@
-FROM golang:1.25.1-alpine3.22 AS build
+FROM golang:1.25.1 AS build
 
-WORKDIR /app
+WORKDIR /build
 
 COPY go.mod go.sum ./
-
 RUN go mod download
 
-COPY main.go ./main.go
+COPY cmd ./cmd
+COPY internal ./internal
 
-COPY domain ./domain
+ARG CMD
+RUN go build -o ./bin ./cmd/${CMD}/main.go
 
-COPY adapter ./adapter
+FROM scratch
 
-COPY service ./service
-
-RUN go build -o ./bin ./main.go
-
-FROM alpine:3.22
-
-COPY --from=build /app/bin /main
-
-ENV PORT=8080
+COPY --from=build /build/bin /main
 
 ENTRYPOINT [ "/main" ]

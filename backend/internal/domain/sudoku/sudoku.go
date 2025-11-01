@@ -1,48 +1,35 @@
 package sudoku
 
 import (
-	"errors"
-	"fmt"
 	"math/rand"
 )
 
 const (
-	BoardSize = 9
-	boxSize   = 3
-	EmptyCell = 0
-	minValue  = 1
-	maxValue  = 9
-	minClues  = 17 // https://arxiv.org/abs/1201.0749
+	BoardSize = 9  // Number of rows and columns in a Sudoku board
+	boxSize   = 3  // Dimension of each sub-box in the Sudoku grid
+	EmptyCell = 0  // Represents an unfilled cell
+	MinValue  = 1  // Smallest valid Sudoku cell value
+	MaxValue  = 9  // Largest valid Sudoku cell value
+	minClues  = 17 // Minimum number of clues required for an unique solution Sudoku puzzle: https://arxiv.org/abs/1201.0749
 )
 
+// Represents a 9x9 Sudoku board. Provides methods for validating cell
+// placements, checking board completeness, generating randomly complete
+// boards, deriving uniquely solvable puzzles, and more utility functions.
+//
+// Each cell stores an integer value between 0 and 9, where 0 indicates an
+// empty cell and values 1–9 represent placed digits.
 type Sudoku [BoardSize][BoardSize]int
 
+// Returns a pointer to a new, empty Sudoku board.
 func New() *Sudoku {
 	return &Sudoku{}
-}
-
-func (s *Sudoku) Int() [][]int {
-	c := make([][]int, 9)
-	for i := range s {
-		c[i] = s[i][:]
-	}
-	return c
-}
-
-func Load(array [][]int) *Sudoku {
-	s := New()
-	for i := 0; i < len(array) && i < BoardSize; i++ {
-		for j := 0; j < len(array[i]) && j < BoardSize; j++ {
-			s[i][j] = array[i][j]
-		}
-	}
-	return s
 }
 
 // Compares two Sudoku boards for equality by checking if all cells contain
 // identical values at corresponding positions. It returns true if both boards
 // are exactly the same, false otherwise. It doesn't check validity of either board.
-func (org *Sudoku) equal(comp *Sudoku) bool {
+func (org *Sudoku) Equal(comp *Sudoku) bool {
 	for row := 0; row < BoardSize; row++ {
 		for col := 0; col < BoardSize; col++ {
 			if org[row][col] != comp[row][col] {
@@ -53,10 +40,30 @@ func (org *Sudoku) equal(comp *Sudoku) bool {
 	return true
 }
 
+// Exports the Sudoku structs values into a 9x9 integer matrix.
+func (s *Sudoku) Int() [][]int {
+	c := make([][]int, 9)
+	for i := range s {
+		c[i] = s[i][:]
+	}
+	return c
+}
+
+// Expects a 9x9 integer matrix and turns it into the Sudoku struct.
+func Load(matrix [][]int) *Sudoku {
+	s := New()
+	for i := 0; i < len(matrix) && i < BoardSize; i++ {
+		for j := 0; j < len(matrix[i]) && j < BoardSize; j++ {
+			s[i][j] = matrix[i][j]
+		}
+	}
+	return s
+}
+
 // Checks if the given row and column coordinates are within the valid bounds
 // of the Sudoku board. Returns true if both coordinates are within the valid
 // range, false otherwise.
-func validBounds(row, col int) bool {
+func ValidBounds(row, col int) bool {
 	if row < 0 || row >= BoardSize || col < 0 || col >= BoardSize {
 		return false
 	}
@@ -65,11 +72,11 @@ func validBounds(row, col int) bool {
 
 // Checks if a given integer value is within the valid range for Sudoku cell
 // values. It returns true if the value is within the range, false otherwise.
-func validVal(val int) bool {
-	if val < minValue {
+func ValidVal(val int) bool {
+	if val < MinValue {
 		return false
 	}
-	if val > maxValue {
+	if val > MaxValue {
 		return false
 	}
 	return true
@@ -78,7 +85,7 @@ func validVal(val int) bool {
 // Checks if a given value can be placed in the specified row without
 // violating Sudoku row constraints. Returns true if the value doesn't
 // already exist in that row, false otherwise.
-func (s *Sudoku) validRow(row, val int) bool {
+func (s *Sudoku) ValidRow(row, val int) bool {
 	for col := 0; col < BoardSize; col++ {
 		if s[row][col] == val {
 			return false
@@ -91,7 +98,7 @@ func (s *Sudoku) validRow(row, val int) bool {
 // Checks if a given value can be placed in the specified column without
 // violating Sudoku column constraints. Returns true if the value doesn't
 // already exist in that column, false otherwise.
-func (s *Sudoku) validCol(col, val int) bool {
+func (s *Sudoku) ValidCol(col, val int) bool {
 	for row := 0; row < BoardSize; row++ {
 		if s[row][col] == val {
 			return false
@@ -104,7 +111,7 @@ func (s *Sudoku) validCol(col, val int) bool {
 // Checks if a given value can be placed in the specified box without
 // violating Sudoku box constraints. Returns true if the value doesn't
 // already exist in that box, false otherwise.
-func (s *Sudoku) validBox(row, col, val int) bool {
+func (s *Sudoku) ValidBox(row, col, val int) bool {
 	boxRow := (row / boxSize) * boxSize
 	boxCol := (col / boxSize) * boxSize
 
@@ -117,39 +124,6 @@ func (s *Sudoku) validBox(row, col, val int) bool {
 	}
 
 	return true
-}
-
-// Validates whether a given value can be legally placed at the specified position
-// on the Sudoku board. It checks bounds for position coordinates, value range and
-// constraint verification for row, column, and box uniqueness. Returns nil  if the
-// placement is valid, or an error describing the specific validation failure.
-// Empty cell values are always considered valid placements.
-func (s *Sudoku) Validate(row, col, val int) error {
-	if !validBounds(row, col) {
-		return errors.New("position out of bounds")
-	}
-
-	if val == EmptyCell {
-		return nil
-	}
-
-	if !validVal(val) {
-		return fmt.Errorf("value must be between %d and %d", minValue, maxValue)
-	}
-
-	if !s.validRow(row, val) {
-		return errors.New("value already exists in this row")
-	}
-
-	if !s.validCol(col, val) {
-		return errors.New("value already exists in this column")
-	}
-
-	if !s.validBox(row, col, val) {
-		return errors.New("value already exists in this box")
-	}
-
-	return nil
 }
 
 // Checks whether the Sudoku board is completely filled by verifying that all cells
@@ -167,14 +141,16 @@ func (s *Sudoku) Complete() bool {
 	return true
 }
 
+// Recursively fills the board with random valid values until a full valid Sudoku
+// solution is reached. Uses backtracking to explore possibilities.
 func (s *Sudoku) fill() bool {
 	for row := 0; row < BoardSize; row++ {
 		for col := 0; col < BoardSize; col++ {
 			if s[row][col] == EmptyCell {
-				nums := rand.Perm(maxValue)
+				nums := rand.Perm(MaxValue)
 				for _, n := range nums {
 					val := n + 1
-					if s.validRow(row, val) && s.validCol(col, val) && s.validBox(row, col, val) {
+					if s.ValidRow(row, val) && s.ValidCol(col, val) && s.ValidBox(row, col, val) {
 						s[row][col] = val
 						if s.fill() {
 							return true
@@ -206,6 +182,8 @@ func (s *Sudoku) Copy(c *Sudoku) {
 	}
 }
 
+// Recursively fills empty cells to explore all valid Sudoku solutions.
+// Search terminates early if more than one valid solution is found.
 func (s *Sudoku) solve(emptyCells [][2]int, index int, count *int, solution *Sudoku) {
 	if *count > 1 {
 		return
@@ -221,7 +199,7 @@ func (s *Sudoku) solve(emptyCells [][2]int, index int, count *int, solution *Sud
 
 	row, col := emptyCells[index][0], emptyCells[index][1]
 	for val := 1; val <= 9; val++ {
-		if s.validRow(row, val) && s.validCol(col, val) && s.validBox(row, col, val) {
+		if s.ValidRow(row, val) && s.ValidCol(col, val) && s.ValidBox(row, col, val) {
 			s[row][col] = val
 			s.solve(emptyCells, index+1, count, solution)
 			s[row][col] = EmptyCell
