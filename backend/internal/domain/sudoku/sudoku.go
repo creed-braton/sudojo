@@ -16,41 +16,59 @@ const (
 // Represents a 9x9 Sudoku board. Provides methods for validating cell
 // placements, checking board completeness, generating randomly complete
 // boards, deriving uniquely solvable puzzles, and more utility functions.
-//
-// Each cell stores an integer value between 0 and 9, where 0 indicates an
-// empty cell and values 1–9 represent placed digits.
-type Sudoku [BoardSize][BoardSize]int
+type Sudoku interface {
+	// Returns the value at the specified row and column.
+	Cell(row, col int) int
+	// Sets the value at the specified row and column.
+	SetCell(row, col, val int)
+	// Compares two Sudoku boards for equality by checking if all cells contain
+	// identical values at corresponding positions. It returns true if both boards
+	// are exactly the same, false otherwise. It doesn't check validity of either board.
+	Equal(s Sudoku) bool
+	// Exports the Sudoku structs values into a 9x9 integer matrix.
+	Int() [][]int
+	// Checks if a given value can be placed in the specified row without
+	// violating Sudoku row constraints. Returns true if the value doesn't
+	// already exist in that row, false otherwise.
+	ValidRow(row, val int) bool
+	// Checks if a given value can be placed in the specified column without
+	// violating Sudoku column constraints. Returns true if the value doesn't
+	// already exist in that column, false otherwise.
+	ValidCol(col, val int) bool
+	// Checks if a given value can be placed in the specified box without
+	// violating Sudoku box constraints. Returns true if the value doesn't
+	// already exist in that box, false otherwise.
+	ValidBox(row, col, val int) bool
+	// Checks whether the Sudoku board is completely filled by verifying that all cells
+	// contain non-empty values. Returns true if no empty cells are found, false otherwise.
+	// It doesn't check validity of the board.
+	Complete() bool
+	// Fills the Sudoku board with a complete and valid solution using the
+	// provided seed for random number generation.
+	Fill(seed int64)
+	// Copies all cell values from the Sudoku board to the provided destination board s.
+	Copy(s Sudoku)
+	// Returns true if the Sudoku board has exactly one valid solution and
+	// fills the board with that solution. Otherwise it returns false and
+	// leaves the board as is.
+	UniqueSolution() bool
+	// Transforms the current complete Sudoku board into a puzzle by removing
+	// cells while ensuring the puzzle maintains exactly one unique solution.
+	// Uses the provided seed for random number generation.
+	GeneratePuzzle(seed int64)
+}
+
+type sudoku [BoardSize][BoardSize]int
+
+var _ Sudoku = &sudoku{}
 
 // Returns a pointer to a new, empty Sudoku board.
-func New() *Sudoku {
-	return &Sudoku{}
-}
-
-// Compares two Sudoku boards for equality by checking if all cells contain
-// identical values at corresponding positions. It returns true if both boards
-// are exactly the same, false otherwise. It doesn't check validity of either board.
-func (org *Sudoku) Equal(comp *Sudoku) bool {
-	for row := 0; row < BoardSize; row++ {
-		for col := 0; col < BoardSize; col++ {
-			if org[row][col] != comp[row][col] {
-				return false
-			}
-		}
-	}
-	return true
-}
-
-// Exports the Sudoku structs values into a 9x9 integer matrix.
-func (s *Sudoku) Int() [][]int {
-	c := make([][]int, 9)
-	for i := range s {
-		c[i] = s[i][:]
-	}
-	return c
+func New() *sudoku {
+	return &sudoku{}
 }
 
 // Expects a 9x9 integer matrix and turns it into the Sudoku struct.
-func Load(matrix [][]int) *Sudoku {
+func NewFromInts(matrix [][]int) *sudoku {
 	s := New()
 	for i := 0; i < len(matrix) && i < BoardSize; i++ {
 		for j := 0; j < len(matrix[i]) && j < BoardSize; j++ {
@@ -82,10 +100,39 @@ func ValidVal(val int) bool {
 	return true
 }
 
-// Checks if a given value can be placed in the specified row without
-// violating Sudoku row constraints. Returns true if the value doesn't
-// already exist in that row, false otherwise.
-func (s *Sudoku) ValidRow(row, val int) bool {
+func (s *sudoku) Cell(row, col int) int {
+	return s[row][col]
+}
+
+func (s *sudoku) SetCell(row, col, val int) {
+	s[row][col] = val
+}
+
+func (src *sudoku) Equal(s Sudoku) bool {
+	other, ok := s.(*sudoku)
+	if !ok {
+		panic("Equal requires *sudoku implementation")
+	}
+	for row := 0; row < BoardSize; row++ {
+		for col := 0; col < BoardSize; col++ {
+			if src[row][col] != other[row][col] {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// Exports the Sudoku structs values into a 9x9 integer matrix.
+func (s *sudoku) Int() [][]int {
+	c := make([][]int, 9)
+	for i := range s {
+		c[i] = s[i][:]
+	}
+	return c
+}
+
+func (s *sudoku) ValidRow(row, val int) bool {
 	for col := 0; col < BoardSize; col++ {
 		if s[row][col] == val {
 			return false
@@ -95,10 +142,7 @@ func (s *Sudoku) ValidRow(row, val int) bool {
 	return true
 }
 
-// Checks if a given value can be placed in the specified column without
-// violating Sudoku column constraints. Returns true if the value doesn't
-// already exist in that column, false otherwise.
-func (s *Sudoku) ValidCol(col, val int) bool {
+func (s *sudoku) ValidCol(col, val int) bool {
 	for row := 0; row < BoardSize; row++ {
 		if s[row][col] == val {
 			return false
@@ -108,10 +152,7 @@ func (s *Sudoku) ValidCol(col, val int) bool {
 	return true
 }
 
-// Checks if a given value can be placed in the specified box without
-// violating Sudoku box constraints. Returns true if the value doesn't
-// already exist in that box, false otherwise.
-func (s *Sudoku) ValidBox(row, col, val int) bool {
+func (s *sudoku) ValidBox(row, col, val int) bool {
 	boxRow := (row / boxSize) * boxSize
 	boxCol := (col / boxSize) * boxSize
 
@@ -126,10 +167,7 @@ func (s *Sudoku) ValidBox(row, col, val int) bool {
 	return true
 }
 
-// Checks whether the Sudoku board is completely filled by verifying that all cells
-// contain non-empty values. Returns true if no empty cells are found, false otherwise.
-// It doesn't check validity of the board.
-func (s *Sudoku) Complete() bool {
+func (s *sudoku) Complete() bool {
 	for row := 0; row < BoardSize; row++ {
 		for col := 0; col < BoardSize; col++ {
 			if s[row][col] == EmptyCell {
@@ -143,7 +181,7 @@ func (s *Sudoku) Complete() bool {
 
 // Recursively fills the board with random valid values until a full valid Sudoku
 // solution is reached. Uses backtracking to explore possibilities.
-func (s *Sudoku) fill() bool {
+func (s *sudoku) fill() bool {
 	for row := 0; row < BoardSize; row++ {
 		for col := 0; col < BoardSize; col++ {
 			if s[row][col] == EmptyCell {
@@ -165,26 +203,27 @@ func (s *Sudoku) fill() bool {
 	return true
 }
 
-// Fills the Sudoku board with a complete and valid solution using the
-// provided seed for random number generation.
-func (s *Sudoku) Fill(seed int64) {
+func (s *sudoku) Fill(seed int64) {
 	rand.New(rand.NewSource(seed))
 	s.fill()
 }
 
-// Copies all cell values from the current Sudoku board s to the
-// provided destination board c.
-func (s *Sudoku) Copy(c *Sudoku) {
+func (src *sudoku) Copy(s Sudoku) {
+	other, ok := s.(*sudoku)
+	if !ok {
+		panic("Copy requires *sudoku implementation")
+	}
+
 	for row := 0; row < BoardSize; row++ {
 		for col := 0; col < BoardSize; col++ {
-			c[row][col] = s[row][col]
+			other[row][col] = src[row][col]
 		}
 	}
 }
 
 // Recursively fills empty cells to explore all valid Sudoku solutions.
 // Search terminates early if more than one valid solution is found.
-func (s *Sudoku) solve(emptyCells [][2]int, index int, count *int, solution *Sudoku) {
+func (s *sudoku) solve(emptyCells [][2]int, index int, count *int, solution *sudoku) {
 	if *count > 1 {
 		return
 	}
@@ -208,7 +247,7 @@ func (s *Sudoku) solve(emptyCells [][2]int, index int, count *int, solution *Sud
 }
 
 // Returns the number of non-empty values on the Sudoku board.
-func (s *Sudoku) clues() int {
+func (s *sudoku) clues() int {
 	clues := 0
 	for row := 0; row < BoardSize; row++ {
 		for col := 0; col < BoardSize; col++ {
@@ -220,10 +259,7 @@ func (s *Sudoku) clues() int {
 	return clues
 }
 
-// Returns true if the Sudoku board has exactly one valid solution and
-// fills the board with that solution. Otherwise it returns false and
-// leaves the board as is.
-func (s *Sudoku) UniqueSolution() bool {
+func (s *sudoku) UniqueSolution() bool {
 	if s.clues() < minClues {
 		return false
 	}
@@ -238,7 +274,7 @@ func (s *Sudoku) UniqueSolution() bool {
 	}
 
 	count := 0
-	solution := &Sudoku{}
+	solution := &sudoku{}
 	s.solve(emptyCells, 0, &count, solution)
 
 	if count == 1 {
@@ -248,10 +284,7 @@ func (s *Sudoku) UniqueSolution() bool {
 	return false
 }
 
-// Transforms the current complete Sudoku board into a puzzle by removing
-// cells while ensuring the puzzle maintains exactly one unique solution.
-// Uses the provided seed for random number generation.
-func (s *Sudoku) GeneratePuzzle(seed int64) {
+func (s *sudoku) GeneratePuzzle(seed int64) {
 	rand.New(rand.NewSource(seed))
 
 	cells := make([][2]int, 0, BoardSize*BoardSize)
