@@ -79,10 +79,10 @@ var (
 	ErrBoxConflict     = errors.New("value already exist in box")
 	ErrOutOfBounds     = errors.New("cell position out of bounds")
 	errLaxValRange     = fmt.Errorf("input must be between %d and %d", sudoku.EmptyCell, sudoku.MaxValue)
-	ErrStrictValRange  = fmt.Errorf("input must be between %d and %d", sudoku.MinValue, sudoku.MaxValue)
-	ErrInitialClue     = errors.New("cannot overwrite initial clue")
+	errStrictValRange  = fmt.Errorf("input must be between %d and %d", sudoku.MinValue, sudoku.MaxValue)
+	errInitialClue     = errors.New("cannot overwrite initial clue")
 	ErrAlreadyFinished = errors.New("game is already finish")
-	ErrNotStarted      = errors.New("game has not started yet")
+	errNotStarted      = errors.New("game has not started yet")
 )
 
 // Thread-safely inserts a value into the current board if within bounds, not
@@ -97,14 +97,14 @@ func (g *Game) Lax(row, col, val int) (*sudoku.Sudoku, error) {
 		return nil, errLaxValRange
 	}
 	if g.Initial[row][col] != sudoku.EmptyCell {
-		return nil, ErrInitialClue
+		return nil, errInitialClue
 	}
 
 	g.lock.Lock()
 	defer g.lock.Unlock()
 
 	if g.Started == nil {
-		return nil, ErrNotStarted
+		return nil, errNotStarted
 	}
 	if g.Finished != nil {
 		return nil, ErrAlreadyFinished
@@ -137,17 +137,17 @@ func (g *Game) Strict(row, col, val int) (*sudoku.Sudoku, error) {
 		return nil, ErrOutOfBounds
 	}
 	if !sudoku.ValidVal(val) {
-		return nil, ErrStrictValRange
+		return nil, errStrictValRange
 	}
 	if g.Initial[row][col] != sudoku.EmptyCell {
-		return nil, ErrInitialClue
+		return nil, errInitialClue
 	}
 
 	g.lock.Lock()
 	defer g.lock.Unlock()
 
 	if g.Started == nil {
-		return nil, ErrNotStarted
+		return nil, errNotStarted
 	}
 	if g.Finished != nil {
 		return nil, ErrAlreadyFinished

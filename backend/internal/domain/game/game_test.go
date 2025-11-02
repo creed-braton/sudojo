@@ -51,8 +51,8 @@ func TestStrict(t *testing.T) {
 			t.Error("wanted error, got nil")
 			return
 		}
-		if err != ErrNotStarted {
-			t.Errorf("want: %v, got: %v", ErrNotStarted, err)
+		if err != errNotStarted {
+			t.Errorf("want: %v, got: %v", errNotStarted, err)
 		}
 		if s != nil {
 			t.Error("wanted nil, got current board copy")
@@ -184,8 +184,8 @@ func TestStrict(t *testing.T) {
 			t.Error("wanted error, got nil")
 			return
 		}
-		if err != ErrStrictValRange {
-			t.Errorf("want: %v, got: %v", ErrStrictValRange, err)
+		if err != errStrictValRange {
+			t.Errorf("want: %v, got: %v", errStrictValRange, err)
 		}
 		if s != nil {
 			t.Error("wanted nil, got current board copy")
@@ -201,8 +201,8 @@ func TestStrict(t *testing.T) {
 			t.Error("wanted error, got nil")
 			return
 		}
-		if err != ErrStrictValRange {
-			t.Errorf("want: %v, got: %v", ErrStrictValRange, err)
+		if err != errStrictValRange {
+			t.Errorf("want: %v, got: %v", errStrictValRange, err)
 		}
 		if s != nil {
 			t.Error("wanted nil, got current board copy")
@@ -218,8 +218,8 @@ func TestStrict(t *testing.T) {
 			t.Error("wanted error, got nil")
 			return
 		}
-		if err != ErrInitialClue {
-			t.Errorf("want: %v, got: %v", ErrInitialClue, err)
+		if err != errInitialClue {
+			t.Errorf("want: %v, got: %v", errInitialClue, err)
 		}
 		if s != nil {
 			t.Error("wanted nil, got current board copy")
@@ -249,8 +249,8 @@ func TestLax(t *testing.T) {
 			t.Error("wanted error, got nil")
 			return
 		}
-		if err != ErrNotStarted {
-			t.Errorf("want: %v, got: %v", ErrNotStarted, err)
+		if err != errNotStarted {
+			t.Errorf("want: %v, got: %v", errNotStarted, err)
 		}
 		if s != nil {
 			t.Error("wanted nil, got current board copy")
@@ -442,8 +442,8 @@ func TestLax(t *testing.T) {
 			t.Error("wanted error, got nil")
 			return
 		}
-		if err != ErrInitialClue {
-			t.Errorf("want: %v, got: %v", ErrInitialClue, err)
+		if err != errInitialClue {
+			t.Errorf("want: %v, got: %v", errInitialClue, err)
 		}
 		if s != nil {
 			t.Error("wanted nil, got current board copy")
