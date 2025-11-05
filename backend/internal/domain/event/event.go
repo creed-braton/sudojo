@@ -10,8 +10,11 @@ var (
 	ErrFullBus   = errors.New("event bus is full")
 )
 
+// Represents arbitrary data carried within an event.
 type Payload interface{}
 
+// Represents a message containing type, sender, receiver, trace id, error
+// message, and a payload. Provides methods for accessing event metadata.
 type Event interface {
 	Type() string
 	Sender() string
@@ -30,6 +33,10 @@ type event struct {
 	payload   Payload
 }
 
+var _ Event = &event{}
+
+// Returns a new event with the provided type, sender, receiver, trace id,
+// error message, and payload.
 func New(eventType, sender, receiver, trace, errorMsg string, payload Payload) *event {
 	return &event{
 		sender:    sender,
@@ -65,9 +72,16 @@ func (e *event) Payload() Payload {
 	return e.payload
 }
 
+// Represents a buffered channel for sending and receiving events. Provides
+// thread-safe methods for event transmission and supports graceful shutdown.
 type EventBus interface {
+	// Sends an event to the bus. Returns ErrFullBus if the buffer is full
+	// or ErrClosedBus if the bus has been closed.
 	Send(event Event) error
+	// Receives an event from the bus, blocking until one is available.
+	// Returns ErrClosedBus if the bus has been closed.
 	Receive() (Event, error)
+	// Closes the event bus, preventing further sends and receives.
 	Close()
 }
 
@@ -77,6 +91,9 @@ type eventBus struct {
 	closed chan struct{}
 }
 
+var _ EventBus = &eventBus{}
+
+// Returns a new event bus with a buffer size of 256 events.
 func NewEventBus() *eventBus {
 	return &eventBus{
 		events: make(chan Event, 256),
@@ -111,9 +128,19 @@ func (b *eventBus) Close() {
 	})
 }
 
+// Represents a router that distributes events from a source bus to multiple
+// registered destination buses. Supports both targeted and broadcast delivery
+// based on the receiver string of the event.
 type Fanout interface {
+	// Registers a destination bus under the specified id for event routing.
 	Register(id string, bus EventBus)
+	// Removes the bus with the specified id from event routing.
 	Deregister(id string)
+	// Retrieves an event from the source bus and routes it to the appropriate
+	// destination. Sends to a single bus if the event has a receiver, or broadcasts
+	// to all buses if the receiver is empty. Returns an error if receiving from the
+	// source fails.
+	Poll() error
 }
 
 type fanout struct {
@@ -122,57 +149,16 @@ type fanout struct {
 	routes map[string]EventBus
 }
 
-func (f *fanout) close() {
-	f.lock.RLock()
-	defer f.lock.RUnlock()
-	for _, bus := range f.routes {
-		bus.Close()
-	}
-}
+var _ Fanout = &fanout{}
 
-func (f *fanout) dispatch(event Event) {
-	f.lock.RLock()
-	defer f.lock.RUnlock()
-
-	// targeted dispatch
-	if recv := event.Receiver(); recv != "" {
-		if bus := f.routes[recv]; bus != nil {
-			if err := bus.Send(event); err == ErrClosedBus {
-				go f.Deregister(recv)
-			}
-		}
-		return
-	}
-
-	// broadcast
-	for id, bus := range f.routes {
-		if err := bus.Send(event); err == ErrClosedBus {
-			go f.Deregister(id)
-		}
-	}
-}
-
-func (f *fanout) poll() {
-	defer f.close()
-	for {
-		event, err := f.src.Receive()
-		// stop when source bus has been closed
-		if err == ErrClosedBus {
-			return
-		}
-		if err == nil {
-			f.dispatch(event)
-		}
-	}
-}
-
+// Returns a new fanout router that distributes events from the source bus to
+// registered destinations. Events with a receiver id are sent only to that
+// destination, events without a receiver are broadcast to all destinations.
 func NewFanout(src EventBus) *fanout {
-	f := &fanout{
+	return &fanout{
 		src:    src,
 		routes: make(map[string]EventBus),
 	}
-	go f.poll()
-	return f
 }
 
 func (f *fanout) Register(id string, bus EventBus) {
@@ -185,4 +171,51 @@ func (f *fanout) Deregister(id string) {
 	f.lock.Lock()
 	delete(f.routes, id)
 	f.lock.Unlock()
+}
+
+func (f *fanout) close() {
+	f.lock.RLock()
+	defer f.lock.RUnlock()
+	for _, bus := range f.routes {
+		bus.Close()
+	}
+}
+
+func (f *fanout) dispatch(event Event) {
+	f.lock.RLock()
+	routes := make(map[string]EventBus, len(f.routes))
+	for k, v := range f.routes {
+		routes[k] = v
+	}
+	f.lock.RUnlock()
+
+	// targeted dispatch
+	if recv := event.Receiver(); recv != "" {
+		if bus := routes[recv]; bus != nil {
+			if err := bus.Send(event); err == ErrClosedBus {
+				f.Deregister(recv)
+			}
+		}
+		return
+	}
+
+	// broadcast
+	for id, bus := range routes {
+		if err := bus.Send(event); err == ErrClosedBus {
+			f.Deregister(id)
+		}
+	}
+}
+
+func (f *fanout) Poll() error {
+	event, err := f.src.Receive()
+	// stop when source bus has been closed
+	if err == ErrClosedBus {
+		f.close()
+	}
+	if err != nil {
+		return err
+	}
+	f.dispatch(event)
+	return nil
 }
