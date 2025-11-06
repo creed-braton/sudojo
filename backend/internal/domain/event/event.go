@@ -10,10 +10,6 @@ var (
 	ErrFullBus   = errors.New("event bus is full")
 )
 
-const (
-	eventBusSize = 256
-)
-
 // Represents arbitrary data carried within an event.
 type Payload interface {
 	// Serializes the data struct into bytes.
@@ -79,8 +75,12 @@ func (e *event) Payload() Payload {
 	return e.payload
 }
 
-// Represents a buffered channel for sending and receiving events. Provides
-// thread-safe methods for event transmission and supports graceful shutdown.
+const (
+	eventBusSize = 256
+)
+
+// Represents a channel for sending and receiving events. Provides thread-safe
+// methods for event transmission and supports graceful shutdown.
 type EventBus interface {
 	// Sends an event to the bus. Returns ErrFullBus if the buffer is full
 	// or ErrClosedBus if the bus has been closed.
