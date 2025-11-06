@@ -10,8 +10,15 @@ var (
 	ErrFullBus   = errors.New("event bus is full")
 )
 
+const (
+	eventBusSize = 256
+)
+
 // Represents arbitrary data carried within an event.
-type Payload interface{}
+type Payload interface {
+	// Serializes the data struct into bytes.
+	Marshal() ([]byte, error)
+}
 
 // Represents a message containing type, sender, receiver, trace id, error
 // message, and a payload. Provides methods for accessing event metadata.
@@ -87,6 +94,7 @@ type EventBus interface {
 
 type eventBus struct {
 	events chan Event
+	lock   sync.RWMutex
 	once   sync.Once
 	closed chan struct{}
 }
@@ -96,35 +104,43 @@ var _ EventBus = &eventBus{}
 // Returns a new event bus with a buffer size of 256 events.
 func NewEventBus() *eventBus {
 	return &eventBus{
-		events: make(chan Event, 256),
+		events: make(chan Event, eventBusSize),
 		closed: make(chan struct{}),
 	}
 }
 
 func (b *eventBus) Send(event Event) error {
+	b.lock.RLock()
+	defer b.lock.RUnlock()
+
+	select {
+	case <-b.closed:
+		return ErrClosedBus
+	default:
+	}
+
 	select {
 	case b.events <- event:
 		return nil
-	case <-b.closed:
-		return ErrClosedBus
 	default:
 		return ErrFullBus
 	}
 }
 
 func (b *eventBus) Receive() (Event, error) {
-	select {
-	case event := <-b.events:
-		return event, nil
-	case <-b.closed:
+	event, ok := <-b.events
+	if !ok {
 		return nil, ErrClosedBus
 	}
+	return event, nil
 }
 
 func (b *eventBus) Close() {
 	b.once.Do(func() {
+		b.lock.Lock()
 		close(b.closed)
 		close(b.events)
+		b.lock.Unlock()
 	})
 }
 
