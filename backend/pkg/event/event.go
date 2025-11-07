@@ -21,7 +21,7 @@ type Payload interface {
 type Event interface {
 	Type() string
 	Sender() string
-	Receiver() string
+	Broadcast() bool
 	Trace() string
 	Error() string
 	Payload() Payload
@@ -30,7 +30,7 @@ type Event interface {
 type event struct {
 	eventType string
 	sender    string
-	receiver  string
+	broadcast bool
 	trace     string
 	errorMsg  string
 	payload   Payload
@@ -38,12 +38,12 @@ type event struct {
 
 var _ Event = &event{}
 
-// Returns a new event with the provided type, sender, receiver, trace id,
+// Returns a new event with the provided type, sender, broadcast flag, trace id,
 // error message, and payload.
-func New(eventType, sender, receiver, trace, errorMsg string, payload Payload) *event {
+func New(eventType, sender, trace, errorMsg string, broadcast bool, payload Payload) *event {
 	return &event{
 		sender:    sender,
-		receiver:  receiver,
+		broadcast: broadcast,
 		trace:     trace,
 		eventType: eventType,
 		errorMsg:  errorMsg,
@@ -55,8 +55,8 @@ func (e *event) Sender() string {
 	return e.sender
 }
 
-func (e *event) Receiver() string {
-	return e.receiver
+func (e *event) Broadcast() bool {
+	return e.broadcast
 }
 
 func (e *event) Trace() string {
@@ -154,8 +154,8 @@ type Fanout interface {
 	Deregister(id string)
 	// Retrieves an event from the source bus and routes it to the appropriate
 	// destination. Sends to a single bus if the event has a receiver, or broadcasts
-	// to all buses if the receiver is empty. Returns an error if receiving from the
-	// source fails.
+	// to all buses if the receiver is empty. Returns an ErrClosedBUs if the source
+	// bus is closed.
 	Poll() error
 }
 
@@ -206,10 +206,11 @@ func (f *fanout) dispatch(event Event) {
 	f.lock.RUnlock()
 
 	// targeted dispatch
-	if recv := event.Receiver(); recv != "" {
-		if bus := routes[recv]; bus != nil {
+	if !event.Broadcast() {
+		sender := event.Sender()
+		if bus := routes[sender]; bus != nil {
 			if err := bus.Send(event); err == ErrClosedBus {
-				f.Deregister(recv)
+				f.Deregister(sender)
 			}
 		}
 		return

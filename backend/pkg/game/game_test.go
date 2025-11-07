@@ -2,7 +2,7 @@ package game
 
 import (
 	"math/rand"
-	"sudojo/internal/domain/sudoku"
+	"sudojo/pkg/sudoku"
 	"sync"
 	"testing"
 	"time"

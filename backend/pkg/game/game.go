@@ -3,7 +3,7 @@ package game
 import (
 	"errors"
 	"fmt"
-	"sudojo/internal/domain/sudoku"
+	"sudojo/pkg/sudoku"
 	"sync"
 	"time"
 )
