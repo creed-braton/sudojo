@@ -8,7 +8,7 @@ import (
 func TestPlayer(t *testing.T) {
 	token, name, bus := NewToken(), "test-player", event.NewEventBus()
 	p := New(token, name, bus)
-	if err := bus.Send(event.New("", "", "", "", false, nil)); err != nil {
+	if err := p.Send(event.New("", "", "", "", nil)); err != nil {
 		t.Errorf("unexpected error sending event: %v", err)
 	}
 
@@ -18,7 +18,7 @@ func TestPlayer(t *testing.T) {
 	if p.Name() != name {
 		t.Errorf("want: %s, got: %s", name, p.Name())
 	}
-	e, err := p.Poll()
+	e, err := p.Receive()
 	if err != nil {
 		t.Errorf("unexpected error polling event: %v", err)
 	}

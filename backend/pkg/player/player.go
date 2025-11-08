@@ -25,7 +25,7 @@ type Player interface {
 	Send(e event.Event) error
 	// Returns an event directed to the player or ErrClosedBus if his event
 	// bus is closed.
-	Poll() (event.Event, error)
+	Receive() (event.Event, error)
 	// Closes the event bus of the player.
 	Close()
 }
@@ -65,7 +65,7 @@ func (p *player) Send(e event.Event) error {
 	return p.bus.Send(e)
 }
 
-func (p *player) Poll() (event.Event, error) {
+func (p *player) Receive() (event.Event, error) {
 	return p.bus.Receive()
 }
 

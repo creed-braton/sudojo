@@ -23,8 +23,6 @@ type Event interface {
 	Type() string
 	// Entity causing the event.
 	Sender() string
-	// Flag wether or not the event shall be broadcasted in a Fanout.
-	Broadcast() bool
 	// Trace id of the event to keep track of it.
 	Trace() string
 	// Error message if event could not be properly processed.
@@ -36,7 +34,6 @@ type Event interface {
 type event struct {
 	eventType string
 	sender    string
-	broadcast bool
 	trace     string
 	errorMsg  string
 	payload   Payload
@@ -44,12 +41,10 @@ type event struct {
 
 var _ Event = &event{}
 
-// Returns a new event with the provided type, sender, broadcast flag, trace id,
-// error message, and payload.
-func New(eventType, sender, trace, errorMsg string, broadcast bool, payload Payload) *event {
+// Returns a new event with the provided type, sender, trace id, error message, and payload.
+func New(eventType, sender, trace, errorMsg string, payload Payload) *event {
 	return &event{
 		sender:    sender,
-		broadcast: broadcast,
 		trace:     trace,
 		eventType: eventType,
 		errorMsg:  errorMsg,
@@ -59,10 +54,6 @@ func New(eventType, sender, trace, errorMsg string, broadcast bool, payload Payl
 
 func (e *event) Sender() string {
 	return e.sender
-}
-
-func (e *event) Broadcast() bool {
-	return e.broadcast
 }
 
 func (e *event) Trace() string {
@@ -151,17 +142,14 @@ func (b *eventBus) Close() {
 }
 
 // Represents a router that distributes events from a source bus to multiple
-// registered destination buses. Supports both targeted and broadcast delivery
-// based on the receiver string of the event.
+// registered destination buses.
 type Fanout interface {
 	// Registers a destination bus under the specified id for event routing.
 	Register(id string, bus EventBus)
 	// Removes the bus with the specified id from event routing.
 	Deregister(id string)
-	// Retrieves an event from the source bus and routes it to the appropriate
-	// destination. Sends to a single bus if the event has a receiver, or broadcasts
-	// to all buses if the receiver is empty. Returns an ErrClosedBUs if the source
-	// bus is closed.
+	// Retrieves an event from the source bus and distributes it to all registered
+	// target event buses. Returns an ErrClosedBUs if the source bus is closed.
 	Poll() error
 }
 
@@ -174,8 +162,7 @@ type fanout struct {
 var _ Fanout = &fanout{}
 
 // Returns a new fanout router that distributes events from the source bus to
-// registered destinations. Events with a receiver id are sent only to that
-// destination, events without a receiver are broadcast to all destinations.
+// registered destinations.
 func NewFanout(src EventBus) *fanout {
 	return &fanout{
 		src:    src,
@@ -210,17 +197,6 @@ func (f *fanout) dispatch(event Event) {
 		routes[k] = v
 	}
 	f.lock.RUnlock()
-
-	// targeted dispatch
-	if !event.Broadcast() {
-		sender := event.Sender()
-		if bus := routes[sender]; bus != nil {
-			if err := bus.Send(event); err == ErrClosedBus {
-				f.Deregister(sender)
-			}
-		}
-		return
-	}
 
 	// broadcast
 	for id, bus := range routes {
