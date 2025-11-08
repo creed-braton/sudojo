@@ -19,8 +19,7 @@ func (p *payload) Marshal() ([]byte, error) {
 }
 
 func TestEvent(t *testing.T) {
-	eventType, sender, trace, errorMsg := "test-event", "test-sender", "test-trace", "test-error"
-	broadcast := true
+	eventType, sender, trace, errorMsg, broadcast := "test-event", "test-sender", "test-trace", "test-error", true
 	e := New(eventType, sender, trace, errorMsg, broadcast, &payload{})
 
 	if e.Type() != eventType {

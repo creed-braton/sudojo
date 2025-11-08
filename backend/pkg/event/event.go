@@ -19,11 +19,17 @@ type Payload interface {
 // Represents a message containing type, sender, receiver, trace id, error
 // message, and a payload. Provides methods for accessing event metadata.
 type Event interface {
+	// Type of the event.
 	Type() string
+	// Entity causing the event.
 	Sender() string
+	// Flag wether or not the event shall be broadcasted in a Fanout.
 	Broadcast() bool
+	// Trace id of the event to keep track of it.
 	Trace() string
+	// Error message if event could not be properly processed.
 	Error() string
+	// Data attached ot the event.
 	Payload() Payload
 }
 
