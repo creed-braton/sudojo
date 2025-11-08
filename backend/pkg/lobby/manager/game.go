@@ -9,15 +9,19 @@ import (
 	"sudojo/pkg/sudoku"
 )
 
-type gameState struct {
-	Current sudoku.Sudoku `json:"current"`
-	Initial sudoku.Sudoku `json:"initial,omitempty"`
+type gamePayload struct {
+	Current  sudoku.Sudoku `json:"current,omitempty"`
+	Initial  sudoku.Sudoku `json:"initial,omitempty"`
+	Row      *int          `json:"row,omitempty"`
+	Column   *int          `json:"column,omitempty"`
+	Value    *int          `json:"value,omitempty"`
+	Conflict string        `json:"conflict,omitempty"`
 }
 
-func (p *gameState) Marshal() ([]byte, error) {
+func (p *gamePayload) Marshal() ([]byte, error) {
 	b, err := json.Marshal(p)
 	if err != nil {
-		return nil, fmt.Errorf("error serializing game state: %v", err)
+		return nil, fmt.Errorf("error serializing game payload: %v", err)
 	}
 	return b, nil
 }
@@ -51,8 +55,8 @@ func (m *gameManager) Strict() bool {
 }
 
 func (m *gameManager) State(p player.Player) error {
-	payload := &gameState{Current: m.game.Current(), Initial: m.game.Initial()}
-	e := event.New("state", p.Token(), "", "", payload)
+	payload := &gamePayload{Current: m.game.Current(), Initial: m.game.Initial()}
+	e := event.New(event.StateEvent, p.Token(), "", "", payload)
 	return p.Send(e)
 }
 

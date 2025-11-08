@@ -5,6 +5,14 @@ import (
 	"sync"
 )
 
+const (
+	LeaveEvent  = "leave"
+	JoinEvent   = "join"
+	StateEvent  = "state"
+	InsertEvent = "insert"
+	PingEvent   = "ping"
+)
+
 var (
 	ErrClosedBus = errors.New("event bus is closed")
 	ErrFullBus   = errors.New("event bus is full")

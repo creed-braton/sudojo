@@ -41,16 +41,31 @@ func New(
 	bus := event.NewEventBus()
 	fanout := event.NewFanout(bus)
 
-	p := manager.NewPlayerManager(players, maxPlayer, bus, fanout)
-	g := manager.NewGameManager(game, bus, strict)
+	return &lobby{
+		id:            id,
+		bus:           bus,
+		poll:          fanout.Poll,
+		lastEvent:     time.Now().UTC().Unix(),
+		playerManager: manager.NewPlayerManager(players, maxPlayer, bus, fanout),
+		gameManager:   manager.NewGameManager(game, bus, strict),
+	}
+}
+
+func Open(maxPlayer int, strict bool) *lobby {
+	seed := time.Now().UTC().UnixNano()
+	game := game.Generate(seed)
+	players := make(map[string]string)
+
+	bus := event.NewEventBus()
+	fanout := event.NewFanout(bus)
 
 	return &lobby{
 		id:            uuid.NewString(),
 		bus:           bus,
 		poll:          fanout.Poll,
 		lastEvent:     time.Now().UTC().Unix(),
-		playerManager: p,
-		gameManager:   g,
+		playerManager: manager.NewPlayerManager(players, maxPlayer, bus, fanout),
+		gameManager:   manager.NewGameManager(game, bus, strict),
 	}
 }
 

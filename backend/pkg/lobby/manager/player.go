@@ -20,12 +20,12 @@ type status struct {
 	Active bool   `json:"active"`
 }
 
-type playerState []*status
+type playerPayload []*status
 
-func (p *playerState) Marshal() ([]byte, error) {
+func (p *playerPayload) Marshal() ([]byte, error) {
 	b, err := json.Marshal(p)
 	if err != nil {
-		return nil, fmt.Errorf("error serializing player state: %v", err)
+		return nil, fmt.Errorf("error serializing player payload: %v", err)
 	}
 	return b, nil
 }
@@ -69,14 +69,14 @@ func NewPlayerManager(
 	}
 }
 
-func (m *playerManager) sortedPlayers() *playerState {
+func (m *playerManager) sortedPlayers() *playerPayload {
 	tokens := make([]string, 0, len(m.players))
 	for token := range m.players {
 		tokens = append(tokens, token)
 	}
 	sort.Strings(tokens)
 
-	var players playerState
+	var players playerPayload
 	for _, token := range tokens {
 		players = append(players, m.players[token])
 	}
@@ -123,7 +123,7 @@ func (m *playerManager) Join(token, name string) (player.Player, error) {
 	m.fanout.Register(token, bus)
 	p := player.New(token, name, bus)
 
-	e := event.New("join", p.Token(), "", "", m.sortedPlayers())
+	e := event.New(event.JoinEvent, p.Token(), "", "", m.sortedPlayers())
 	err := m.bus.Send(e)
 
 	return p, err
@@ -142,7 +142,7 @@ func (m *playerManager) Leave(p player.Player) error {
 	}
 	s.Active = false
 
-	e := event.New("leave", p.Token(), "", "", m.sortedPlayers())
+	e := event.New(event.LeaveEvent, p.Token(), "", "", m.sortedPlayers())
 
 	return m.bus.Send(e)
 }
