@@ -15,13 +15,14 @@ var (
 	ErrPlayerNotFound = errors.New("player not found in lobby")
 )
 
-type status struct {
+type metadata struct {
 	Name   string `json:"name"`
 	Active bool   `json:"active"`
 }
 
-type playerPayload []*status
+type playerPayload []*metadata
 
+// Serializes the player payload into bytes.
 func (p *playerPayload) Marshal() ([]byte, error) {
 	b, err := json.Marshal(p)
 	if err != nil {
@@ -30,15 +31,24 @@ func (p *playerPayload) Marshal() ([]byte, error) {
 	return b, nil
 }
 
+// Represents a manager for handling player operations in a lobby including
+// creation, joining, and leaving of players.
 type Player interface {
+	// Returns the maximum number of players allowed.
 	MaxPlayer() int
+	// Creates a new player slot with the given name. Returns the player token
+	// or ErrLobbyFull if maximum capacity is reached.
 	Create(name string) (string, error)
+	// Activates the player with the given token, registers them in the fanout,
+	// and broadcasts a join event. Returns ErrPlayerNotFound if token is invalid.
 	Join(token, name string) (player.Player, error)
+	// Deactivates the player, deregisters them from the fanout, closes their
+	// bus, and broadcasts a leave event. Returns ErrPlayerNotFound if token is invalid.
 	Leave(p player.Player) error
 }
 
 type playerManager struct {
-	players   map[string]*status
+	players   map[string]*metadata
 	maxPlayer int
 	lock      sync.RWMutex
 	bus       event.EventBus
@@ -47,15 +57,17 @@ type playerManager struct {
 
 var _ Player = &playerManager{}
 
+// Returns a new player manager initialized with the provided players map,
+// max player limit, event bus, and fanout router.
 func NewPlayerManager(
 	players map[string]string,
 	maxPlayer int,
 	bus event.EventBus,
 	fanout event.Fanout,
 ) *playerManager {
-	statusMap := make(map[string]*status)
+	statusMap := make(map[string]*metadata)
 	for token, name := range players {
-		statusMap[token] = &status{
+		statusMap[token] = &metadata{
 			Name:   name,
 			Active: false,
 		}
@@ -69,6 +81,7 @@ func NewPlayerManager(
 	}
 }
 
+// Returns player metadata sorted alphabetically by token.
 func (m *playerManager) sortedPlayers() *playerPayload {
 	tokens := make([]string, 0, len(m.players))
 	for token := range m.players {
@@ -101,7 +114,7 @@ func (m *playerManager) Create(name string) (string, error) {
 	}
 
 	token := player.NewToken()
-	m.players[token] = &status{
+	m.players[token] = &metadata{
 		Name:   name,
 		Active: false,
 	}
