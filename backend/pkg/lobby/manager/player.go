@@ -15,12 +15,12 @@ var (
 	ErrPlayerNotFound = errors.New("player not found in lobby")
 )
 
-type metadata struct {
+type status struct {
 	Name   string `json:"name"`
 	Active bool   `json:"active"`
 }
 
-type playerPayload []*metadata
+type playerPayload []*status
 
 // Serializes the player payload into bytes.
 func (p *playerPayload) Marshal() ([]byte, error) {
@@ -48,7 +48,7 @@ type Player interface {
 }
 
 type playerManager struct {
-	players   map[string]*metadata
+	players   map[string]*status
 	maxPlayer int
 	lock      sync.RWMutex
 	bus       event.EventBus
@@ -65,9 +65,9 @@ func NewPlayerManager(
 	bus event.EventBus,
 	fanout event.Fanout,
 ) *playerManager {
-	statusMap := make(map[string]*metadata)
+	statusMap := make(map[string]*status)
 	for token, name := range players {
-		statusMap[token] = &metadata{
+		statusMap[token] = &status{
 			Name:   name,
 			Active: false,
 		}
@@ -81,7 +81,7 @@ func NewPlayerManager(
 	}
 }
 
-// Returns player metadata sorted alphabetically by token.
+// Returns player status sorted alphabetically by token.
 func (m *playerManager) sortedPlayers() *playerPayload {
 	tokens := make([]string, 0, len(m.players))
 	for token := range m.players {
@@ -114,7 +114,7 @@ func (m *playerManager) Create(name string) (string, error) {
 	}
 
 	token := player.NewToken()
-	m.players[token] = &metadata{
+	m.players[token] = &status{
 		Name:   name,
 		Active: false,
 	}

@@ -258,6 +258,38 @@ func TestFanout(t *testing.T) {
 		time.Sleep(3 * time.Second)
 	})
 
+	t.Run("re-register existing id", func(t *testing.T) {
+		src := NewEventBus()
+		defer src.Close()
+		fanout := NewFanout(src)
+
+		id := "test-id"
+		old := NewEventBus()
+		fanout.Register(id, old)
+		bus := NewEventBus()
+		fanout.Register(id, bus)
+		if err := src.Send(New("", "", "", "", nil)); err != nil {
+			t.Fatalf("unexpected error sending event: %v", err)
+		}
+		if err := fanout.Poll(); err != nil {
+			t.Fatalf("unexpected error polling fanout: %v", err)
+		}
+
+		if _, err := old.Receive(); err == nil {
+			t.Errorf("expected '%v', got nil", ErrClosedBus)
+		} else if err != ErrClosedBus {
+			t.Errorf("expected '%v', got: %v", ErrClosedBus, err)
+		}
+
+		e, err := bus.Receive()
+		if err != nil {
+			t.Errorf("unexpected error receiving event: %v", err)
+		}
+		if e == nil {
+			t.Error("expected event got nil")
+		}
+	})
+
 	t.Run("closed target event bus", func(t *testing.T) {
 		src := NewEventBus()
 		defer src.Close()
