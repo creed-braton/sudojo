@@ -1,6 +1,7 @@
 package socket
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sync"
@@ -20,8 +21,16 @@ const (
 )
 
 var (
-	rateLimitMsg = []byte("{ \"type\": \"system\", \"error\": \"rate limit exceeded\" }")
+	rateLimitMsg = []byte(`{"type":"system","error":"rate limit exceeded"}`)
+	invalidMsg   = []byte(`{"type":"system","error":"bad request"}`)
 )
+
+type Message struct {
+	Type    string `json:"type"`
+	Trace   string `json:"trace_id,omitempty"`
+	Error   string `json:"error,omitempty"`
+	Payload []byte `json:"payload,omitempty"`
+}
 
 // Represents a WebSocket client connection. Provides methods for sending and
 // receiving messages, as well as pumping messages through the internal channels.
@@ -39,16 +48,17 @@ type Client interface {
 	// based on pong messages.
 	ReadPump() error
 	// Queues non-blockingly message into internal channel to be sent to the client.
-	// Drops messages when internal channel is full.
-	Send(msg []byte)
+	// Drops messages when internal channel is full. Returns error if message could
+	// not be serialized into bytes.
+	Send(msg *Message) error
 	// Retrieves blockingly next message from the client. Returns error if read
 	// channel has been closed.
-	Receive() ([]byte, error)
+	Receive() (*Message, error)
 }
 
 type client struct {
 	id      string
-	read    chan []byte
+	read    chan *Message
 	write   chan []byte
 	cross   chan []byte
 	conn    *websocket.Conn
@@ -64,7 +74,7 @@ var _ Client = &client{}
 func NewClient(conn *websocket.Conn) *client {
 	return &client{
 		id:      uuid.NewString(),
-		read:    make(chan []byte, 256),
+		read:    make(chan *Message, 256),
 		write:   make(chan []byte, 256),
 		cross:   make(chan []byte, 256),
 		conn:    conn,
@@ -131,7 +141,7 @@ func (c *client) ReadPump() error {
 
 	for {
 		c.conn.SetReadDeadline(time.Now().Add(readDeadline * time.Second))
-		t, msg, err := c.conn.ReadMessage()
+		t, b, err := c.conn.ReadMessage()
 		if err != nil {
 			return fmt.Errorf("failed receiving message: %v", err)
 		}
@@ -148,18 +158,34 @@ func (c *client) ReadPump() error {
 			continue
 		}
 
+		msg := &Message{}
+		if err := json.Unmarshal(b, msg); err != nil || len(msg.Type) < 1 {
+			select {
+			case c.cross <- invalidMsg:
+			default:
+			}
+			continue
+		}
+
 		c.read <- msg
 	}
 }
 
-func (c *client) Send(msg []byte) {
+func (c *client) Send(msg *Message) error {
+	b, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
+
 	select {
-	case c.write <- msg:
+	case c.write <- b:
 	default:
 	}
+
+	return nil
 }
 
-func (c *client) Receive() ([]byte, error) {
+func (c *client) Receive() (*Message, error) {
 	msg, ok := <-c.read
 	if !ok {
 		return nil, errors.New("read buffer has been closed")

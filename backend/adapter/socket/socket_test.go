@@ -1,6 +1,7 @@
 package socket
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -50,11 +51,15 @@ func setupClient() (string, func()) {
 		go func() {
 			defer conn.Close()
 			for {
-				_, msg, err := conn.ReadMessage()
+				_, b, err := conn.ReadMessage()
 				if err != nil {
 					return
 				}
-				if string(msg) == "close" {
+				msg := &Message{}
+				if err := json.Unmarshal(b, msg); err != nil {
+					return
+				}
+				if msg.Type == "close" {
 					return
 				}
 			}
@@ -84,17 +89,27 @@ func TestConnection(t *testing.T) {
 			defer conn.Close()
 
 			for range numMsg {
-				want := uuid.NewString()
-				if err := conn.WriteMessage(websocket.TextMessage, []byte(want)); err != nil {
+				want := &Message{Type: uuid.NewString()}
+				b, err := json.Marshal(want)
+				if err != nil {
+					t.Errorf("serialize message error: %v", err)
+					continue
+				}
+				if err := conn.WriteMessage(websocket.TextMessage, b); err != nil {
 					t.Errorf("write message error: %v", err)
+					continue
 				}
 				_, msg, err := conn.ReadMessage()
 				if err != nil {
 					t.Errorf("read message error: %v", err)
+					continue
 				}
-				got := string(msg)
-				if got != want {
-					t.Errorf("expected: '%s', got: '%s'", want, got)
+				got := &Message{}
+				if err := json.Unmarshal(msg, got); err != nil {
+					t.Errorf("deserialize message error: %v", err)
+				}
+				if got.Type != want.Type {
+					t.Errorf("expected: '%s', got: '%s'", want.Type, got.Type)
 				}
 			}
 		}()
@@ -135,7 +150,7 @@ func TestTermination(t *testing.T) {
 			wg.Done()
 		}()
 
-		client.Send([]byte("close"))
+		client.Send(&Message{Type: "close"})
 		wg.Wait()
 	})
 
