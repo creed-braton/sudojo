@@ -6,16 +6,17 @@ import (
 )
 
 const (
+	SystemEvent = "system"
 	LeaveEvent  = "leave"
 	JoinEvent   = "join"
 	StateEvent  = "state"
 	InsertEvent = "insert"
 	PingEvent   = "ping"
+	bufferSize  = 256
 )
 
 var (
-	ErrClosedBus = errors.New("event bus is closed")
-	ErrFullBus   = errors.New("event bus is full")
+	ErrClosedChan = errors.New("event channel is closed")
 )
 
 // Represents arbitrary data carried within an event.
@@ -24,8 +25,8 @@ type Payload interface {
 	Marshal() ([]byte, error)
 }
 
-// Represents a message containing type, sender, receiver, trace id, error
-// message, and a payload. Provides methods for accessing event metadata.
+// Represents a message containing type, sender, receiver, trace ID,
+// error message, broadcast flag and a payload.
 type Event interface {
 	// Type of the event.
 	Type() string
@@ -35,6 +36,8 @@ type Event interface {
 	Trace() string
 	// Error message if event could not be properly processed.
 	Error() string
+	// Flag wether event should be broadcasted to all consumers.
+	Broadcast() bool
 	// Data attached ot the event.
 	Payload() Payload
 }
@@ -44,18 +47,23 @@ type event struct {
 	sender    string
 	trace     string
 	errorMsg  string
+	broadcast bool
 	payload   Payload
 }
 
 var _ Event = &event{}
 
-// Returns a new event with the provided type, sender, trace id, error message, and payload.
-func New(eventType, sender, trace, errorMsg string, payload Payload) *event {
+// Returns a new event with the provided properties.
+func New(
+	eventType, sender, trace, errorMsg string,
+	broadcast bool, payload Payload,
+) *event {
 	return &event{
 		sender:    sender,
 		trace:     trace,
 		eventType: eventType,
 		errorMsg:  errorMsg,
+		broadcast: broadcast,
 		payload:   payload,
 	}
 }
@@ -76,156 +84,166 @@ func (e *event) Error() string {
 	return e.errorMsg
 }
 
+func (e *event) Broadcast() bool {
+	return e.broadcast
+}
+
 func (e *event) Payload() Payload {
 	return e.payload
 }
 
-const (
-	eventBusSize = 256
-)
-
-// Represents a channel for sending and receiving events. Provides thread-safe
-// methods for event transmission and supports graceful shutdown.
-type EventBus interface {
-	// Sends an event to the bus. Returns ErrFullBus if the buffer is full
-	// or ErrClosedBus if the bus has been closed.
-	Send(event Event) error
-	// Receives an event from the bus, blocking until one is available.
-	// Returns ErrClosedBus if the bus has been closed.
+// Represents channel for events with non-blocking and blocking communication operations.
+type EventChan interface {
+	// Queues event non-blockingly in the channel. Drops event if channel is full.
+	Send(e Event)
+	// Retrieves event non-blockingly from the channel. Returns ErrClosedChan if
+	// channel has been closed.
+	NonBlockRecv() (Event, error)
+	// Retrieves event blockingly from the channel. Returns ErrClosedChan if
+	// channel has been closed.
 	Receive() (Event, error)
-	// Closes the event bus, preventing further sends and receives.
+	// Closes the channel.
+	Close()
+}
+
+type eventChan struct {
+	ch   chan Event
+	once sync.Once
+}
+
+var _ EventChan = &eventChan{}
+
+func NewEventChan() *eventChan {
+	return &eventChan{ch: make(chan Event, bufferSize)}
+}
+
+func (ch *eventChan) Send(e Event) {
+	select {
+	case ch.ch <- e:
+	default:
+	}
+}
+
+func (ch *eventChan) NonBlockRecv() (Event, error) {
+	select {
+	case e, ok := <-ch.ch:
+		if !ok {
+			return nil, ErrClosedChan
+		}
+		return e, nil
+	default:
+	}
+	return nil, nil
+}
+
+func (ch *eventChan) Receive() (Event, error) {
+	e, ok := <-ch.ch
+	if !ok {
+		return nil, ErrClosedChan
+	}
+	return e, nil
+}
+
+func (ch *eventChan) Close() {
+	ch.once.Do(func() {
+		close(ch.ch)
+	})
+}
+
+// Represents a communication hub connecting event publishers and subscribers.
+type EventBus interface {
+	// Registers a new publisher and subscriber pair under the given identifier.
+	// If present closes old subscriber channel under the identifier.
+	Register(id string, pub, sub EventChan)
+	// Deregisters the publisher and subscriber associated with the given identifier.
+	// Also closes subscriber channel.
+	Deregister(id string)
+	// Pumps events from all publishers and dispatches them to corresponding subscribers.
+	Pump()
+	// Closes the bus and all registered subscribers.
 	Close()
 }
 
 type eventBus struct {
-	events chan Event
-	lock   sync.RWMutex
-	once   sync.Once
-	closed chan struct{}
+	publisher  map[string]EventChan
+	subscriber map[string]EventChan
+	lock       sync.Mutex
+	once       sync.Once
 }
 
 var _ EventBus = &eventBus{}
 
-// Returns a new event bus with a buffer size of 256 events.
 func NewEventBus() *eventBus {
 	return &eventBus{
-		events: make(chan Event, eventBusSize),
-		closed: make(chan struct{}),
+		publisher:  make(map[string]EventChan),
+		subscriber: make(map[string]EventChan),
 	}
 }
 
-func (b *eventBus) Send(event Event) error {
-	b.lock.RLock()
-	defer b.lock.RUnlock()
+func (b *eventBus) Register(id string, pub, sub EventChan) {
+	b.lock.Lock()
+	defer b.lock.Unlock()
 
-	select {
-	case <-b.closed:
-		return ErrClosedBus
-	default:
+	delete(b.publisher, id)
+	if s, exist := b.subscriber[id]; exist {
+		delete(b.subscriber, id)
+		s.Close()
 	}
 
-	select {
-	case b.events <- event:
-		return nil
-	default:
-		return ErrFullBus
+	b.publisher[id] = pub
+	b.subscriber[id] = sub
+}
+
+func (b *eventBus) Deregister(id string) {
+	b.lock.Lock()
+	defer b.lock.Unlock()
+
+	if s, exist := b.subscriber[id]; exist {
+		delete(b.subscriber, id)
+		s.Close()
 	}
 }
 
-func (b *eventBus) Receive() (Event, error) {
-	event, ok := <-b.events
-	if !ok {
-		return nil, ErrClosedBus
+func (b *eventBus) dispatch(e Event) {
+	if e.Broadcast() {
+		for _, s := range b.subscriber {
+			s.Send(e)
+		}
+	} else {
+		if s, exist := b.subscriber[e.Sender()]; exist {
+			s.Send(e)
+		}
 	}
-	return event, nil
+}
+
+func (b *eventBus) Pump() {
+	b.lock.Lock()
+	defer b.lock.Unlock()
+
+	for id, p := range b.publisher {
+		e, err := p.NonBlockRecv()
+		if err != nil {
+			delete(b.publisher, id)
+			if sub, exist := b.subscriber[id]; exist {
+				delete(b.subscriber, id)
+				sub.Close()
+			}
+			continue
+		}
+		if e != nil {
+			b.dispatch(e)
+		}
+	}
 }
 
 func (b *eventBus) Close() {
 	b.once.Do(func() {
 		b.lock.Lock()
-		close(b.closed)
-		close(b.events)
-		b.lock.Unlock()
-	})
-}
+		defer b.lock.Unlock()
 
-// Represents a router that distributes events from a source bus to multiple
-// registered destination buses.
-type Fanout interface {
-	// Registers a destination bus under the specified id for event routing.
-	Register(id string, bus EventBus)
-	// Removes the bus with the specified id from event routing.
-	Deregister(id string)
-	// Retrieves an event from the source bus and distributes it to all registered
-	// target event buses. Returns an ErrClosedBUs if the source bus is closed.
-	Poll() error
-}
-
-type fanout struct {
-	src    EventBus
-	lock   sync.RWMutex
-	routes map[string]EventBus
-}
-
-var _ Fanout = &fanout{}
-
-// Returns a new fanout router that distributes events from the source bus to
-// registered destinations.
-func NewFanout(src EventBus) *fanout {
-	return &fanout{
-		src:    src,
-		routes: make(map[string]EventBus),
-	}
-}
-
-func (f *fanout) Register(id string, bus EventBus) {
-	f.lock.Lock()
-	if bus := f.routes[id]; bus != nil {
-		bus.Close()
-	}
-	f.routes[id] = bus
-	f.lock.Unlock()
-}
-
-func (f *fanout) Deregister(id string) {
-	f.lock.Lock()
-	delete(f.routes, id)
-	f.lock.Unlock()
-}
-
-func (f *fanout) close() {
-	f.lock.RLock()
-	defer f.lock.RUnlock()
-	for _, bus := range f.routes {
-		bus.Close()
-	}
-}
-
-func (f *fanout) dispatch(event Event) {
-	f.lock.RLock()
-	routes := make(map[string]EventBus, len(f.routes))
-	for k, v := range f.routes {
-		routes[k] = v
-	}
-	f.lock.RUnlock()
-
-	// broadcast
-	for id, bus := range routes {
-		if err := bus.Send(event); err == ErrClosedBus {
-			f.Deregister(id)
+		for id, s := range b.subscriber {
+			delete(b.subscriber, id)
+			s.Close()
 		}
-	}
-}
-
-func (f *fanout) Poll() error {
-	event, err := f.src.Receive()
-	// stop when source bus has been closed
-	if err == ErrClosedBus {
-		f.close()
-	}
-	if err != nil {
-		return err
-	}
-	f.dispatch(event)
-	return nil
+	})
 }

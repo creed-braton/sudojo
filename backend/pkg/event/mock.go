@@ -1,50 +1,36 @@
 package event
 
-type mockEventBus struct {
-	send func(e Event) error
+type mockEventChan struct {
 	recv func() (Event, error)
+}
+
+var _ EventChan = &mockEventChan{}
+
+func NewMockEventChan(recv func() (Event, error)) *mockEventChan {
+	return &mockEventChan{recv: recv}
+}
+
+func (ch *mockEventChan) Send(e Event) {}
+
+func (ch *mockEventChan) NonBlockRecv() (Event, error) {
+	return ch.recv()
+}
+
+func (ch *mockEventChan) Receive() (Event, error) {
+	return ch.recv()
+}
+
+func (ch *mockEventChan) Close() {}
+
+type mockEventBus struct {
 }
 
 var _ EventBus = &mockEventBus{}
 
-func NewMockEventBus(send func(e Event) error, recv func() (Event, error)) *mockEventBus {
-	return &mockEventBus{send: send, recv: recv}
-}
+func (b *mockEventBus) Register(id string, pub, sub EventChan) {}
 
-func (b *mockEventBus) Send(e Event) error {
-	return b.send(e)
-}
+func (b *mockEventBus) Deregister(id string) {}
 
-func (b *mockEventBus) Receive() (Event, error) {
-	return b.recv()
-}
+func (b *mockEventBus) Pump() {}
 
 func (b *mockEventBus) Close() {}
-
-type mockFanout struct {
-	register   func(id string, bus EventBus)
-	deregister func(id string)
-	poll       func() error
-}
-
-var _ Fanout = &mockFanout{}
-
-func NewMockFanout(
-	register func(id string, bus EventBus),
-	deregister func(id string),
-	poll func() error,
-) *mockFanout {
-	return &mockFanout{register: register, deregister: deregister, poll: poll}
-}
-
-func (f *mockFanout) Register(id string, bus EventBus) {
-	f.register(id, bus)
-}
-
-func (f *mockFanout) Deregister(id string) {
-	f.deregister(id)
-}
-
-func (f *mockFanout) Poll() error {
-	return f.poll()
-}
