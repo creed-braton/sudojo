@@ -39,6 +39,7 @@ type player struct {
 
 var _ Player = &player{}
 
+// Creates a new player with the given token and name.
 func New(token, name string) *player {
 	return &player{token: token, name: name}
 }
@@ -86,10 +87,20 @@ func validName(name string) error {
 	return nil
 }
 
+// Controls player allocation, validates capacity, and updates
+// player activity when joining or leaving.
 type Pool interface {
+	// Returns the maximum number of players allowed in the pool.
 	MaxSize() int
-	Create(name string) error
+	// Creates a new inactive player with the given name and returns
+	// his secret token for authentication. Returns an error if the
+	// name is invalid or the pool is full.
+	Create(name string) (string, error)
+	// Marks the player as active and registers its event channels.
+	// Returns all players in sorted order or an error if not found.
 	Join(token string, pub, sub event.EventChan) ([]Player, error)
+	// Marks the player as inactive and removes it from the event bus.
+	// Returns all players in sorted order or an error if not found.
 	Leave(token string) ([]Player, error)
 }
 
@@ -102,10 +113,17 @@ type pool struct {
 
 var _ Pool = &pool{}
 
-func NewPlayerPool(maxSize int, bus event.EventBus) *pool {
+// Creates a player pool with a fixed maximum size, shared event bus and
+// map with tokens to name which is used for the initial player population.
+func NewPlayerPool(init map[string]string, maxSize int, bus event.EventBus) *pool {
+	players := make(map[string]Player, maxSize)
+	for token, name := range init {
+		players[token] = New(token, name)
+	}
+
 	return &pool{
 		maxSize: maxSize,
-		players: make(map[string]Player, maxSize),
+		players: players,
 		bus:     bus,
 	}
 }
@@ -114,22 +132,22 @@ func (p *pool) MaxSize() int {
 	return p.maxSize
 }
 
-func (p *pool) Create(name string) error {
+func (p *pool) Create(name string) (string, error) {
 	if err := validName(name); err != nil {
-		return err
+		return "", err
 	}
 
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	if p.maxSize >= len(p.players) {
-		return ErrPoolFull
+	if p.maxSize <= len(p.players) {
+		return "", ErrPoolFull
 	}
 
 	token := newToken()
 	player := New(token, name)
 	p.players[token] = player
-	return nil
+	return token, nil
 }
 
 func (p *pool) sortedPlayers() []Player {
