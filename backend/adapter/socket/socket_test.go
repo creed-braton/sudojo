@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sudojo/pkg/event"
 	"sync"
 	"testing"
 
@@ -31,7 +32,7 @@ func setupServer() (string, func()) {
 					client.Close()
 					return
 				}
-				client.Send(msg)
+				client.Send(event.New("", "", msg.Trace, "", false, event.NewMockPayload()))
 			}
 		}()
 	}))
@@ -55,7 +56,7 @@ func setupClient() (string, func()) {
 				if err != nil {
 					return
 				}
-				msg := &Message{}
+				msg := &message{}
 				if err := json.Unmarshal(b, msg); err != nil {
 					return
 				}
@@ -89,7 +90,8 @@ func TestConnection(t *testing.T) {
 			defer conn.Close()
 
 			for range numMsg {
-				want := &Message{Type: uuid.NewString()}
+				row, col := 0, 0
+				want := &message{Type: "ping", Trace: uuid.NewString(), Row: &row, Column: &col}
 				b, err := json.Marshal(want)
 				if err != nil {
 					t.Errorf("serialize message error: %v", err)
@@ -104,12 +106,12 @@ func TestConnection(t *testing.T) {
 					t.Errorf("read message error: %v", err)
 					continue
 				}
-				got := &Message{}
+				got := &message{}
 				if err := json.Unmarshal(msg, got); err != nil {
 					t.Errorf("deserialize message error: %v", err)
 				}
-				if got.Type != want.Type {
-					t.Errorf("expected: '%s', got: '%s'", want.Type, got.Type)
+				if got.Trace != want.Trace {
+					t.Errorf("expected: '%s', got: '%s'", want.Trace, got.Trace)
 				}
 			}
 		}()
@@ -150,7 +152,7 @@ func TestTermination(t *testing.T) {
 			wg.Done()
 		}()
 
-		client.Send(&Message{Type: "close"})
+		client.Send(event.New("close", "", "", "", false, event.NewMockPayload()))
 		wg.Wait()
 	})
 

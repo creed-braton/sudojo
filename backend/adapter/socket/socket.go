@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sudojo/pkg/event"
+	"sudojo/pkg/sudoku"
 	"sync"
 	"time"
 
@@ -22,14 +24,20 @@ const (
 
 var (
 	rateLimitMsg = []byte(`{"type":"system","error":"rate limit exceeded"}`)
-	invalidMsg   = []byte(`{"type":"system","error":"bad request"}`)
+	invalidMsg   = []byte(`{"type":"system","error":"invalid message format"}`)
 )
 
-type Message struct {
-	Type    string `json:"type"`
-	Trace   string `json:"trace_id,omitempty"`
-	Error   string `json:"error,omitempty"`
-	Payload []byte `json:"payload,omitempty"`
+type message struct {
+	Type     string                `json:"type"`
+	Trace    string                `json:"trace_id,omitempty"`
+	Error    string                `json:"error,omitempty"`
+	Current  sudoku.Sudoku         `json:"current_state,omitempty"`
+	Initial  sudoku.Sudoku         `json:"initial_state,omitempty"`
+	Conflict string                `json:"conflict,omitempty"`
+	Row      *int                  `json:"row,omitempty"`
+	Column   *int                  `json:"column,omitempty"`
+	Value    *int                  `json:"value,omitempty"`
+	Players  []*event.PlayerStatus `json:"players,omitempty"`
 }
 
 // Represents a WebSocket client connection. Provides methods for sending and
@@ -47,18 +55,18 @@ type Client interface {
 	// internal channel. Enforces rate limiting and updates the read deadline
 	// based on pong messages.
 	ReadPump() error
-	// Queues non-blockingly message into internal channel to be sent to the client.
-	// Drops messages when internal channel is full. Returns error if message could
+	// Queues non-blockingly event into internal channel to be sent to the client.
+	// Drops messages when internal channel is full. Returns error if event could
 	// not be serialized into bytes.
-	Send(msg *Message) error
+	Send(e event.Event) error
 	// Retrieves blockingly next message from the client. Returns error if read
 	// channel has been closed.
-	Receive() (*Message, error)
+	Receive() (*message, error)
 }
 
 type client struct {
 	id      string
-	read    chan *Message
+	read    chan *message
 	write   chan []byte
 	cross   chan []byte
 	conn    *websocket.Conn
@@ -74,7 +82,7 @@ var _ Client = &client{}
 func NewClient(conn *websocket.Conn) *client {
 	return &client{
 		id:      uuid.NewString(),
-		read:    make(chan *Message, 256),
+		read:    make(chan *message, 256),
 		write:   make(chan []byte, 256),
 		cross:   make(chan []byte, 256),
 		conn:    conn,
@@ -158,8 +166,32 @@ func (c *client) ReadPump() error {
 			continue
 		}
 
-		msg := &Message{}
+		msg := &message{}
 		if err := json.Unmarshal(b, msg); err != nil || len(msg.Type) < 1 {
+			select {
+			case c.cross <- invalidMsg:
+			default:
+			}
+			continue
+		}
+
+		if msg.Type == event.InsertEvent {
+			if msg.Row == nil || msg.Column == nil || msg.Value == nil {
+				select {
+				case c.cross <- invalidMsg:
+				default:
+				}
+				continue
+			}
+		} else if msg.Type == event.PingEvent {
+			if msg.Row == nil || msg.Column == nil {
+				select {
+				case c.cross <- invalidMsg:
+				default:
+				}
+				continue
+			}
+		} else if msg.Type != event.StateEvent {
 			select {
 			case c.cross <- invalidMsg:
 			default:
@@ -171,7 +203,19 @@ func (c *client) ReadPump() error {
 	}
 }
 
-func (c *client) Send(msg *Message) error {
+func (c *client) Send(e event.Event) error {
+	msg := &message{
+		Type:     e.Type(),
+		Trace:    e.Trace(),
+		Error:    e.Error(),
+		Current:  e.Payload().Current(),
+		Initial:  e.Payload().Initial(),
+		Conflict: e.Payload().Conflict(),
+		Row:      e.Payload().Row(),
+		Column:   e.Payload().Column(),
+		Value:    e.Payload().Value(),
+		Players:  e.Payload().Players(),
+	}
 	b, err := json.Marshal(msg)
 	if err != nil {
 		return err
@@ -185,7 +229,7 @@ func (c *client) Send(msg *Message) error {
 	return nil
 }
 
-func (c *client) Receive() (*Message, error) {
+func (c *client) Receive() (*message, error) {
 	msg, ok := <-c.read
 	if !ok {
 		return nil, errors.New("read buffer has been closed")

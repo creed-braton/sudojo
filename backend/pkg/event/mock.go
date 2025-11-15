@@ -1,5 +1,41 @@
 package event
 
+import "sudojo/pkg/sudoku"
+
+type mockPayload struct{}
+
+func NewMockPayload() *mockPayload {
+	return &mockPayload{}
+}
+
+func (p *mockPayload) Current() sudoku.Sudoku {
+	return nil
+}
+
+func (p *mockPayload) Initial() sudoku.Sudoku {
+	return nil
+}
+
+func (p *mockPayload) Row() *int {
+	return nil
+}
+
+func (p *mockPayload) Column() *int {
+	return nil
+}
+
+func (p *mockPayload) Value() *int {
+	return nil
+}
+
+func (p *mockPayload) Conflict() string {
+	return ""
+}
+
+func (p *mockPayload) Players() []*PlayerStatus {
+	return []*PlayerStatus{}
+}
+
 type mockEventChan struct {
 	send  func(e Event)
 	recv  func() (Event, error)

@@ -19,12 +19,6 @@ var (
 	ErrClosedChan = errors.New("event channel is closed")
 )
 
-// Represents arbitrary data carried within an event.
-type Payload interface {
-	// Serializes the data struct into bytes.
-	Marshal() ([]byte, error)
-}
-
 // Represents a message containing type, sender, receiver, trace ID,
 // error message, broadcast flag and a payload.
 type Event interface {

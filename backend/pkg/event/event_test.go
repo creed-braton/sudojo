@@ -1,23 +1,14 @@
 package event
 
 import (
-	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
 )
 
-type payload struct {
-	Msg string `json:"msg"`
-}
-
-func (p *payload) Marshal() ([]byte, error) {
-	return json.Marshal(p)
-}
-
 func TestEvent(t *testing.T) {
 	eventType, sender, trace, errorMsg, broadcast := "test-event", "test-sender", "test-trace", "test-error", true
-	e := New(eventType, sender, trace, errorMsg, broadcast, &payload{})
+	e := New(eventType, sender, trace, errorMsg, broadcast, &mockPayload{})
 
 	if e.Type() != eventType {
 		t.Errorf("event type, want: %s, got: %s", eventType, e.Type())
@@ -41,21 +32,14 @@ func TestEventChan(t *testing.T) {
 		channel := NewEventChan()
 		defer channel.Close()
 
-		want := "test-message"
-		channel.Send(New("", "", "", "", false, &payload{Msg: want}))
+		channel.Send(New("", "", "", "", false, &mockPayload{}))
 
 		e, err := channel.Receive()
 		if err != nil {
-			t.Fatalf("unexpected error receiving event: %v", err)
+			t.Errorf("unexpected error receiving event: %v", err)
 		}
-
-		p, ok := e.Payload().(*payload)
-		if !ok {
-			t.Fatalf("unexpected payload type: %T", e.Payload())
-		}
-
-		if p.Msg != want {
-			t.Errorf("want: %s, got: %s", want, p.Msg)
+		if e == nil {
+			t.Error("expected event, got nil")
 		}
 	})
 
@@ -118,7 +102,7 @@ func TestEventBus(t *testing.T) {
 		for i := range numMsg {
 			for id, pub := range publisher {
 				trace := fmt.Sprintf("%d", i)
-				e := New("test", id, trace, "", true, &payload{})
+				e := New("test", id, trace, "", true, &mockPayload{})
 				pub.Send(e)
 			}
 			bus.Pump()
@@ -158,7 +142,7 @@ func TestEventBus(t *testing.T) {
 		bus.Register(id, pub, sub)
 		bus.Register("witness", NewEventChan(), witness)
 
-		pub.Send(New("", id, "", "", false, &payload{}))
+		pub.Send(New("", id, "", "", false, &mockPayload{}))
 		bus.Pump()
 
 		e, err := sub.Receive()
@@ -203,7 +187,7 @@ func TestEventBus(t *testing.T) {
 
 			go func() {
 				for range 1000 * i {
-					pub.Send(New("", "", "", "", true, &payload{}))
+					pub.Send(New("", "", "", "", true, &mockPayload{}))
 				}
 				pub.Close()
 			}()
@@ -235,7 +219,7 @@ func TestEventBus(t *testing.T) {
 
 			go func() {
 				for {
-					pub.Send(New("", "", "", "", true, &payload{}))
+					pub.Send(New("", "", "", "", true, &mockPayload{}))
 				}
 			}()
 		}
@@ -272,7 +256,7 @@ func TestEventBus(t *testing.T) {
 
 			go func() {
 				for {
-					pub.Send(New("", "", "", "", true, &payload{}))
+					pub.Send(New("", "", "", "", true, &mockPayload{}))
 				}
 			}()
 		}
@@ -293,7 +277,7 @@ func TestEventBus(t *testing.T) {
 
 			go func() {
 				for {
-					pub.Send(New("", "", "", "", true, &payload{}))
+					pub.Send(New("", "", "", "", true, &mockPayload{}))
 				}
 			}()
 		}
@@ -314,7 +298,7 @@ func BenchmarkEventBus(b *testing.B) {
 
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			pub.Send(New("", "", "", "", true, &payload{}))
+			pub.Send(New("", "", "", "", true, &mockPayload{}))
 			bus.Pump()
 			sub.Receive()
 		}
