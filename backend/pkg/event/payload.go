@@ -59,3 +59,19 @@ func (p *payload) Conflict() string {
 func (p *payload) Players() []*PlayerStatus {
 	return p.players
 }
+
+func NewPlayerPayload(players []*PlayerStatus) *payload {
+	return &payload{players: players}
+}
+
+func NewInsertPayload(row, col, val int, current sudoku.Sudoku, conflict string) *payload {
+	return &payload{row: &row, column: &col, value: &val, current: current, conflict: conflict}
+}
+
+func NewPingPayload(row, col int) *payload {
+	return &payload{row: &row, column: &col}
+}
+
+func NewStatePayload(current, initial sudoku.Sudoku) *payload {
+	return &payload{current: current, initial: initial}
+}

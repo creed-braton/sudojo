@@ -205,16 +205,18 @@ func (c *client) ReadPump() error {
 
 func (c *client) Send(e event.Event) error {
 	msg := &message{
-		Type:     e.Type(),
-		Trace:    e.Trace(),
-		Error:    e.Error(),
-		Current:  e.Payload().Current(),
-		Initial:  e.Payload().Initial(),
-		Conflict: e.Payload().Conflict(),
-		Row:      e.Payload().Row(),
-		Column:   e.Payload().Column(),
-		Value:    e.Payload().Value(),
-		Players:  e.Payload().Players(),
+		Type:  e.Type(),
+		Trace: e.Trace(),
+		Error: e.Error(),
+	}
+	if e.Payload() != nil {
+		msg.Current = e.Payload().Current()
+		msg.Initial = e.Payload().Initial()
+		msg.Conflict = e.Payload().Conflict()
+		msg.Row = e.Payload().Row()
+		msg.Column = e.Payload().Column()
+		msg.Value = e.Payload().Value()
+		msg.Players = e.Payload().Players()
 	}
 	b, err := json.Marshal(msg)
 	if err != nil {
