@@ -15,36 +15,57 @@ var (
 	ErrLobbyFull = errors.New("lobby is already full")
 )
 
+// Manages game sessions, coordinates player actions, and enforces game rules
+// by delegating to game and player pool components.
 type Lobby interface {
+	// Unique identifier of the lobby.
 	Id() string
+	// Maximum number of players allowed in the lobby.
 	MaxPlayer() int
+	// Flag wheter lobby is in strict mode.
 	Strict() bool
+	// Creates a new inactive player with the given name and returns
+	// the secret token for authentication. Returns ErrLobbyFull if not
+	// successful.
 	Create(name string) (string, error)
+	// Marks the player as active and returns the updated player list
+	// as payload. Returns player.ErrPlayerNotFound if not successful.
 	Join(token string) (event.Payload, error)
+	// Marks the player as inactive and returns the updated player list
+	// as payload. Returns player.ErrPlayerNotFound if not successful.
 	Leave(token string) (event.Payload, error)
+	// Inserts a value into the board at the specified position according
+	// to the lobby's mode. Returns a payload with the updated board state
+	// and any conflicts, or an error if the operation fails.
 	Insert(row, col, val int) (event.Payload, error)
+	// Validates the cell position and returns a payload with the coordinates.
+	// Returns game.ErrOutOfBounds if not successful.
 	Ping(row, col int) (event.Payload, error)
+	// Returns a payload containing the current and initial board states.
 	State() event.Payload
 }
 
 type lobby struct {
 	id     string
-	pool   player.Pool
 	strict bool
 	game   game.Game
+	pool   player.Pool
 }
 
 var _ Lobby = &lobby{}
 
+// Returns a new lobby with the provided id, mode, game, and player pool.
 func New(id string, strict bool, game game.Game, pool player.Pool) *lobby {
 	return &lobby{
 		id:     id,
-		pool:   pool,
 		strict: strict,
 		game:   game,
+		pool:   pool,
 	}
 }
 
+// Creates and starts a new lobby with a generated game, empty player pool,
+// and unique identifier.
 func Open(maxPlayer int, strict bool) *lobby {
 	game := game.Generate(time.Now().UTC().UnixNano())
 	game.Start()
