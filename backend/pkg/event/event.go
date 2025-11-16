@@ -171,8 +171,8 @@ func NewFanout(src EventBus) *fanout {
 
 func (f *fanout) Register(id string, bus EventBus) {
 	f.lock.Lock()
-	if bus := f.routes[id]; bus != nil {
-		bus.Close()
+	if old := f.routes[id]; old != nil {
+		old.Close()
 	}
 	f.routes[id] = bus
 	f.lock.Unlock()

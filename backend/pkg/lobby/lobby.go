@@ -6,7 +6,6 @@ import (
 	"sudojo/pkg/game"
 	"sudojo/pkg/player"
 	"sudojo/pkg/sudoku"
-	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -17,67 +16,40 @@ var (
 )
 
 type Lobby interface {
-	Close()
 	Id() string
 	MaxPlayer() int
 	Strict() bool
-	LastEvent() int64
-	Pump() error
-	CreatePlayer(name string) (string, error)
-	Join(token string, bus event.EventBus) error
-	Leave(token string) error
-	Insert(row, col, val int, token, trace string) (event.Event, error)
-	Ping(row, col int, token, trace string) (event.Event, error)
-	State(token, trace string) event.Event
+	Create(name string) (string, error)
+	Join(token string) (event.Payload, error)
+	Leave(token string) (event.Payload, error)
+	Insert(row, col, val int) (event.Payload, error)
+	Ping(row, col int) (event.Payload, error)
+	State() event.Payload
 }
 
 type lobby struct {
-	id        string
-	pool      player.Pool
-	strict    bool
-	lastEvent atomic.Int64
-	game      game.Game
-	broadcast event.EventBus
-	fanout    event.Fanout
+	id     string
+	pool   player.Pool
+	strict bool
+	game   game.Game
 }
 
 var _ Lobby = &lobby{}
 
-func (l *lobby) event() {
-	l.lastEvent.Store(time.Now().UTC().UnixNano())
-}
-
-func New(
-	id string,
-	pool player.Pool,
-	strict bool,
-	game game.Game,
-	bus event.EventBus,
-	fanout event.Fanout,
-) *lobby {
-	l := &lobby{
-		id:        id,
-		pool:      pool,
-		strict:    strict,
-		game:      game,
-		broadcast: bus,
-		fanout:    fanout,
+func New(id string, strict bool, game game.Game, pool player.Pool) *lobby {
+	return &lobby{
+		id:     id,
+		pool:   pool,
+		strict: strict,
+		game:   game,
 	}
-	l.event()
-	return l
 }
 
 func Open(maxPlayer int, strict bool) *lobby {
-	bus := event.NewEventBus()
-	fanout := event.NewFanout(bus)
 	game := game.Generate(time.Now().UTC().UnixNano())
 	game.Start()
 	pool := player.NewPool(make(map[string]string), maxPlayer)
-	return New(uuid.NewString(), pool, strict, game, bus, fanout)
-}
-
-func (l *lobby) Close() {
-	l.broadcast.Close()
+	return New(uuid.NewString(), strict, game, pool)
 }
 
 func (l *lobby) Id() string {
@@ -92,17 +64,7 @@ func (l *lobby) Strict() bool {
 	return l.strict
 }
 
-func (l *lobby) LastEvent() int64 {
-	return l.lastEvent.Load()
-}
-
-func (l *lobby) Pump() error {
-	return l.fanout.Pump()
-}
-
-func (l *lobby) CreatePlayer(name string) (string, error) {
-	l.event()
-
+func (l *lobby) Create(name string) (string, error) {
 	token, err := l.pool.Create(name)
 	if err == player.ErrPoolFull {
 		return token, ErrLobbyFull
@@ -110,55 +72,26 @@ func (l *lobby) CreatePlayer(name string) (string, error) {
 	return token, err
 }
 
-func (l *lobby) Join(token string, bus event.EventBus) error {
-	l.event()
-
+func (l *lobby) Join(token string) (event.Payload, error) {
 	players, err := l.pool.Join(token)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	l.fanout.Register(token, bus)
-
-	payload := event.NewPayload()
-	payload.SetPlayers(players)
-	if err := l.broadcast.Send(
-		event.New(event.JoinEvent, token, "", "", payload),
-	); err != nil {
-		return err
-	}
-
-	return nil
+	return event.NewPayload().SetPlayers(players), nil
 }
 
-func (l *lobby) Leave(token string) error {
-	l.event()
-
+func (l *lobby) Leave(token string) (event.Payload, error) {
 	players, err := l.pool.Leave(token)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	l.fanout.Deregister(token)
-
-	payload := event.NewPayload()
-	payload.SetPlayers(players)
-	if err := l.broadcast.Send(
-		event.New(event.JoinEvent, token, "", "", payload),
-	); err != nil {
-		return err
-	}
-
-	return nil
+	return event.NewPayload().SetPlayers(players), nil
 }
 
-func (l *lobby) Insert(row, col, val int, token, trace string) (event.Event, error) {
-	l.event()
-
-	payload := event.NewPayload()
-	payload.SetRow(row)
-	payload.SetRow(col)
-	payload.SetRow(val)
+func (l *lobby) Insert(row, col, val int) (event.Payload, error) {
+	payload := event.NewPayload().SetRow(row).SetColumn(col).SetValue(val)
 
 	var current sudoku.Sudoku
 	var err error
@@ -179,42 +112,21 @@ func (l *lobby) Insert(row, col, val int, token, trace string) (event.Event, err
 	}
 	payload.SetCurrent(current)
 
-	errMsg := ""
-	if err != nil {
-		errMsg = err.Error()
-	}
-	event := event.New(event.InsertEvent, token, trace, errMsg, payload)
-
-	if err != nil {
-		return event, nil
-	}
-
-	return nil, l.broadcast.Send(event)
+	return payload, err
 }
 
-func (l *lobby) Ping(row, col int, token, trace string) (event.Event, error) {
-	l.event()
-
-	payload := event.NewPayload()
-	payload.SetRow(row)
-	payload.SetColumn(col)
+func (l *lobby) Ping(row, col int) (event.Payload, error) {
+	payload := event.NewPayload().SetRow(row).SetColumn(col)
 
 	if !sudoku.ValidBounds(row, col) {
-		return event.New(
-			event.PingEvent, token, trace,
-			game.ErrOutOfBounds.Error(), payload,
-		), nil
+		return payload, game.ErrOutOfBounds
 	}
 
-	event := event.New(event.PingEvent, token, trace, "", payload)
-	return nil, l.broadcast.Send(event)
+	return payload, nil
 }
 
-func (l *lobby) State(token, trace string) event.Event {
-	l.event()
-
-	payload := event.NewPayload()
-	payload.SetCurrent(l.game.Current())
-	payload.SetInitial(l.game.Initial())
-	return event.New(event.StateEvent, token, trace, "", payload)
+func (l *lobby) State() event.Payload {
+	return event.NewPayload().
+		SetCurrent(l.game.Current()).
+		SetInitial(l.game.Initial())
 }

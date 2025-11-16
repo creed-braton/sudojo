@@ -5,22 +5,37 @@ import (
 	"sudojo/pkg/sudoku"
 )
 
-// Represents arbitrary data carried within an event.
+// Carries arbitrary data within an event, including Sudoku board states,
+// cell updates, conflict information, and participating players.
 type Payload interface {
+	// The current Sudoku board state.
 	Current() sudoku.Sudoku
-	SetCurrent(current sudoku.Sudoku)
+	// Updates the current Sudoku board state.
+	SetCurrent(current sudoku.Sudoku) Payload
+	// The initial Sudoku board state.
 	Initial() sudoku.Sudoku
-	SetInitial(initial sudoku.Sudoku)
+	// Updates the initial Sudoku board state.
+	SetInitial(initial sudoku.Sudoku) Payload
+	// Row index of the event, or nil if not specified.
 	Row() *int
-	SetRow(int)
+	// Sets the row index of the event.
+	SetRow(row int) Payload
+	// Column index of the event, or nil if not specified.
 	Column() *int
-	SetColumn(int)
+	// Sets the column index of the event.
+	SetColumn(column int) Payload
+	// Value being placed in the Sudoku board, or nil if not specified.
 	Value() *int
-	SetValue(int)
+	// Sets the value of the event.
+	SetValue(value int) Payload
+	// Conflict description, if any exists.
 	Conflict() string
-	SetConflict(conflict string)
+	// Sets the conflict description.
+	SetConflict(conflict string) Payload
+	// Players in the session, including their names and activity state.
 	Players() []player.Player
-	SetPlayers(players []player.Player)
+	// Sets the players.
+	SetPlayers(players []player.Player) Payload
 }
 
 type payload struct {
@@ -39,56 +54,63 @@ func (p *payload) Current() sudoku.Sudoku {
 	return p.current
 }
 
-func (p *payload) SetCurrent(current sudoku.Sudoku) {
+func (p *payload) SetCurrent(current sudoku.Sudoku) Payload {
 	p.current = current
+	return p
 }
 
 func (p *payload) Initial() sudoku.Sudoku {
 	return p.initial
 }
 
-func (p *payload) SetInitial(initial sudoku.Sudoku) {
+func (p *payload) SetInitial(initial sudoku.Sudoku) Payload {
 	p.initial = initial
+	return p
 }
 
 func (p *payload) Row() *int {
 	return p.row
 }
 
-func (p *payload) SetRow(row int) {
+func (p *payload) SetRow(row int) Payload {
 	p.row = &row
+	return p
 }
 
 func (p *payload) Column() *int {
 	return p.column
 }
 
-func (p *payload) SetColumn(column int) {
+func (p *payload) SetColumn(column int) Payload {
 	p.column = &column
+	return p
 }
 
 func (p *payload) Value() *int {
 	return p.value
 }
 
-func (p *payload) SetValue(value int) {
+func (p *payload) SetValue(value int) Payload {
 	p.value = &value
+	return p
 }
 
 func (p *payload) Conflict() string {
 	return p.conflict
 }
 
-func (p *payload) SetConflict(conflict string) {
+func (p *payload) SetConflict(conflict string) Payload {
 	p.conflict = conflict
+	return p
 }
 
 func (p *payload) Players() []player.Player {
 	return p.players
 }
 
-func (p *payload) SetPlayers(players []player.Player) {
+func (p *payload) SetPlayers(players []player.Player) Payload {
 	p.players = players
+	return p
 }
 
 func NewPayload() *payload {
