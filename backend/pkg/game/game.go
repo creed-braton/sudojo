@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sudojo/pkg/sudoku"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -53,21 +54,26 @@ type game struct {
 	current  sudoku.Sudoku // mutable
 	initial  sudoku.Sudoku // immutable
 	solution sudoku.Sudoku // immutable
-	started  *int64
-	finished *int64
+	started  atomic.Pointer[int64]
+	finished atomic.Pointer[int64]
 	lock     sync.RWMutex // mutex to synchronize operations on current state
 }
 
 var _ Game = &game{}
 
 func New(current, initial, solution sudoku.Sudoku, started, finished *int64) *game {
-	return &game{
+	g := &game{
 		current:  current,
 		initial:  initial,
 		solution: solution,
-		started:  started,
-		finished: finished,
 	}
+	if started != nil {
+		g.started.Store(started)
+	}
+	if finished != nil {
+		g.finished.Store(finished)
+	}
+	return g
 }
 
 // Generates a full valid Sudoku solution, derives a uniquely solvable puzzle,
@@ -97,9 +103,9 @@ func (g *game) Start() {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 
-	if g.started == nil {
+	if g.started.Load() == nil {
 		start := time.Now().UTC().UnixNano()
-		g.started = &start
+		g.started.Store(&start)
 	}
 }
 
@@ -109,7 +115,7 @@ func (g *game) insert(row, col, val int) sudoku.Sudoku {
 	g.current.SetCell(row, col, val)
 	if g.current.Complete() {
 		finished := time.Now().UTC().UnixNano()
-		g.finished = &finished
+		g.finished.Store(&finished)
 	}
 
 	current := sudoku.New()
@@ -131,10 +137,10 @@ func (g *game) Lax(row, col, val int) (sudoku.Sudoku, error) {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 
-	if g.started == nil {
+	if g.started.Load() == nil {
 		return nil, errNotStarted
 	}
-	if g.finished != nil {
+	if g.finished.Load() != nil {
 		return nil, ErrAlreadyFinished
 	}
 	if g.current.Cell(row, col) == val {
@@ -170,10 +176,10 @@ func (g *game) Strict(row, col, val int) (sudoku.Sudoku, error) {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 
-	if g.started == nil {
+	if g.started.Load() == nil {
 		return nil, errNotStarted
 	}
-	if g.finished != nil {
+	if g.finished.Load() != nil {
 		return nil, ErrAlreadyFinished
 	}
 	if g.current.Cell(row, col) == val {
@@ -192,7 +198,7 @@ func (g *game) Current() sudoku.Sudoku {
 	g.lock.RLock()
 	defer g.lock.RUnlock()
 
-	if g.started == nil {
+	if g.started.Load() == nil {
 		return nil
 	}
 
@@ -202,6 +208,9 @@ func (g *game) Current() sudoku.Sudoku {
 }
 
 func (g *game) Initial() sudoku.Sudoku {
+	if g.started.Load() == nil {
+		return nil
+	}
 	return g.initial
 }
 
@@ -210,9 +219,9 @@ func (g *game) Solution() sudoku.Sudoku {
 }
 
 func (g *game) Started() *int64 {
-	return g.started
+	return g.started.Load()
 }
 
 func (g *game) Finished() *int64 {
-	return g.finished
+	return g.finished.Load()
 }

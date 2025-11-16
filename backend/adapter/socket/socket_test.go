@@ -32,7 +32,7 @@ func setupServer() (string, func()) {
 					client.Close()
 					return
 				}
-				client.Send(event.New("", "", msg.Trace, "", false, event.NewMockPayload()))
+				client.Send(event.New("", "", msg.Trace, "", event.NewPayload()))
 			}
 		}()
 	}))
@@ -152,7 +152,7 @@ func TestTermination(t *testing.T) {
 			wg.Done()
 		}()
 
-		client.Send(event.New("close", "", "", "", false, event.NewMockPayload()))
+		client.Send(event.New("close", "", "", "", event.NewPayload()))
 		wg.Wait()
 	})
 

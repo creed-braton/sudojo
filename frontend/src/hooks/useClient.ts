@@ -25,7 +25,7 @@ const useClient = (): ClientProps => {
 
     try {
       const ws: WebSocket = new WebSocket(
-        `${WS_URL}/lobbies/${id}/ws?token=${token}`,
+        `${WS_URL}/lobbies/${id}?token=${token}`,
       );
       wsRef.current = ws;
 
@@ -69,7 +69,7 @@ const useClient = (): ClientProps => {
     wsRef.current &&
       wsRef.current.send(
         JSON.stringify({
-          type: "move",
+          type: "insert",
           row: row,
           column: column,
           value: value,

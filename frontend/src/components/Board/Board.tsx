@@ -1,4 +1,4 @@
-import type { ReactElement } from "react";
+import { type ReactElement } from "react";
 import type { Cell, ConflictEvent, Sudoku } from "../../types";
 import styles from "./Board.module.css";
 

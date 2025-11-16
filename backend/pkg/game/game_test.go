@@ -147,7 +147,7 @@ func TestStrict(t *testing.T) {
 		g := setUp()
 		g.Start()
 		now := time.Now().UTC().UnixNano()
-		g.finished = &now
+		g.finished.Store(&now)
 		s, err := g.Lax(row, col, val)
 		if err == nil {
 			t.Error("expected error, got nil")
@@ -345,7 +345,7 @@ func TestLax(t *testing.T) {
 		g := setUp()
 		g.Start()
 		now := time.Now().UTC().UnixNano()
-		g.finished = &now
+		g.finished.Store(&now)
 		s, err := g.Lax(row, col, val)
 		if err == nil {
 			t.Error("expected error, got nil")

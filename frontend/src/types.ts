@@ -26,6 +26,7 @@ export type Cell = {
 };
 
 export type Message = {
+  type: string;
   initial_state: Sudoku | null;
   current_state: Sudoku | null;
   error: string | null;

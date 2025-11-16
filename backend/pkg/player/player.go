@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"sort"
-	"sudojo/pkg/event"
 	"sync"
 	"sync/atomic"
 	"unicode"
@@ -15,11 +14,10 @@ var (
 	ErrNameTooLong    = errors.New("player name too long")
 	ErrInvalidChar    = errors.New("player name contains invalid character")
 	ErrPoolFull       = errors.New("player pool is already full")
-	ErrPlayerNotFound = errors.New("player not found in pool")
+	ErrPlayerNotFound = errors.New("player not found")
 )
 
-// Represents a player holding metadata and his event bus with events
-// directed towards him.
+// Represents a player holding metadata.
 type Player interface {
 	// Secret token of the player also used for identification.
 	Token() string
@@ -28,7 +26,7 @@ type Player interface {
 	// Activity status of the player.
 	Active() bool
 	// Set activity status of the player.
-	SetActive(active bool)
+	SetActive(a bool)
 }
 
 type player struct {
@@ -56,8 +54,8 @@ func (p *player) Active() bool {
 	return p.active.Load()
 }
 
-func (p *player) SetActive(active bool) {
-	p.active.Store(active)
+func (p *player) SetActive(a bool) {
+	p.active.Store(a)
 }
 
 // Generates a random 16 bytes hex string.
@@ -91,45 +89,37 @@ func validName(name string) error {
 // player activity when joining or leaving.
 type Pool interface {
 	// Returns the maximum number of players allowed in the pool.
-	MaxSize() int
+	Size() int
 	// Creates a new inactive player with the given name and returns
 	// his secret token for authentication. Returns an error if the
 	// name is invalid or the pool is full.
 	Create(name string) (string, error)
-	// Marks the player as active and registers its event channels.
+	// Marks the player as active and registers its event bus.
 	// Returns all players in sorted order or an error if not found.
-	Join(token string, pub, sub event.EventChan) ([]Player, error)
-	// Marks the player as inactive and removes it from the event bus.
+	Join(token string) ([]Player, error)
+	// Marks the player as inactive and removes it from the fanout.
 	// Returns all players in sorted order or an error if not found.
 	Leave(token string) ([]Player, error)
 }
 
 type pool struct {
-	maxSize int
+	size    int
 	players map[string]Player
-	bus     event.EventBus
 	lock    sync.RWMutex
 }
 
 var _ Pool = &pool{}
 
-// Creates a player pool with a fixed maximum size, shared event bus and
-// map with tokens to name which is used for the initial player population.
-func NewPlayerPool(init map[string]string, maxSize int, bus event.EventBus) *pool {
-	players := make(map[string]Player, maxSize)
+func NewPool(init map[string]string, size int) *pool {
+	players := make(map[string]Player, size)
 	for token, name := range init {
 		players[token] = New(token, name)
 	}
-
-	return &pool{
-		maxSize: maxSize,
-		players: players,
-		bus:     bus,
-	}
+	return &pool{size: size, players: players}
 }
 
-func (p *pool) MaxSize() int {
-	return p.maxSize
+func (p *pool) Size() int {
+	return p.size
 }
 
 func (p *pool) Create(name string) (string, error) {
@@ -140,7 +130,7 @@ func (p *pool) Create(name string) (string, error) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	if p.maxSize <= len(p.players) {
+	if p.size <= len(p.players) {
 		return "", ErrPoolFull
 	}
 
@@ -151,9 +141,6 @@ func (p *pool) Create(name string) (string, error) {
 }
 
 func (p *pool) sortedPlayers() []Player {
-	p.lock.RLock()
-	defer p.lock.RUnlock()
-
 	tokens := make([]string, 0, len(p.players))
 	for token := range p.players {
 		tokens = append(tokens, token)
@@ -169,7 +156,7 @@ func (p *pool) sortedPlayers() []Player {
 	return sorted
 }
 
-func (p *pool) Join(token string, pub, sub event.EventChan) ([]Player, error) {
+func (p *pool) Join(token string) ([]Player, error) {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
@@ -178,7 +165,6 @@ func (p *pool) Join(token string, pub, sub event.EventChan) ([]Player, error) {
 		return nil, ErrPlayerNotFound
 	}
 	player.SetActive(true)
-	p.bus.Register(token, pub, sub)
 
 	return p.sortedPlayers(), nil
 }
@@ -192,7 +178,6 @@ func (p *pool) Leave(token string) ([]Player, error) {
 		return nil, ErrPlayerNotFound
 	}
 	player.SetActive(false)
-	p.bus.Deregister(token)
 
 	return p.sortedPlayers(), nil
 }

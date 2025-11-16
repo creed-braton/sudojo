@@ -27,17 +27,22 @@ var (
 	invalidMsg   = []byte(`{"type":"system","error":"invalid message format"}`)
 )
 
+type playerStatus struct {
+	Name   string `json:"name"`
+	Active bool   `json:"active"`
+}
+
 type message struct {
-	Type     string                `json:"type"`
-	Trace    string                `json:"trace_id,omitempty"`
-	Error    string                `json:"error,omitempty"`
-	Current  sudoku.Sudoku         `json:"current_state,omitempty"`
-	Initial  sudoku.Sudoku         `json:"initial_state,omitempty"`
-	Conflict string                `json:"conflict,omitempty"`
-	Row      *int                  `json:"row,omitempty"`
-	Column   *int                  `json:"column,omitempty"`
-	Value    *int                  `json:"value,omitempty"`
-	Players  []*event.PlayerStatus `json:"players,omitempty"`
+	Type     string          `json:"type"`
+	Trace    string          `json:"trace_id,omitempty"`
+	Error    string          `json:"error,omitempty"`
+	Current  sudoku.Sudoku   `json:"current_state,omitempty"`
+	Initial  sudoku.Sudoku   `json:"initial_state,omitempty"`
+	Conflict string          `json:"conflict,omitempty"`
+	Row      *int            `json:"row,omitempty"`
+	Column   *int            `json:"column,omitempty"`
+	Value    *int            `json:"value,omitempty"`
+	Players  []*playerStatus `json:"players,omitempty"`
 }
 
 // Represents a WebSocket client connection. Provides methods for sending and
@@ -203,7 +208,7 @@ func (c *client) ReadPump() error {
 	}
 }
 
-func (c *client) Send(e event.Event) error {
+func newMessage(e event.Event) *message {
 	msg := &message{
 		Type:  e.Type(),
 		Trace: e.Trace(),
@@ -216,9 +221,21 @@ func (c *client) Send(e event.Event) error {
 		msg.Row = e.Payload().Row()
 		msg.Column = e.Payload().Column()
 		msg.Value = e.Payload().Value()
-		msg.Players = e.Payload().Players()
+		if e.Payload().Players() != nil {
+			msg.Players = []*playerStatus{}
+			for _, p := range e.Payload().Players() {
+				msg.Players = append(msg.Players, &playerStatus{
+					Name:   p.Name(),
+					Active: p.Active(),
+				})
+			}
+		}
 	}
-	b, err := json.Marshal(msg)
+	return msg
+}
+
+func (c *client) Send(e event.Event) error {
+	b, err := json.Marshal(newMessage(e))
 	if err != nil {
 		return err
 	}

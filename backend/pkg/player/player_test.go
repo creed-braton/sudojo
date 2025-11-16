@@ -1,7 +1,6 @@
 package player
 
 import (
-	"sudojo/pkg/event"
 	"testing"
 )
 
@@ -61,7 +60,7 @@ func TestValidName(t *testing.T) {
 
 func TestPoolCreate(t *testing.T) {
 	t.Run("invalid name", func(t *testing.T) {
-		p := NewPlayerPool(make(map[string]string), 8, event.NewEventBus())
+		p := NewPool(make(map[string]string), 8)
 		_, err := p.Create("username123456789")
 		if err == nil {
 			t.Error("expected error, got nil")
@@ -69,9 +68,9 @@ func TestPoolCreate(t *testing.T) {
 	})
 
 	t.Run("full pool", func(t *testing.T) {
-		maxSize := 8
-		p := NewPlayerPool(make(map[string]string), maxSize, event.NewEventBus())
-		for range maxSize {
+		size := 8
+		p := NewPool(make(map[string]string), size)
+		for range size {
 			_, err := p.Create("")
 			if err != nil {
 				t.Errorf("unexpected error '%v' creating player", err)
@@ -89,10 +88,9 @@ func TestPoolCreate(t *testing.T) {
 
 func TestPoolJoin(t *testing.T) {
 	t.Run("non-existing player", func(t *testing.T) {
-		maxSize := 8
-		p := NewPlayerPool(make(map[string]string), maxSize, event.NewEventBus())
+		p := NewPool(make(map[string]string), 8)
 		token := newToken()
-		_, err := p.Join(token, event.NewEventChan(), event.NewEventChan())
+		_, err := p.Join(token)
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -102,22 +100,14 @@ func TestPoolJoin(t *testing.T) {
 	})
 
 	t.Run("join player", func(t *testing.T) {
-		called := false
-		register := func(id string, pub, sub event.EventChan) {
-			called = true
-		}
-		bus := event.NewMockEventBus(register, func(id string) {}, func() {}, func() {})
-		p := NewPlayerPool(make(map[string]string), 8, bus)
+		p := NewPool(make(map[string]string), 8)
 		token, err := p.Create("")
 		if err != nil {
 			t.Errorf("unexpected error '%v' creating player", err)
 		}
-		players, err := p.Join(token, event.NewEventChan(), event.NewEventChan())
+		players, err := p.Join(token)
 		if err != nil {
 			t.Errorf("unexpected error '%v' joining player", err)
-		}
-		if !called {
-			t.Error("event bus register function not called")
 		}
 		if len(players) != 1 {
 			t.Fatalf("expected player list length %d, got %d", 1, len(players))
@@ -128,20 +118,12 @@ func TestPoolJoin(t *testing.T) {
 	})
 
 	t.Run("join initial player", func(t *testing.T) {
-		called := false
-		register := func(id string, pub, sub event.EventChan) {
-			called = true
-		}
-		bus := event.NewMockEventBus(register, func(id string) {}, func() {}, func() {})
 		token := newToken()
 		init := map[string]string{token: ""}
-		p := NewPlayerPool(init, 8, bus)
-		players, err := p.Join(token, event.NewEventChan(), event.NewEventChan())
+		p := NewPool(init, 8)
+		players, err := p.Join(token)
 		if err != nil {
 			t.Errorf("unexpected error '%v' joining player", err)
-		}
-		if !called {
-			t.Error("event bus register function not called")
 		}
 		if len(players) != 1 {
 			t.Fatalf("expected player list length %d, got %d", 1, len(players))
@@ -154,8 +136,7 @@ func TestPoolJoin(t *testing.T) {
 
 func TestPoolLeave(t *testing.T) {
 	t.Run("non-existing player", func(t *testing.T) {
-		maxSize := 8
-		p := NewPlayerPool(make(map[string]string), maxSize, event.NewEventBus())
+		p := NewPool(make(map[string]string), 8)
 		token := newToken()
 		_, err := p.Leave(token)
 		if err == nil {
@@ -167,26 +148,18 @@ func TestPoolLeave(t *testing.T) {
 	})
 
 	t.Run("leave player", func(t *testing.T) {
-		called := false
-		deregister := func(id string) {
-			called = true
-		}
-		bus := event.NewMockEventBus(func(id string, pub, sub event.EventChan) {}, deregister, func() {}, func() {})
-		p := NewPlayerPool(make(map[string]string), 8, bus)
+		p := NewPool(make(map[string]string), 8)
 		token, err := p.Create("")
 		if err != nil {
 			t.Errorf("unexpected error '%v' creating player", err)
 		}
-		_, err = p.Join(token, event.NewEventChan(), event.NewEventChan())
+		_, err = p.Join(token)
 		if err != nil {
 			t.Errorf("unexpected error '%v' joining player", err)
 		}
 		players, err := p.Leave(token)
 		if err != nil {
 			t.Errorf("unexpected error '%v' leaving player", err)
-		}
-		if !called {
-			t.Error("event bus deregister function not called")
 		}
 		if len(players) != 1 {
 			t.Fatalf("expected player list length %d, got %d", 1, len(players))
