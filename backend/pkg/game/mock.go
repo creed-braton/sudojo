@@ -42,11 +42,11 @@ func (g *mockGame) Start() {
 }
 
 func (g *mockGame) Lax(row, col, val int) (sudoku.Sudoku, error) {
-	return g.lax(col, row, val)
+	return g.lax(row, col, val)
 }
 
 func (g *mockGame) Strict(row, col, val int) (sudoku.Sudoku, error) {
-	return g.strict(col, row, val)
+	return g.strict(row, col, val)
 }
 
 func (g *mockGame) Current() sudoku.Sudoku {
