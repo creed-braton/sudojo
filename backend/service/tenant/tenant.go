@@ -24,7 +24,7 @@ func New() *service {
 }
 
 func (s *service) Create() string {
-	l := lobby.New(8, false)
+	l := lobby.New()
 	s.lock.Lock()
 	s.lobbies[l.Id()] = l
 	s.lock.Unlock()

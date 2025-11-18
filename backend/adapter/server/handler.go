@@ -73,7 +73,7 @@ func (s *server) getLobby(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = lobby.Join(token, conn)
+	err = lobby.JoinPlayer(token, conn)
 	if err == player.ErrPlayerNotFound {
 		http.Error(w, err.Error(), 404)
 		return
