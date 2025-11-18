@@ -4,7 +4,7 @@ build:
 	@go build -o ./bin ./main.go
 
 run:
-	@ORIGIN=http://localhost:5173 PORT="8080" ./bin
+	@ORIGIN=http://localhost:5173 PORT="8080" DB_HOST="localhost" DB_PORT="5432" DB_NAME="postgres" DB_USER="postgres" DB_PASS="wert1234" ./bin
 
 test:
 	@go test -v ./...

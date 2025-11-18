@@ -9,7 +9,11 @@ import (
 )
 
 func (s *server) postLobby(w http.ResponseWriter, r *http.Request) {
-	id := s.tenant.Create()
+	id, err := s.tenant.Create()
+	if err != nil {
+		http.Error(w, "internal server error", 500)
+		return
+	}
 	w.Header().Set("content-type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(id))

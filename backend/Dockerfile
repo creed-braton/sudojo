@@ -5,11 +5,12 @@ WORKDIR /build
 COPY go.mod go.sum ./
 RUN go mod download
 
-COPY cmd ./cmd
-COPY internal ./internal
+COPY pkg ./pkg
+COPY adapter ./adapter
+COPY service ./service
+COPY main.go ./main.go
 
-ARG CMD
-RUN go build -o ./bin ./cmd/${CMD}/main.go
+RUN go build -o ./bin
 
 FROM scratch
 

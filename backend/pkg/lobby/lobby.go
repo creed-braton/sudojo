@@ -20,6 +20,8 @@ var (
 type Lobby interface {
 	// Unique identifier of the lobby.
 	Id() string
+	// Complete game state of the lobby.
+	Game() game.Game
 	// Maximum number of players allowed in the lobby.
 	MaxPlayer() int
 	// Flag wheter lobby is in strict mode.
@@ -75,6 +77,10 @@ func Open(maxPlayer int, strict bool) *lobby {
 
 func (l *lobby) Id() string {
 	return l.id
+}
+
+func (l *lobby) Game() game.Game {
+	return l.game
 }
 
 func (l *lobby) MaxPlayer() int {

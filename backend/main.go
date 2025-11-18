@@ -3,15 +3,26 @@ package main
 import (
 	"fmt"
 	"os"
+	"sudojo/adapter/database"
 	"sudojo/adapter/server"
 	"sudojo/service/tenant"
 )
 
 func main() {
-	err := server.New(
+	db, err := database.New(
+		envOrPanic("DB_HOST"),
+		envOrPanic("DB_PORT"),
+		envOrPanic("DB_NAME"),
+		envOrPanic("DB_USER"),
+		envOrPanic("DB_PASS"),
+	)
+	if err != nil {
+		panic(err)
+	}
+	err = server.New(
 		envOrPanic("PORT"),
 		os.Getenv("ORIGIN"),
-		tenant.New(),
+		tenant.New(db),
 	).Listen()
 
 	if err != nil {

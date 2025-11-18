@@ -2,6 +2,7 @@ package lobby
 
 import (
 	"log/slog"
+	"sudojo/adapter/database"
 	"sudojo/adapter/socket"
 	"sudojo/pkg/event"
 	"sudojo/pkg/lobby"
@@ -22,6 +23,7 @@ type service struct {
 	bus    event.EventBus
 	fanout event.Fanout
 	logger *slog.Logger
+	db     database.Database
 }
 
 var _ Service = &service{}
@@ -34,14 +36,14 @@ func (s *service) pump() {
 	}
 }
 
-func New() *service {
-	lobby := lobby.Open(8, false)
+func New(lobby lobby.Lobby, db database.Database) *service {
 	bus := event.NewEventBus()
 	s := &service{
 		lobby:  lobby,
 		logger: slog.With("lobby_id", lobby.Id()),
 		bus:    bus,
 		fanout: event.NewFanout(bus),
+		db:     db,
 	}
 	go s.pump()
 	return s
@@ -58,6 +60,9 @@ func (s *service) Shutdown() {
 func (s *service) CreatePlayer(name string) (string, error) {
 	token, err := s.lobby.Create(name)
 	if err != nil {
+		return "", err
+	}
+	if err := s.db.InsertPlayer(s.Id(), token, name); err != nil {
 		return "", err
 	}
 	s.logger.Info("player created", "player_token", token)
