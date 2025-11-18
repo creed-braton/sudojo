@@ -24,14 +24,24 @@ var (
 type Event interface {
 	// Type of the event.
 	Type() string
+	// Sets the type of the event.
+	SetType(eventType string) Event
 	// Entity causing the event.
 	Sender() string
+	// Sets the entity causing the event.
+	SetSender(sender string) Event
 	// Trace id of the event to keep track of it.
 	Trace() string
+	// Sets the trace ID of the event.
+	SetTrace(trace string) Event
 	// Error message if event could not be properly processed.
 	Error() string
+	// Sets the error message.
+	SetError(msg string) Event
 	// Data attached ot the event.
 	Payload() Payload
+	// Sets the payload data.
+	SetPayload(payload Payload) Event
 }
 
 type event struct {
@@ -44,35 +54,54 @@ type event struct {
 
 var _ Event = &event{}
 
-// Returns a new event with the provided type, sender, trace id, error message, and payload.
-func New(eventType, sender, trace, errorMsg string, payload Payload) *event {
-	return &event{
-		sender:    sender,
-		trace:     trace,
-		eventType: eventType,
-		errorMsg:  errorMsg,
-		payload:   payload,
-	}
+// Returns an empty event that can be build using setter methods.
+func New() *event {
+	return &event{}
 }
 
 func (e *event) Sender() string {
 	return e.sender
 }
 
+func (e *event) SetSender(sender string) Event {
+	e.sender = sender
+	return e
+}
+
 func (e *event) Trace() string {
 	return e.trace
+}
+
+func (e *event) SetTrace(trace string) Event {
+	e.trace = trace
+	return e
 }
 
 func (e *event) Type() string {
 	return e.eventType
 }
 
+func (e *event) SetType(eventType string) Event {
+	e.eventType = eventType
+	return e
+}
+
 func (e *event) Error() string {
 	return e.errorMsg
 }
 
+func (e *event) SetError(msg string) Event {
+	e.errorMsg = msg
+	return e
+}
+
 func (e *event) Payload() Payload {
 	return e.payload
+}
+
+func (e *event) SetPayload(payload Payload) Event {
+	e.payload = payload
+	return e
 }
 
 // Represents a channel for sending and receiving events. Provides thread-safe

@@ -10,7 +10,12 @@ import (
 
 func TestEvent(t *testing.T) {
 	eventType, sender, trace, errorMsg := "test-event", "test-sender", "test-trace", "test-error"
-	e := New(eventType, sender, trace, errorMsg, &payload{})
+	e := New().
+		SetType(eventType).
+		SetSender(sender).
+		SetTrace(trace).
+		SetError(errorMsg).
+		SetPayload(NewPayload())
 
 	if e.Type() != eventType {
 		t.Errorf("event type, want: %s, got: %s", eventType, e.Type())
@@ -32,7 +37,7 @@ func TestEventBus(t *testing.T) {
 		defer bus.Close()
 
 		want := "test-message"
-		var e Event = New("", "", want, "", NewPayload())
+		var e Event = New().SetTrace(want).SetPayload(NewPayload())
 		if err := bus.Send(e); err != nil {
 			t.Fatalf("unexpected error sending event: %v", err)
 		}
@@ -51,7 +56,7 @@ func TestEventBus(t *testing.T) {
 		bus := NewEventBus()
 		bus.Close()
 
-		err := bus.Send(New("closed-test", "sender", "", "", NewPayload()))
+		err := bus.Send(New().SetType("closed-test").SetSender("sender").SetPayload(NewPayload()))
 		if err != ErrClosedBus {
 			t.Errorf("expected '%v' on send, got: %v", ErrClosedBus, err)
 		}
@@ -66,13 +71,13 @@ func TestEventBus(t *testing.T) {
 		bus := NewEventBus()
 
 		for range eventBusSize {
-			e := New("test", "sender", "receiver", "trace", nil)
+			e := New().SetType("test").SetSender("sender").SetTrace("trace")
 			if err := bus.Send(e); err != nil {
 				t.Fatalf("unexpected error sending event: %v", err)
 			}
 		}
 
-		err := bus.Send(New("test", "sender", "receiver", "trace", nil))
+		err := bus.Send(New().SetType("test").SetSender("sender").SetTrace("trace"))
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -100,7 +105,11 @@ func TestEventBus(t *testing.T) {
 				defer wg.Done()
 				for eventId := range numEvents {
 					msg := fmt.Sprintf("%d-%d", senderId, eventId)
-					e := New("test-type", fmt.Sprintf("sender-%d", senderId), msg, "", NewPayload())
+					e := New().
+						SetType("test-type").
+						SetSender(fmt.Sprintf("sender-%d", senderId)).
+						SetTrace(msg).
+						SetPayload(NewPayload())
 					if err := bus.Send(e); err != nil {
 						t.Errorf("send error from sender %d: %v", senderId, err)
 						return
@@ -147,7 +156,7 @@ func TestEventBus(t *testing.T) {
 						case <-done:
 							return
 						default:
-							bus.Send(New("test", "sender", "receiver", "trace", nil))
+							bus.Send(New().SetType("test").SetSender("sender").SetTrace("trace"))
 						}
 					}
 				}()
@@ -175,7 +184,7 @@ func TestFanout(t *testing.T) {
 			fanout.Register(id, bus)
 		}
 
-		e := New("test", fmt.Sprintf("receiver-%d", 0), "", "", nil)
+		e := New().SetType("test").SetSender(fmt.Sprintf("receiver-%d", 0))
 		if err := src.Send(e); err != nil {
 			t.Fatalf("unexpected error sending event: %v", err)
 		}
@@ -214,7 +223,7 @@ func TestFanout(t *testing.T) {
 		}
 		fanout.Deregister(id)
 
-		e := New("test", fmt.Sprintf("receiver-%d", 0), "", "", nil)
+		e := New().SetType("test").SetSender(fmt.Sprintf("receiver-%d", 0))
 		if err := src.Send(e); err != nil {
 			t.Fatalf("unexpected error sending event: %v", err)
 		}
@@ -247,7 +256,7 @@ func TestFanout(t *testing.T) {
 		fanout.Register(id, old)
 		bus := NewEventBus()
 		fanout.Register(id, bus)
-		if err := src.Send(New("", "", "", "", nil)); err != nil {
+		if err := src.Send(New()); err != nil {
 			t.Fatalf("unexpected error sending event: %v", err)
 		}
 		if err := fanout.Pump(); err != nil {
@@ -290,7 +299,7 @@ func TestFanout(t *testing.T) {
 		}
 		bus.Close()
 
-		e := New("test", fmt.Sprintf("receiver-%d", 0), "", "", nil)
+		e := New().SetType("test").SetSender(fmt.Sprintf("receiver-%d", 0))
 		if err := src.Send(e); err != nil {
 			t.Fatalf("unexpected error sending event: %v", err)
 		}
@@ -397,7 +406,7 @@ func TestFanout(t *testing.T) {
 			go func(id string, bus EventBus) {
 				defer wg.Done()
 				for i := range numMsg {
-					e := New("test", id, strconv.Itoa(i), "", nil)
+					e := New().SetType("test").SetSender(id).SetTrace(strconv.Itoa(i))
 					if err := bus.Send(e); err != nil {
 						t.Errorf("unexpected error sending in %s iteration %d: %v", id, i, err)
 					}
@@ -424,7 +433,7 @@ func BenchmarkFanout(b *testing.B) {
 
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			src.Send(New("", "", "", "", nil))
+			src.Send(New())
 			fanout.Pump()
 			target.Receive()
 		}

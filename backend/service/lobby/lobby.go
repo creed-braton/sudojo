@@ -5,6 +5,7 @@ import (
 	"sudojo/adapter/socket"
 	"sudojo/pkg/event"
 	"sudojo/pkg/lobby"
+	"sudojo/service/player"
 
 	"github.com/gorilla/websocket"
 )
@@ -51,7 +52,7 @@ func (s *service) Id() string {
 }
 
 func (s *service) Shutdown() {
-
+	s.bus.Close()
 }
 
 func (s *service) CreatePlayer(name string) (string, error) {
@@ -63,60 +64,6 @@ func (s *service) CreatePlayer(name string) (string, error) {
 	return token, nil
 }
 
-func (s *service) handler(token string, bus event.EventBus, client socket.Client, logger *slog.Logger) {
-	logger.Info("handler started")
-	defer func() {
-		bus.Close()
-		s.fanout.Deregister(token)
-		p, err := s.lobby.Leave(token)
-		if err != nil {
-			logger.Error(err.Error())
-			return
-		}
-		err = s.bus.Send(event.New(event.LeaveEvent, token, "", "", p))
-		if err != nil {
-			logger.Error(err.Error())
-		}
-		logger.Info("handler terminated")
-	}()
-
-	for {
-		msg, err := client.Receive()
-		if err != nil {
-			return
-		}
-		if msg.Type == event.InsertEvent {
-			p, err := s.lobby.Insert(*msg.Row, *msg.Column, *msg.Value)
-			if err != nil {
-				bus.Send(event.New(
-					event.InsertEvent,
-					token, msg.Trace,
-					err.Error(), p,
-				))
-				continue
-			}
-			if p != nil {
-				bus.Send(event.New(event.InsertEvent, token, msg.Trace, "", p))
-			}
-		} else if msg.Type == event.PingEvent {
-			p, err := s.lobby.Ping(*msg.Row, *msg.Column)
-			if err != nil {
-				bus.Send(event.New(
-					event.PingEvent,
-					token, msg.Trace,
-					err.Error(), p,
-				))
-				continue
-			}
-			if p != nil {
-				bus.Send(event.New(event.PingEvent, token, msg.Trace, "", p))
-			}
-		} else {
-			bus.Send(event.New(event.StateEvent, token, msg.Trace, "", s.lobby.State()))
-		}
-	}
-}
-
 func (s *service) JoinPlayer(token string, conn *websocket.Conn) error {
 	p, err := s.lobby.Join(token)
 	if err != nil {
@@ -124,50 +71,22 @@ func (s *service) JoinPlayer(token string, conn *websocket.Conn) error {
 		return err
 	}
 
+	client := socket.NewClient(conn)
+	logger := s.logger.With("player_token", token).With("client_id", client.Id())
 	bus := event.NewEventBus()
 	s.fanout.Register(token, bus)
-	err = s.bus.Send(event.New(event.JoinEvent, token, "", "", p))
+
+	err = s.bus.Send(event.New().
+		SetType(event.JoinEvent).
+		SetSender(token).
+		SetPayload(p))
 	if err != nil {
 		return err
 	} else {
-		s.logger.Info("player joined", "token", token)
+		logger.Info("player joined")
 	}
 
-	client := socket.NewClient(conn)
-	logger := s.logger.With("player_token", token).With("client_id", client.Id())
-
-	go func() {
-		logger.Info("write pump started")
-		if err := client.WritePump(); err != nil {
-			logger.Info("write pump terminated")
-		}
-	}()
-	go func() {
-		logger.Info("read pump started")
-		if err := client.ReadPump(); err != nil {
-			logger.Info("read pump terminated")
-		}
-	}()
-
-	go func() {
-		logger.Info("send pump started")
-		defer func() {
-			bus.Close()
-			client.Close()
-			logger.Info("send pump terminated")
-		}()
-
-		for {
-			e, err := bus.Receive()
-			if err != nil {
-				return
-			}
-			if err := client.Send(e); err != nil {
-				return
-			}
-		}
-	}()
-	go s.handler(token, bus, client, logger)
+	player.New(bus, client, s.lobby, s.bus.Send, token, logger).Start()
 
 	return nil
 }
