@@ -186,6 +186,51 @@ func TestTermination(t *testing.T) {
 		client.Close()
 		wg.Wait()
 	})
+
+	t.Run("server side connection close", func(t *testing.T) {
+		conn, _, err := websocket.DefaultDialer.Dial(url, nil)
+		if err != nil {
+			t.Fatalf("dial error: %v", err)
+			return
+		}
+		client := NewClient(conn)
+
+		wg := sync.WaitGroup{}
+		wg.Add(2)
+
+		go func() {
+			client.WritePump()
+			wg.Done()
+		}()
+
+		closed := make(chan struct{})
+		var closeCode int
+
+		conn.SetCloseHandler(func(code int, text string) error {
+			closeCode = code
+			close(closed)
+			return nil
+		})
+
+		go func() {
+			defer wg.Done()
+			for {
+				_, _, err := conn.ReadMessage()
+				if err != nil {
+					return
+				}
+			}
+		}()
+
+		client.Close()
+		<-closed
+
+		if closeCode != websocket.CloseNormalClosure {
+			t.Errorf("expected close code %d, got %d", websocket.CloseNormalClosure, closeCode)
+		}
+
+		wg.Wait()
+	})
 }
 
 func TestRateLimit(t *testing.T) {

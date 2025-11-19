@@ -14,10 +14,19 @@ import (
 )
 
 type Database interface {
+	// Closses the connection pool to the database.
 	Close()
+	// Returns lobby with provided ID or nil if lobby
+	// doesn't exist.
 	Lobby(id string) (lobby.Lobby, error)
+	// Inserts provided lobby in the database. Returns an error
+	// if not successful.
 	InsertLobby(lobby lobby.Lobby) error
+	// Updates the game state and timestamps of provided lobby
+	// in the database.
 	UpdateLobby(lobby lobby.Lobby) error
+	// Inserts provided player attributes in the database under
+	// the lobby ID.
 	InsertPlayer(lobbyId, token, name string) error
 }
 
@@ -27,12 +36,18 @@ type database struct {
 
 var _ Database = &database{}
 
+// Creates a connection pool to the database. Returns an error
+// if no connection could be established.
 func New(host, port, name, user, pass string) (*database, error) {
 	conn, err := pgxpool.New(
 		context.Background(),
 		fmt.Sprintf("postgres://%s:%s@%s:%s/%s", user, pass, host, port, name),
 	)
 	if err != nil {
+		return nil, err
+	}
+	if err := conn.Ping(context.Background()); err != nil {
+		conn.Close()
 		return nil, err
 	}
 	return &database{conn: conn}, nil
@@ -45,13 +60,12 @@ func (db *database) Close() {
 func (db *database) Lobby(id string) (lobby.Lobby, error) {
 	var start, finish pgtype.Int8
 	var initial, current, solution [][]int
-	var maxPlayer int
 	strict, maxPlayer := false, 0
 
 	err := db.conn.QueryRow(
 		context.Background(),
 		`SELECT initial_board, current_board, solution, started_at, 
-		finished_at, strict, max_player  FROM lobbies WHERE id = $1;`,
+		finished_at, strict, max_player FROM lobbies WHERE id = $1;`,
 		id,
 	).Scan(
 		&initial,
@@ -63,7 +77,7 @@ func (db *database) Lobby(id string) (lobby.Lobby, error) {
 		&maxPlayer,
 	)
 
-	if err != nil && err == pgx.ErrNoRows {
+	if err == pgx.ErrNoRows {
 		return nil, nil
 	} else if err != nil {
 		return nil, err

@@ -7,23 +7,27 @@ import (
 	"sudojo/pkg/event"
 	"sudojo/pkg/lobby"
 	"sudojo/service/player"
+	"sync/atomic"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
 
 type Service interface {
 	Id() string
-	Shutdown()
+	Shutdown() error
+	LastEvent() int64
 	CreatePlayer(name string) (string, error)
 	JoinPlayer(token string, conn *websocket.Conn) error
 }
 
 type service struct {
-	lobby  lobby.Lobby
-	bus    event.EventBus
-	fanout event.Fanout
-	logger *slog.Logger
-	db     database.Database
+	lobby     lobby.Lobby
+	bus       event.EventBus
+	fanout    event.Fanout
+	logger    *slog.Logger
+	db        database.Database
+	lastEvent atomic.Int64
 }
 
 var _ Service = &service{}
@@ -31,9 +35,13 @@ var _ Service = &service{}
 func (s *service) pump() {
 	for {
 		if err := s.fanout.Pump(); err != nil {
-			s.logger.Info(err.Error())
+			return
 		}
 	}
+}
+
+func (s *service) event() {
+	s.lastEvent.Store(time.Now().UTC().Unix())
 }
 
 func New(lobby lobby.Lobby, db database.Database) *service {
@@ -45,6 +53,7 @@ func New(lobby lobby.Lobby, db database.Database) *service {
 		fanout: event.NewFanout(bus),
 		db:     db,
 	}
+	s.event()
 	go s.pump()
 	return s
 }
@@ -53,8 +62,18 @@ func (s *service) Id() string {
 	return s.lobby.Id()
 }
 
-func (s *service) Shutdown() {
+func (s *service) Shutdown() error {
+	err := s.db.UpdateLobby(s.lobby)
+	if err != nil {
+		s.logger.Error(err.Error())
+	}
 	s.bus.Close()
+	s.logger.Info("shut down lobby")
+	return err
+}
+
+func (s *service) LastEvent() int64 {
+	return s.lastEvent.Load()
 }
 
 func (s *service) CreatePlayer(name string) (string, error) {
@@ -65,6 +84,7 @@ func (s *service) CreatePlayer(name string) (string, error) {
 	if err := s.db.InsertPlayer(s.Id(), token, name); err != nil {
 		return "", err
 	}
+	s.event()
 	s.logger.Info("player created", "player_token", token)
 	return token, nil
 }
@@ -91,7 +111,11 @@ func (s *service) JoinPlayer(token string, conn *websocket.Conn) error {
 		logger.Info("player joined")
 	}
 
-	player.New(bus, client, s.lobby, s.bus.Send, token, logger).Start()
+	s.event()
+	player.New(
+		bus, client, s.lobby, s.bus.Send,
+		s.event, token, logger,
+	).Start()
 
 	return nil
 }

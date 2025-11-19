@@ -16,6 +16,7 @@ type service struct {
 	client    socket.Client
 	lobby     lobby.Lobby
 	broadcast func(e event.Event) error
+	event     func()
 	token     string
 	logger    *slog.Logger
 }
@@ -27,6 +28,7 @@ func New(
 	client socket.Client,
 	lobby lobby.Lobby,
 	broadcast func(e event.Event) error,
+	event func(),
 	token string,
 	logger *slog.Logger,
 ) *service {
@@ -35,6 +37,7 @@ func New(
 		client:    client,
 		lobby:     lobby,
 		broadcast: broadcast,
+		event:     event,
 		token:     token,
 		logger:    logger,
 	}
@@ -105,6 +108,7 @@ func (s *service) handler() {
 		if err != nil {
 			return
 		}
+		s.event()
 		if msg.Type == event.InsertEvent {
 			s.handleInsert(*msg.Row, *msg.Column, *msg.Value, msg.Trace)
 		} else if msg.Type == event.PingEvent {
@@ -117,12 +121,10 @@ func (s *service) handler() {
 
 func (s *service) Start() {
 	go func() {
-		if err := s.client.WritePump(); err != nil {
-		}
+		_ = s.client.WritePump()
 	}()
 	go func() {
-		if err := s.client.ReadPump(); err != nil {
-		}
+		_ = s.client.ReadPump()
 	}()
 
 	go func() {

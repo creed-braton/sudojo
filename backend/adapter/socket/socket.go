@@ -101,7 +101,21 @@ func (c *client) Id() string {
 
 func (c *client) Close() {
 	c.once.Do(func() {
+		msg := websocket.FormatCloseMessage(
+			websocket.CloseNormalClosure, "",
+		)
+		_ = c.conn.WriteControl(
+			websocket.CloseMessage,
+			msg,
+			time.Now().Add(time.Second),
+		)
 		close(c.write)
+		c.conn.SetReadDeadline(time.Now().Add(time.Second))
+		for {
+			if _, _, err := c.conn.NextReader(); err != nil {
+				break
+			}
+		}
 		c.conn.Close()
 	})
 }
@@ -119,7 +133,7 @@ func (c *client) WritePump() error {
 
 			c.conn.SetWriteDeadline(time.Now().Add(writeDeadline * time.Second))
 			if err := c.conn.WriteMessage(websocket.TextMessage, msg); err != nil {
-				return fmt.Errorf("failed sending message: %v", err)
+				return fmt.Errorf("failed sending message: %w", err)
 			}
 
 		case msg, ok := <-c.cross:
@@ -129,13 +143,13 @@ func (c *client) WritePump() error {
 
 			c.conn.SetWriteDeadline(time.Now().Add(writeDeadline * time.Second))
 			if err := c.conn.WriteMessage(websocket.TextMessage, msg); err != nil {
-				return fmt.Errorf("failed sending message: %v", err)
+				return fmt.Errorf("failed sending message: %w", err)
 			}
 
 		case <-ticker.C:
 			c.conn.SetWriteDeadline(time.Now().Add(writeDeadline * time.Second))
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
-				return fmt.Errorf("failed sending ping: %v", err)
+				return fmt.Errorf("failed sending ping: %w", err)
 			}
 		}
 	}
@@ -156,7 +170,7 @@ func (c *client) ReadPump() error {
 		c.conn.SetReadDeadline(time.Now().Add(readDeadline * time.Second))
 		t, b, err := c.conn.ReadMessage()
 		if err != nil {
-			return fmt.Errorf("failed receiving message: %v", err)
+			return fmt.Errorf("failed receiving message: %w", err)
 		}
 
 		if t != websocket.TextMessage {
