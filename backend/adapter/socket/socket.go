@@ -33,16 +33,18 @@ type playerStatus struct {
 }
 
 type message struct {
-	Type     string          `json:"type"`
-	Trace    string          `json:"trace_id,omitempty"`
-	Error    string          `json:"error,omitempty"`
-	Current  sudoku.Sudoku   `json:"current_state,omitempty"`
-	Initial  sudoku.Sudoku   `json:"initial_state,omitempty"`
-	Conflict string          `json:"conflict,omitempty"`
-	Row      *int            `json:"row,omitempty"`
-	Column   *int            `json:"column,omitempty"`
-	Value    *int            `json:"value,omitempty"`
-	Players  []*playerStatus `json:"players,omitempty"`
+	Type      string          `json:"type"`
+	Trace     string          `json:"trace_id,omitempty"`
+	Error     string          `json:"error,omitempty"`
+	Current   sudoku.Sudoku   `json:"current_state,omitempty"`
+	Initial   sudoku.Sudoku   `json:"initial_state,omitempty"`
+	Conflict  string          `json:"conflict,omitempty"`
+	Row       *int            `json:"row,omitempty"`
+	Column    *int            `json:"column,omitempty"`
+	Value     *int            `json:"value,omitempty"`
+	Players   []*playerStatus `json:"players,omitempty"`
+	MaxPlayer int             `json:"max_player,omitempty"`
+	Strict    *bool           `json:"strict,omitempty"`
 }
 
 // Represents a WebSocket client connection. Provides methods for sending and
@@ -235,6 +237,8 @@ func newMessage(e event.Event) *message {
 		msg.Row = e.Payload().Row()
 		msg.Column = e.Payload().Column()
 		msg.Value = e.Payload().Value()
+		msg.MaxPlayer = e.Payload().MaxPlayer()
+		msg.Strict = e.Payload().Strict()
 		if e.Payload().Players() != nil {
 			msg.Players = []*playerStatus{}
 			for _, p := range e.Payload().Players() {

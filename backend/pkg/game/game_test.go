@@ -88,11 +88,11 @@ func TestInsert(t *testing.T) {
 			t.Errorf("expected Finished() to be nil initially for game %d", i)
 		}
 
+		g.Start()
 		initialCopy := sudoku.New()
 		g.Initial().Copy(initialCopy)
 		solutionCopy := sudoku.New()
 		g.Solution().Copy(solutionCopy)
-		g.Start()
 
 		// Fill all empty cells with solution values
 		for row := 0; row < 9; row++ {

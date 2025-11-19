@@ -1,7 +1,6 @@
 package tenant
 
 import (
-	"fmt"
 	"log/slog"
 	"sudojo/adapter/database"
 	"sudojo/pkg/lobby"
@@ -12,7 +11,7 @@ import (
 
 type Service interface {
 	Create() (string, error)
-	Lobby(id string) svc.Service
+	Lobby(id string) (svc.Service, error)
 }
 
 type service struct {
@@ -34,8 +33,6 @@ func (s *service) pruner() {
 			for id, l := range s.lobbies {
 				tolerance := int64(600) // 10 minutes in seconds
 				frame := time.Now().UTC().Unix() - l.LastEvent()
-				slog.Info(fmt.Sprintf("%d", tolerance))
-				slog.Info(fmt.Sprintf("%d", frame))
 				if frame > tolerance {
 					if err := l.Shutdown(); err == nil {
 						delete(s.lobbies, id)
@@ -69,8 +66,25 @@ func (s *service) Create() (string, error) {
 	return l.Id(), nil
 }
 
-func (s *service) Lobby(id string) svc.Service {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-	return s.lobbies[id]
+func (s *service) Lobby(id string) (svc.Service, error) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	l, exist := s.lobbies[id]
+	if !exist {
+		lobby, err := s.db.Lobby(id)
+		if err != nil {
+			slog.Error(err.Error(), "lobby_id", id)
+			return nil, err
+		}
+		if lobby == nil {
+			return nil, nil
+		}
+
+		l := svc.New(lobby, s.db)
+		s.lobbies[l.Id()] = l
+		return l, nil
+	}
+
+	return l, nil
 }

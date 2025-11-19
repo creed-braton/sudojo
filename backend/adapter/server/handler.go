@@ -28,7 +28,10 @@ func (s *server) patchLobby(w http.ResponseWriter, r *http.Request) {
 	}
 	name := r.URL.Query().Get("name")
 
-	l := s.tenant.Lobby(id)
+	l, err := s.tenant.Lobby(id)
+	if err != nil {
+		http.Error(w, "internal server error", 500)
+	}
 	if l == nil {
 		http.Error(w, "lobby not found", 404)
 		return
@@ -65,7 +68,11 @@ func (s *server) getLobby(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	lobby := s.tenant.Lobby(id)
+	lobby, err := s.tenant.Lobby(id)
+	if err != nil {
+		http.Error(w, "internal server error", 500)
+		return
+	}
 	if lobby == nil {
 		http.Error(w, "lobby not found", 404)
 		return

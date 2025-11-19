@@ -36,19 +36,33 @@ type Payload interface {
 	Players() []player.Player
 	// Sets the players.
 	SetPlayers(players []player.Player) Payload
+	// Maximum amount of players in the session.
+	MaxPlayer() int
+	// Sets the maximum player amount.
+	SetMaxPlayer(max int) Payload
+	// Strict mode of the session.
+	Strict() *bool
+	// Sets the strict mode.
+	SetStrict(strict bool) Payload
 }
 
 type payload struct {
-	current  sudoku.Sudoku
-	initial  sudoku.Sudoku
-	row      *int
-	column   *int
-	value    *int
-	conflict string
-	players  []player.Player
+	current   sudoku.Sudoku
+	initial   sudoku.Sudoku
+	row       *int
+	column    *int
+	value     *int
+	conflict  string
+	players   []player.Player
+	maxPlayer int
+	strict    *bool
 }
 
 var _ Payload = &payload{}
+
+func NewPayload() *payload {
+	return &payload{}
+}
 
 func (p *payload) Current() sudoku.Sudoku {
 	return p.current
@@ -113,6 +127,20 @@ func (p *payload) SetPlayers(players []player.Player) Payload {
 	return p
 }
 
-func NewPayload() *payload {
-	return &payload{}
+func (p *payload) MaxPlayer() int {
+	return p.maxPlayer
+}
+
+func (p *payload) SetMaxPlayer(max int) Payload {
+	p.maxPlayer = max
+	return p
+}
+
+func (p *payload) Strict() *bool {
+	return p.strict
+}
+
+func (p *payload) SetStrict(strict bool) Payload {
+	p.strict = &strict
+	return p
 }

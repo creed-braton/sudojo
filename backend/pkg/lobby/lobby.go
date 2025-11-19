@@ -105,7 +105,9 @@ func (l *lobby) Join(token string) (event.Payload, error) {
 		return nil, err
 	}
 
-	return event.NewPayload().SetPlayers(players), nil
+	return event.NewPayload().
+		SetPlayers(players).
+		SetMaxPlayer(l.pool.Size()), nil
 }
 
 func (l *lobby) Leave(token string) (event.Payload, error) {
@@ -114,7 +116,9 @@ func (l *lobby) Leave(token string) (event.Payload, error) {
 		return nil, err
 	}
 
-	return event.NewPayload().SetPlayers(players), nil
+	return event.NewPayload().
+		SetPlayers(players).
+		SetMaxPlayer(l.pool.Size()), nil
 }
 
 func (l *lobby) Insert(row, col, val int) (event.Payload, error) {
@@ -155,5 +159,7 @@ func (l *lobby) Ping(row, col int) (event.Payload, error) {
 func (l *lobby) State() event.Payload {
 	return event.NewPayload().
 		SetCurrent(l.game.Current()).
-		SetInitial(l.game.Initial())
+		SetInitial(l.game.Initial()).
+		SetStrict(l.strict).
+		SetPlayers(l.pool.Players())
 }

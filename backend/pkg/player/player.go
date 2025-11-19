@@ -100,6 +100,8 @@ type Pool interface {
 	// Marks the player as inactive and removes it from the fanout.
 	// Returns all players in sorted order or an error if not found.
 	Leave(token string) ([]Player, error)
+	// Returns all players in sorted order.
+	Players() []Player
 }
 
 type pool struct {
@@ -180,4 +182,11 @@ func (p *pool) Leave(token string) ([]Player, error) {
 	player.SetActive(false)
 
 	return p.sortedPlayers(), nil
+}
+
+func (p *pool) Players() []Player {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	return p.sortedPlayers()
 }

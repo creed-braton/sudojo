@@ -46,6 +46,9 @@ func setupPool(size int) player.Pool {
 			p.SetActive(false)
 			return []player.Player{p}, nil
 		},
+		func() []player.Player {
+			return []player.Player{}
+		},
 	)
 }
 
@@ -96,6 +99,7 @@ func TestCreate(t *testing.T) {
 			},
 			func(token string) ([]player.Player, error) { return nil, nil },
 			func(token string) ([]player.Player, error) { return nil, nil },
+			func() []player.Player { return nil },
 		)
 		lobby := New(uuid.NewString(), false, setupGame(), fullPool)
 		_, err := lobby.Create("player")
@@ -113,6 +117,7 @@ func TestCreate(t *testing.T) {
 			},
 			func(token string) ([]player.Player, error) { return nil, nil },
 			func(token string) ([]player.Player, error) { return nil, nil },
+			func() []player.Player { return nil },
 		)
 		lobby := New(uuid.NewString(), false, setupGame(), invalidPool)
 		_, err := lobby.Create("")
@@ -151,6 +156,7 @@ func TestJoin(t *testing.T) {
 				return nil, player.ErrPlayerNotFound
 			},
 			func(token string) ([]player.Player, error) { return nil, nil },
+			func() []player.Player { return nil },
 		)
 		lobby := New(uuid.NewString(), false, setupGame(), mockPool)
 		_, err := lobby.Join("invalid-token")
@@ -189,6 +195,7 @@ func TestLeave(t *testing.T) {
 			func(token string) ([]player.Player, error) {
 				return nil, player.ErrPlayerNotFound
 			},
+			func() []player.Player { return nil },
 		)
 		lobby := New(uuid.NewString(), false, setupGame(), notFoundPool)
 		_, err := lobby.Leave("invalid-token")
