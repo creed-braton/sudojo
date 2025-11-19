@@ -9,8 +9,14 @@ import (
 	"time"
 )
 
+// Manages lobby lifecycle and provides access to lobby services with automatic pruning
+// of inactive lobbies.
 type Service interface {
+	// Creates a new lobby and persists it to the database. Returns the lobby
+	// identifier or an error if creation fails.
 	Create() (string, error)
+	// Retrieves or loads a lobby service by identifier. Returns nil if the lobby
+	// does not exist, or an error if loading from database fails.
 	Lobby(id string) (svc.Service, error)
 }
 
@@ -22,6 +28,7 @@ type service struct {
 
 var _ Service = &service{}
 
+// Periodically removes lobbies that have been inactive for more than 10 minutes.
 func (s *service) pruner() {
 	ticker := time.NewTicker(60 * time.Second)
 	defer ticker.Stop()
@@ -44,6 +51,7 @@ func (s *service) pruner() {
 	}
 }
 
+// Returns a new tenant service with automatic lobby pruning enabled.
 func New(db database.Database) *service {
 	s := &service{
 		db:      db,

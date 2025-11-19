@@ -7,7 +7,10 @@ import (
 	"sudojo/pkg/lobby"
 )
 
+// Manages the lifecycle of a player's connection and handles incoming game events.
 type Service interface {
+	// Starts goroutines to handle bidirectional communication between the player's
+	// WebSocket connection and the event buffer.
 	Start()
 }
 
@@ -23,6 +26,7 @@ type service struct {
 
 var _ Service = &service{}
 
+// Returns a new player service with the provided dependencies.
 func New(
 	buffer event.Buffer,
 	client socket.Client,
@@ -43,6 +47,8 @@ func New(
 	}
 }
 
+// Processes an insert event by delegating to the lobby and broadcasting the result
+// or sending an error back to the player.
 func (s *service) handleInsert(row, col, val int, trace string) error {
 	p, err := s.lobby.Insert(row, col, val)
 	event := event.New().
@@ -60,6 +66,8 @@ func (s *service) handleInsert(row, col, val int, trace string) error {
 	return nil
 }
 
+// Processes a ping event by validating coordinates and broadcasting the result
+// or sending an error back to the player.
 func (s *service) handlePing(row, col int, trace string) error {
 	p, err := s.lobby.Ping(row, col)
 	event := event.New().
@@ -77,6 +85,7 @@ func (s *service) handlePing(row, col int, trace string) error {
 	return nil
 }
 
+// Sends the current lobby state to the player's buffer.
 func (s *service) handleState() error {
 	return s.buffer.Send(
 		event.New().
@@ -85,6 +94,8 @@ func (s *service) handleState() error {
 	)
 }
 
+// Continuously receives messages from the client, dispatches them to appropriate
+// handlers, and broadcasts leave event on disconnection or error.
 func (s *service) handler() {
 	defer func() {
 		s.buffer.Close()
