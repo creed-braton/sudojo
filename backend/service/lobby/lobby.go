@@ -23,7 +23,7 @@ type Service interface {
 
 type service struct {
 	lobby     lobby.Lobby
-	bus       event.EventBus
+	buffer    event.Buffer
 	fanout    event.Fanout
 	logger    *slog.Logger
 	db        database.Database
@@ -45,12 +45,12 @@ func (s *service) event() {
 }
 
 func New(lobby lobby.Lobby, db database.Database) *service {
-	bus := event.NewEventBus()
+	buffer := event.NewBuffer()
 	s := &service{
 		lobby:  lobby,
 		logger: slog.With("lobby_id", lobby.Id()),
-		bus:    bus,
-		fanout: event.NewFanout(bus),
+		buffer: buffer,
+		fanout: event.NewFanout(buffer),
 		db:     db,
 	}
 	s.event()
@@ -67,7 +67,7 @@ func (s *service) Shutdown() error {
 	if err != nil {
 		s.logger.Error(err.Error())
 	}
-	s.bus.Close()
+	s.buffer.Close()
 	s.logger.Info("shut down lobby")
 	return err
 }
@@ -98,10 +98,10 @@ func (s *service) JoinPlayer(token string, conn *websocket.Conn) error {
 
 	client := socket.NewClient(conn)
 	logger := s.logger.With("player_token", token).With("client_id", client.Id())
-	bus := event.NewEventBus()
-	s.fanout.Register(token, bus)
+	buffer := event.NewBuffer()
+	s.fanout.Register(token, buffer)
 
-	err = s.bus.Send(event.New().
+	err = s.buffer.Send(event.New().
 		SetType(event.JoinEvent).
 		SetSender(token).
 		SetPayload(p))
@@ -113,7 +113,7 @@ func (s *service) JoinPlayer(token string, conn *websocket.Conn) error {
 
 	s.event()
 	player.New(
-		bus, client, s.lobby, s.bus.Send,
+		buffer, client, s.lobby, s.buffer.Send,
 		s.event, token, logger,
 	).Start()
 

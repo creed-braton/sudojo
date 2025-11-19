@@ -6,17 +6,17 @@ import (
 )
 
 const (
-	LeaveEvent   = "leave"
-	JoinEvent    = "join"
-	StateEvent   = "state"
-	InsertEvent  = "insert"
-	PingEvent    = "ping"
-	eventBusSize = 256
+	LeaveEvent  = "leave"
+	JoinEvent   = "join"
+	StateEvent  = "state"
+	InsertEvent = "insert"
+	PingEvent   = "ping"
+	bufferSize  = 256
 )
 
 var (
-	ErrClosedBus = errors.New("event bus is closed")
-	ErrFullBus   = errors.New("event bus is full")
+	ErrClosedBuffer = errors.New("event buffer is closed")
+	ErrFullBuffer   = errors.New("event buffer is full")
 )
 
 // Represents a message containing type, sender, receiver, trace id, error
@@ -104,43 +104,43 @@ func (e *event) SetPayload(payload Payload) Event {
 	return e
 }
 
-// Represents a channel for sending and receiving events. Provides thread-safe
-// methods for event transmission and supports graceful shutdown.
-type EventBus interface {
-	// Sends an event to the bus. Returns ErrFullBus if the buffer is full
-	// or ErrClosedBus if the bus has been closed.
+// Represents a buffered channel for sending and receiving events. Provides
+// thread-safe methods for event transmission and supports graceful shutdown.
+type Buffer interface {
+	// Sends an event to the bus. Returns ErrFullBuffer if the buffer is full
+	// or ErrClosedBuffer if the buffer has been closed.
 	Send(event Event) error
-	// Receives an event from the bus, blocking until one is available.
-	// Returns ErrClosedBus if the bus has been closed.
+	// Receives an event from the buffer, blocking until one is available.
+	// Returns ErrClosedBuffer if the buffer has been closed.
 	Receive() (Event, error)
-	// Closes the event bus, preventing further sends and receives.
+	// Closes the event buffer, preventing further sends and receives.
 	Close()
 }
 
-type eventBus struct {
+type buffer struct {
 	events chan Event
 	lock   sync.RWMutex
 	once   sync.Once
 	closed chan struct{}
 }
 
-var _ EventBus = &eventBus{}
+var _ Buffer = &buffer{}
 
-// Returns a new event bus with a buffer size of 256 events.
-func NewEventBus() *eventBus {
-	return &eventBus{
-		events: make(chan Event, eventBusSize),
+// Returns a new event buffer with a size of 256 events.
+func NewBuffer() *buffer {
+	return &buffer{
+		events: make(chan Event, bufferSize),
 		closed: make(chan struct{}),
 	}
 }
 
-func (b *eventBus) Send(event Event) error {
+func (b *buffer) Send(event Event) error {
 	b.lock.RLock()
 	defer b.lock.RUnlock()
 
 	select {
 	case <-b.closed:
-		return ErrClosedBus
+		return ErrClosedBuffer
 	default:
 	}
 
@@ -148,19 +148,19 @@ func (b *eventBus) Send(event Event) error {
 	case b.events <- event:
 		return nil
 	default:
-		return ErrFullBus
+		return ErrFullBuffer
 	}
 }
 
-func (b *eventBus) Receive() (Event, error) {
+func (b *buffer) Receive() (Event, error) {
 	event, ok := <-b.events
 	if !ok {
-		return nil, ErrClosedBus
+		return nil, ErrClosedBuffer
 	}
 	return event, nil
 }
 
-func (b *eventBus) Close() {
+func (b *buffer) Close() {
 	b.once.Do(func() {
 		b.lock.Lock()
 		close(b.closed)
@@ -169,41 +169,42 @@ func (b *eventBus) Close() {
 	})
 }
 
-// Represents a router that distributes events from a source bus to multiple
-// registered destination buses.
+// Represents a router that distributes events from a source buffer to multiple
+// registered destination buffers.
 type Fanout interface {
-	// Registers a destination bus under the specified id for event routing.
-	Register(id string, bus EventBus)
-	// Removes the bus with the specified id from event routing.
+	// Registers a destination buffer under the specified id for event routing.
+	Register(id string, buffer Buffer)
+	// Removes the buffer with the specified id from event routing.
 	Deregister(id string)
-	// Retrieves an event from the source bus and distributes it to all registered
-	// target event buses. Returns an ErrClosedBus if the source bus is closed.
+	// Retrieves an event from the source buffer and distributes it to all
+	// registered target event buffers. Returns an ErrClosedBuffer if the source
+	// buffer is closed.
 	Pump() error
 }
 
 type fanout struct {
-	src    EventBus
+	src    Buffer
 	lock   sync.RWMutex
-	routes map[string]EventBus
+	routes map[string]Buffer
 }
 
 var _ Fanout = &fanout{}
 
-// Returns a new fanout router that distributes events from the source bus to
-// registered destinations.
-func NewFanout(src EventBus) *fanout {
+// Returns a new fanout router that distributes events from the source buffer
+// to registered destinations.
+func NewFanout(src Buffer) *fanout {
 	return &fanout{
 		src:    src,
-		routes: make(map[string]EventBus),
+		routes: make(map[string]Buffer),
 	}
 }
 
-func (f *fanout) Register(id string, bus EventBus) {
+func (f *fanout) Register(id string, buffer Buffer) {
 	f.lock.Lock()
 	if old := f.routes[id]; old != nil {
 		old.Close()
 	}
-	f.routes[id] = bus
+	f.routes[id] = buffer
 	f.lock.Unlock()
 }
 
@@ -216,22 +217,22 @@ func (f *fanout) Deregister(id string) {
 func (f *fanout) close() {
 	f.lock.RLock()
 	defer f.lock.RUnlock()
-	for _, bus := range f.routes {
-		bus.Close()
+	for _, buffer := range f.routes {
+		buffer.Close()
 	}
 }
 
 func (f *fanout) dispatch(event Event) {
 	f.lock.RLock()
-	routes := make(map[string]EventBus, len(f.routes))
+	routes := make(map[string]Buffer, len(f.routes))
 	for k, v := range f.routes {
 		routes[k] = v
 	}
 	f.lock.RUnlock()
 
 	// broadcast
-	for id, bus := range routes {
-		if err := bus.Send(event); err == ErrClosedBus {
+	for id, buffer := range routes {
+		if err := buffer.Send(event); err == ErrClosedBuffer {
 			f.Deregister(id)
 		}
 	}
@@ -239,8 +240,8 @@ func (f *fanout) dispatch(event Event) {
 
 func (f *fanout) Pump() error {
 	event, err := f.src.Receive()
-	// stop when source bus has been closed
-	if err == ErrClosedBus {
+	// stop when source buffer has been closed
+	if err == ErrClosedBuffer {
 		f.close()
 	}
 	if err != nil {

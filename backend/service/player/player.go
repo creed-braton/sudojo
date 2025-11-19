@@ -12,7 +12,7 @@ type Service interface {
 }
 
 type service struct {
-	bus       event.EventBus
+	buffer    event.Buffer
 	client    socket.Client
 	lobby     lobby.Lobby
 	broadcast func(e event.Event) error
@@ -24,7 +24,7 @@ type service struct {
 var _ Service = &service{}
 
 func New(
-	bus event.EventBus,
+	buffer event.Buffer,
 	client socket.Client,
 	lobby lobby.Lobby,
 	broadcast func(e event.Event) error,
@@ -33,7 +33,7 @@ func New(
 	logger *slog.Logger,
 ) *service {
 	return &service{
-		bus:       bus,
+		buffer:    buffer,
 		client:    client,
 		lobby:     lobby,
 		broadcast: broadcast,
@@ -52,7 +52,7 @@ func (s *service) handleInsert(row, col, val int, trace string) error {
 		SetPayload(p)
 
 	if err != nil {
-		return s.bus.Send(event.SetError(err.Error()))
+		return s.buffer.Send(event.SetError(err.Error()))
 	}
 	if p != nil {
 		return s.broadcast(event)
@@ -69,7 +69,7 @@ func (s *service) handlePing(row, col int, trace string) error {
 		SetPayload(p)
 
 	if err != nil {
-		return s.bus.Send(event.SetError(err.Error()))
+		return s.buffer.Send(event.SetError(err.Error()))
 	}
 	if p != nil {
 		s.broadcast(event)
@@ -78,7 +78,7 @@ func (s *service) handlePing(row, col int, trace string) error {
 }
 
 func (s *service) handleState() error {
-	return s.bus.Send(
+	return s.buffer.Send(
 		event.New().
 			SetType(event.StateEvent).
 			SetPayload(s.lobby.State()),
@@ -87,7 +87,7 @@ func (s *service) handleState() error {
 
 func (s *service) handler() {
 	defer func() {
-		s.bus.Close()
+		s.buffer.Close()
 		p, err := s.lobby.Leave(s.token)
 		if err != nil {
 			s.logger.Error(err.Error())
@@ -129,12 +129,12 @@ func (s *service) Start() {
 
 	go func() {
 		defer func() {
-			s.bus.Close()
+			s.buffer.Close()
 			s.client.Close()
 		}()
 
 		for {
-			e, err := s.bus.Receive()
+			e, err := s.buffer.Receive()
 			if err != nil {
 				return
 			}

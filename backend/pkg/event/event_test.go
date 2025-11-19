@@ -33,16 +33,16 @@ func TestEvent(t *testing.T) {
 
 func TestEventBus(t *testing.T) {
 	t.Run("send and receive event", func(t *testing.T) {
-		bus := NewEventBus()
-		defer bus.Close()
+		buffer := NewBuffer()
+		defer buffer.Close()
 
 		want := "test-message"
 		var e Event = New().SetTrace(want).SetPayload(NewPayload())
-		if err := bus.Send(e); err != nil {
+		if err := buffer.Send(e); err != nil {
 			t.Fatalf("unexpected error sending event: %v", err)
 		}
 
-		e, err := bus.Receive()
+		e, err := buffer.Receive()
 		if err != nil {
 			t.Fatalf("unexpected error receiving event: %v", err)
 		}
@@ -52,37 +52,37 @@ func TestEventBus(t *testing.T) {
 		}
 	})
 
-	t.Run("closed event bus", func(t *testing.T) {
-		bus := NewEventBus()
-		bus.Close()
+	t.Run("closed event buffer", func(t *testing.T) {
+		buffer := NewBuffer()
+		buffer.Close()
 
-		err := bus.Send(New().SetType("closed-test").SetSender("sender").SetPayload(NewPayload()))
-		if err != ErrClosedBus {
-			t.Errorf("expected '%v' on send, got: %v", ErrClosedBus, err)
+		err := buffer.Send(New().SetType("closed-test").SetSender("sender").SetPayload(NewPayload()))
+		if err != ErrClosedBuffer {
+			t.Errorf("expected '%v' on send, got: %v", ErrClosedBuffer, err)
 		}
 
-		_, err = bus.Receive()
-		if err != ErrClosedBus {
-			t.Errorf("expected '%v' on receive, got: %v", ErrClosedBus, err)
+		_, err = buffer.Receive()
+		if err != ErrClosedBuffer {
+			t.Errorf("expected '%v' on receive, got: %v", ErrClosedBuffer, err)
 		}
 	})
 
-	t.Run("full event bus", func(t *testing.T) {
-		bus := NewEventBus()
+	t.Run("full event buffer", func(t *testing.T) {
+		buffer := NewBuffer()
 
-		for range eventBusSize {
+		for range bufferSize {
 			e := New().SetType("test").SetSender("sender").SetTrace("trace")
-			if err := bus.Send(e); err != nil {
+			if err := buffer.Send(e); err != nil {
 				t.Fatalf("unexpected error sending event: %v", err)
 			}
 		}
 
-		err := bus.Send(New().SetType("test").SetSender("sender").SetTrace("trace"))
+		err := buffer.Send(New().SetType("test").SetSender("sender").SetTrace("trace"))
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
-		if err != ErrFullBus {
-			t.Errorf("expected '%v' on receive, got: %v", ErrFullBus, err)
+		if err != ErrFullBuffer {
+			t.Errorf("expected '%v' on receive, got: %v", ErrFullBuffer, err)
 		}
 	})
 
@@ -93,8 +93,8 @@ func TestEventBus(t *testing.T) {
 			total      = numSenders * numEvents
 		)
 
-		bus := NewEventBus()
-		defer bus.Close()
+		buffer := NewBuffer()
+		defer buffer.Close()
 
 		var wg sync.WaitGroup
 
@@ -110,7 +110,7 @@ func TestEventBus(t *testing.T) {
 						SetSender(fmt.Sprintf("sender-%d", senderId)).
 						SetTrace(msg).
 						SetPayload(NewPayload())
-					if err := bus.Send(e); err != nil {
+					if err := buffer.Send(e); err != nil {
 						t.Errorf("send error from sender %d: %v", senderId, err)
 						return
 					}
@@ -120,7 +120,7 @@ func TestEventBus(t *testing.T) {
 
 		received := make(map[string]bool)
 		for range total {
-			e, err := bus.Receive()
+			e, err := buffer.Receive()
 			if err != nil {
 				t.Errorf("receive error: %v", err)
 				return
@@ -144,9 +144,9 @@ func TestEventBus(t *testing.T) {
 		}
 	})
 
-	t.Run("concurrent senders on closed event bus", func(t *testing.T) {
+	t.Run("concurrent senders on closed event buffer", func(t *testing.T) {
 		for range 100 {
-			bus := NewEventBus()
+			buffer := NewBuffer()
 			done := make(chan struct{})
 
 			for range 1000 {
@@ -156,13 +156,13 @@ func TestEventBus(t *testing.T) {
 						case <-done:
 							return
 						default:
-							bus.Send(New().SetType("test").SetSender("sender").SetTrace("trace"))
+							buffer.Send(New().SetType("test").SetSender("sender").SetTrace("trace"))
 						}
 					}
 				}()
 			}
 
-			bus.Close()
+			buffer.Close()
 			time.Sleep(1 * time.Second)
 			close(done)
 		}
@@ -171,17 +171,17 @@ func TestEventBus(t *testing.T) {
 
 func TestFanout(t *testing.T) {
 	t.Run("broadcast delivery", func(t *testing.T) {
-		src := NewEventBus()
+		src := NewBuffer()
 		defer src.Close()
 		fanout := NewFanout(src)
 
 		numRecv := 8
-		receiver := make(map[string]EventBus)
+		receiver := make(map[string]Buffer)
 		for i := range numRecv {
-			bus := NewEventBus()
+			buffer := NewBuffer()
 			id := fmt.Sprintf("receiver-%d", i)
-			receiver[id] = bus
-			fanout.Register(id, bus)
+			receiver[id] = buffer
+			fanout.Register(id, buffer)
 		}
 
 		e := New().SetType("test").SetSender(fmt.Sprintf("receiver-%d", 0))
@@ -203,23 +203,23 @@ func TestFanout(t *testing.T) {
 		}
 	})
 
-	t.Run("deregister target event bus", func(t *testing.T) {
-		src := NewEventBus()
+	t.Run("deregister target event buffer", func(t *testing.T) {
+		src := NewBuffer()
 		fanout := NewFanout(src)
 
 		numRecv := 8
-		receiver := make(map[string]EventBus)
+		receiver := make(map[string]Buffer)
 		for i := range numRecv {
-			bus := NewEventBus()
+			buffer := NewBuffer()
 			id := fmt.Sprintf("receiver-%d", i)
-			receiver[id] = bus
-			fanout.Register(id, bus)
+			receiver[id] = buffer
+			fanout.Register(id, buffer)
 		}
 
 		id := fmt.Sprintf("receiver-%d", 5)
-		bus := receiver[id]
-		if bus == nil {
-			t.Fatalf("%s event bus not stored in receiver map", id)
+		buffer := receiver[id]
+		if buffer == nil {
+			t.Fatalf("%s event buffer not stored in receiver map", id)
 		}
 		fanout.Deregister(id)
 
@@ -233,13 +233,13 @@ func TestFanout(t *testing.T) {
 		src.Close()
 
 		go func() {
-			e, err := bus.Receive()
-			t.Error("unexpected resolved block on deregistered event bus receive")
+			e, err := buffer.Receive()
+			t.Error("unexpected resolved block on deregistered event buffer receive")
 			if err != nil {
-				t.Errorf("unexpected error receiving in deregistered event bus: %v", err)
+				t.Errorf("unexpected error receiving in deregistered event buffer: %v", err)
 			}
 			if e != nil {
-				t.Error("received unexpected event in deregisterd event bus")
+				t.Error("received unexpected event in deregisterd event buffer")
 			}
 		}()
 
@@ -247,15 +247,15 @@ func TestFanout(t *testing.T) {
 	})
 
 	t.Run("re-register existing id", func(t *testing.T) {
-		src := NewEventBus()
+		src := NewBuffer()
 		defer src.Close()
 		fanout := NewFanout(src)
 
 		id := "test-id"
-		old := NewEventBus()
+		old := NewBuffer()
 		fanout.Register(id, old)
-		bus := NewEventBus()
-		fanout.Register(id, bus)
+		buffer := NewBuffer()
+		fanout.Register(id, buffer)
 		if err := src.Send(New()); err != nil {
 			t.Fatalf("unexpected error sending event: %v", err)
 		}
@@ -264,12 +264,12 @@ func TestFanout(t *testing.T) {
 		}
 
 		if _, err := old.Receive(); err == nil {
-			t.Errorf("expected '%v', got nil", ErrClosedBus)
-		} else if err != ErrClosedBus {
-			t.Errorf("expected '%v', got: %v", ErrClosedBus, err)
+			t.Errorf("expected '%v', got nil", ErrClosedBuffer)
+		} else if err != ErrClosedBuffer {
+			t.Errorf("expected '%v', got: %v", ErrClosedBuffer, err)
 		}
 
-		e, err := bus.Receive()
+		e, err := buffer.Receive()
 		if err != nil {
 			t.Errorf("unexpected error receiving event: %v", err)
 		}
@@ -278,26 +278,26 @@ func TestFanout(t *testing.T) {
 		}
 	})
 
-	t.Run("closed target event bus", func(t *testing.T) {
-		src := NewEventBus()
+	t.Run("closed target event buffer", func(t *testing.T) {
+		src := NewBuffer()
 		defer src.Close()
 		fanout := NewFanout(src)
 
 		numRecv := 8
-		receiver := make(map[string]EventBus)
+		receiver := make(map[string]Buffer)
 		for i := range numRecv {
-			bus := NewEventBus()
+			buffer := NewBuffer()
 			id := fmt.Sprintf("receiver-%d", i)
-			receiver[id] = bus
-			fanout.Register(id, bus)
+			receiver[id] = buffer
+			fanout.Register(id, buffer)
 		}
 
 		id := fmt.Sprintf("receiver-%d", 6)
-		bus := receiver[id]
-		if bus == nil {
-			t.Fatalf("%s event bus not stored in receiver map", id)
+		buffer := receiver[id]
+		if buffer == nil {
+			t.Fatalf("%s event buffer not stored in receiver map", id)
 		}
-		bus.Close()
+		buffer.Close()
 
 		e := New().SetType("test").SetSender(fmt.Sprintf("receiver-%d", 0))
 		if err := src.Send(e); err != nil {
@@ -308,46 +308,46 @@ func TestFanout(t *testing.T) {
 		}
 
 		if fanout.routes[id] != nil {
-			t.Errorf("event bus '%s' still registered", id)
+			t.Errorf("event buffer '%s' still registered", id)
 		}
 	})
 
-	t.Run("closed source event bus", func(t *testing.T) {
-		src := NewEventBus()
+	t.Run("closed source event buffer", func(t *testing.T) {
+		src := NewBuffer()
 		fanout := NewFanout(src)
 
-		receiver := []EventBus{}
+		receiver := []Buffer{}
 		for i := range 8 {
-			bus := NewEventBus()
-			fanout.Register(fmt.Sprintf("receiver-%d", i), bus)
-			receiver = append(receiver, bus)
+			buffer := NewBuffer()
+			fanout.Register(fmt.Sprintf("receiver-%d", i), buffer)
+			receiver = append(receiver, buffer)
 		}
 
 		src.Close()
-		if err := fanout.Pump(); err != ErrClosedBus {
-			t.Fatalf("unexpected error pumping fanout: %v, want: %v", err, ErrClosedBus)
+		if err := fanout.Pump(); err != ErrClosedBuffer {
+			t.Fatalf("unexpected error pumping fanout: %v, want: %v", err, ErrClosedBuffer)
 		}
 
-		for _, bus := range receiver {
-			if _, err := bus.Receive(); err != ErrClosedBus {
-				t.Errorf("want: %v, got: %v", ErrClosedBus, err)
+		for _, buffer := range receiver {
+			if _, err := buffer.Receive(); err != ErrClosedBuffer {
+				t.Errorf("want: %v, got: %v", ErrClosedBuffer, err)
 			}
 		}
 	})
 
 	t.Run("under load", func(t *testing.T) {
-		src := NewEventBus()
+		src := NewBuffer()
 		fanout := NewFanout(src)
 
-		// make sure that numMsg * numWorker does not exceed eventBusSize
+		// make sure that numMsg * numWorker does not exceed bufferSize
 		numMsg := 16
 		numWorker := 16
-		workers := make(map[string]EventBus)
+		workers := make(map[string]Buffer)
 		for i := range numWorker {
-			bus := NewEventBus()
+			buffer := NewBuffer()
 			id := fmt.Sprintf("worker-%d", i)
-			workers[id] = bus
-			fanout.Register(id, bus)
+			workers[id] = buffer
+			fanout.Register(id, buffer)
 		}
 
 		wg := sync.WaitGroup{}
@@ -366,11 +366,11 @@ func TestFanout(t *testing.T) {
 		// receiver go routines
 		for k, v := range workers {
 			wg.Add(1)
-			go func(id string, bus EventBus) {
+			go func(id string, buffer Buffer) {
 				defer wg.Done()
 				check := make(map[string]struct{})
 				for i := range numWorker * numMsg {
-					e, err := bus.Receive()
+					e, err := buffer.Receive()
 					if err != nil {
 						t.Errorf("unexpected error receiving in %s iteration %d: %v", id, i, err)
 						continue
@@ -403,11 +403,11 @@ func TestFanout(t *testing.T) {
 		// sender go routines
 		for k := range workers {
 			wg.Add(1)
-			go func(id string, bus EventBus) {
+			go func(id string, buffer Buffer) {
 				defer wg.Done()
 				for i := range numMsg {
 					e := New().SetType("test").SetSender(id).SetTrace(strconv.Itoa(i))
-					if err := bus.Send(e); err != nil {
+					if err := buffer.Send(e); err != nil {
 						t.Errorf("unexpected error sending in %s iteration %d: %v", id, i, err)
 					}
 				}
@@ -419,16 +419,16 @@ func TestFanout(t *testing.T) {
 }
 
 func BenchmarkFanout(b *testing.B) {
-	src := NewEventBus()
+	src := NewBuffer()
 	defer src.Close()
 	fanout := NewFanout(src)
 
 	numWorker := 16
 	for i := range numWorker - 1 {
-		fanout.Register(fmt.Sprintf("worker-%d", i), NewEventBus())
+		fanout.Register(fmt.Sprintf("worker-%d", i), NewBuffer())
 	}
 
-	target := NewEventBus()
+	target := NewBuffer()
 	fanout.Register(fmt.Sprintf("worker-%d", numWorker-1), target)
 
 	b.RunParallel(func(pb *testing.PB) {
