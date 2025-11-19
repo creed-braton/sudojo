@@ -32,7 +32,7 @@ type playerStatus struct {
 	Active bool   `json:"active"`
 }
 
-type message struct {
+type Message struct {
 	Type      string          `json:"type"`
 	Trace     string          `json:"trace_id,omitempty"`
 	Error     string          `json:"error,omitempty"`
@@ -68,12 +68,12 @@ type Client interface {
 	Send(e event.Event) error
 	// Retrieves blockingly next message from the client. Returns error if read
 	// channel has been closed.
-	Receive() (*message, error)
+	Receive() (*Message, error)
 }
 
 type client struct {
 	id      string
-	read    chan *message
+	read    chan *Message
 	write   chan []byte
 	cross   chan []byte
 	conn    *websocket.Conn
@@ -89,7 +89,7 @@ var _ Client = &client{}
 func NewClient(conn *websocket.Conn) *client {
 	return &client{
 		id:      uuid.NewString(),
-		read:    make(chan *message, 256),
+		read:    make(chan *Message, 256),
 		write:   make(chan []byte, 256),
 		cross:   make(chan []byte, 256),
 		conn:    conn,
@@ -182,7 +182,7 @@ func (c *client) ReadPump() error {
 			continue
 		}
 
-		msg := &message{}
+		msg := &Message{}
 		if err := json.Unmarshal(b, msg); err != nil || len(msg.Type) < 1 {
 			select {
 			case c.cross <- invalidMsg:
@@ -219,8 +219,8 @@ func (c *client) ReadPump() error {
 	}
 }
 
-func newMessage(e event.Event) *message {
-	msg := &message{
+func newMessage(e event.Event) *Message {
+	msg := &Message{
 		Type:  e.Type(),
 		Trace: e.Trace(),
 		Error: e.Error(),
@@ -261,7 +261,7 @@ func (c *client) Send(e event.Event) error {
 	return nil
 }
 
-func (c *client) Receive() (*message, error) {
+func (c *client) Receive() (*Message, error) {
 	msg, ok := <-c.read
 	if !ok {
 		return nil, errors.New("read buffer has been closed")
