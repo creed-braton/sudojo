@@ -112,12 +112,7 @@ func (c *client) Close() {
 			time.Now().Add(time.Second),
 		)
 		close(c.write)
-		c.conn.SetReadDeadline(time.Now().Add(time.Second))
-		for {
-			if _, _, err := c.conn.NextReader(); err != nil {
-				break
-			}
-		}
+		time.Sleep(time.Second)
 		c.conn.Close()
 	})
 }

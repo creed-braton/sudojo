@@ -187,7 +187,7 @@ func TestTermination(t *testing.T) {
 		wg.Wait()
 	})
 
-	t.Run("server side connection close", func(t *testing.T) {
+	t.Run("server side close message", func(t *testing.T) {
 		conn, _, err := websocket.DefaultDialer.Dial(url, nil)
 		if err != nil {
 			t.Fatalf("dial error: %v", err)
