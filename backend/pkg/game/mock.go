@@ -15,7 +15,7 @@ type mockGame struct {
 
 var _ Game = &mockGame{}
 
-func NewMockGame(
+func NewMock(
 	start func(),
 	lax func(row, col, val int) (sudoku.Sudoku, error),
 	strict func(row, col, val int) (sudoku.Sudoku, error),

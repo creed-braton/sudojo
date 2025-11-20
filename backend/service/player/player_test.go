@@ -2,6 +2,7 @@ package player
 
 import (
 	"encoding/json"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -28,10 +29,8 @@ func setup() (string, func()) {
 		lobby := lobby.Open(8, false)
 		buffer := event.NewBuffer()
 		New(
-			buffer, client,
-			lobby, buffer.Send,
-			func() {}, "",
-			slog.With(),
+			buffer, client, lobby, buffer.Send, func() {}, "",
+			slog.New(slog.NewTextHandler(io.Discard, nil)),
 		).Start()
 	}))
 

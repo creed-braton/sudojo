@@ -14,7 +14,7 @@ func setupGame() game.Game {
 	initial := sudoku.New()
 	solution := sudoku.New()
 
-	return game.NewMockGame(
+	return game.NewMock(
 		func() {},
 		func(row, col, val int) (sudoku.Sudoku, error) {
 			return current, nil
@@ -209,7 +209,7 @@ func TestLeave(t *testing.T) {
 func TestInsertStrict(t *testing.T) {
 	t.Run("correct value", func(t *testing.T) {
 		current := sudoku.New()
-		mockGame := game.NewMockGame(
+		mockGame := game.NewMock(
 			func() {},
 			func(row, col, val int) (sudoku.Sudoku, error) {
 				return current, nil
@@ -240,7 +240,7 @@ func TestInsertStrict(t *testing.T) {
 
 	t.Run("incorrect value conflict", func(t *testing.T) {
 		current := sudoku.New()
-		mockGame := game.NewMockGame(
+		mockGame := game.NewMock(
 			func() {},
 			func(row, col, val int) (sudoku.Sudoku, error) { return current, nil },
 			func(row, col, val int) (sudoku.Sudoku, error) {
@@ -271,7 +271,7 @@ func TestInsertStrict(t *testing.T) {
 
 	t.Run("error propagation", func(t *testing.T) {
 		current := sudoku.New()
-		mockGame := game.NewMockGame(
+		mockGame := game.NewMock(
 			func() {},
 			func(row, col, val int) (sudoku.Sudoku, error) { return current, nil },
 			func(row, col, val int) (sudoku.Sudoku, error) {
@@ -295,7 +295,7 @@ func TestInsertStrict(t *testing.T) {
 func TestInsertLax(t *testing.T) {
 	t.Run("valid value", func(t *testing.T) {
 		current := sudoku.New()
-		mockGame := game.NewMockGame(
+		mockGame := game.NewMock(
 			func() {},
 			func(row, col, val int) (sudoku.Sudoku, error) {
 				return current, nil
@@ -323,7 +323,7 @@ func TestInsertLax(t *testing.T) {
 
 	t.Run("sudoku conflict", func(t *testing.T) {
 		current := sudoku.New()
-		mockGame := game.NewMockGame(
+		mockGame := game.NewMock(
 			func() {},
 			func(row, col, val int) (sudoku.Sudoku, error) {
 				return current, game.ErrRowConflict
@@ -351,7 +351,7 @@ func TestInsertLax(t *testing.T) {
 
 	t.Run("error propagation", func(t *testing.T) {
 		current := sudoku.New()
-		mockGame := game.NewMockGame(
+		mockGame := game.NewMock(
 			func() {},
 			func(row, col, val int) (sudoku.Sudoku, error) {
 				return current, game.ErrOutOfBounds

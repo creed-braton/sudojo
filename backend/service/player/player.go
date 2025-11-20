@@ -1,7 +1,6 @@
 package player
 
 import (
-	"fmt"
 	"log/slog"
 	"sudojo/adapter/socket"
 	"sudojo/pkg/event"
@@ -148,11 +147,9 @@ func (s *service) Start() {
 		for {
 			e, err := s.buffer.Receive()
 			if err != nil {
-				fmt.Println(err.Error())
 				return
 			}
 			if err := s.client.Send(e); err != nil {
-				fmt.Println(err.Error())
 				return
 			}
 		}

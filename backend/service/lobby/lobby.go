@@ -56,11 +56,11 @@ func (s *service) event() {
 }
 
 // Returns a new lobby service and starts the event pump goroutine.
-func New(lobby lobby.Lobby, db database.Database) *service {
+func New(lobby lobby.Lobby, db database.Database, logger *slog.Logger) *service {
 	buffer := event.NewBuffer()
 	s := &service{
 		lobby:  lobby,
-		logger: slog.With("lobby_id", lobby.Id()),
+		logger: logger,
 		buffer: buffer,
 		fanout: event.NewFanout(buffer),
 		db:     db,

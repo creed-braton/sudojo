@@ -9,7 +9,7 @@ type mockBuffer struct {
 
 var _ Buffer = &mockBuffer{}
 
-func NewMockEventBus(send func(e Event) error, recv func() (Event, error)) *mockBuffer {
+func NewMockBuffer(send func(e Event) error, recv func() (Event, error)) *mockBuffer {
 	return &mockBuffer{send: send, recv: recv}
 }
 

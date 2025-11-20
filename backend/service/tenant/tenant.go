@@ -12,8 +12,8 @@ import (
 // Manages lobby lifecycle and provides access to lobby services with automatic pruning
 // of inactive lobbies.
 type Service interface {
-	// Creates a new lobby and persists it to the database. Returns the lobby
-	// identifier or an error if creation fails.
+	// Creates a new lobby service. Returns the lobby identifier or an error if
+	// creation fails.
 	Create() (string, error)
 	// Retrieves or loads a lobby service by identifier. Returns nil if the lobby
 	// does not exist, or an error if loading from database fails.
@@ -67,7 +67,7 @@ func (s *service) Create() (string, error) {
 		slog.Error(err.Error())
 		return "", err
 	}
-	l := svc.New(lobby, s.db)
+	l := svc.New(lobby, s.db, slog.With("lobby_id", lobby.Id()))
 	s.lock.Lock()
 	s.lobbies[l.Id()] = l
 	s.lock.Unlock()
@@ -89,7 +89,7 @@ func (s *service) Lobby(id string) (svc.Service, error) {
 			return nil, nil
 		}
 
-		l := svc.New(lobby, s.db)
+		l := svc.New(lobby, s.db, slog.With("lobby_id", lobby.Id()))
 		s.lobbies[l.Id()] = l
 		return l, nil
 	}
