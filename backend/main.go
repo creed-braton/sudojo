@@ -2,57 +2,32 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
-	"strings"
 	"sudojo/adapter/database"
 	"sudojo/adapter/server"
-	"sudojo/service"
-	"sudojo/service/api"
-	"sudojo/service/conn"
-	"sudojo/service/data"
-	"sudojo/service/health"
+	"sudojo/service/tenant"
 )
 
 func main() {
-	var db database.Database
-	var err error
-
-	if dev() {
-		db = database.NewMock()
-		log.Println("WARNING: starting server without a db connection")
-	} else {
-		db, err = database.New(
-			envOrPanic("DB_HOST"),
-			envOrPanic("DB_PORT"),
-			envOrPanic("DB_NAME"),
-			envOrPanic("DB_USER"),
-			envOrPanic("DB_PASS"),
-		)
-		if err != nil {
-			panic(fmt.Errorf("failed establishing db connection: %v", err))
-		} else {
-			log.Println("INFO: successfully connected to db")
-		}
+	db, err := database.New(
+		envOrPanic("DB_HOST"),
+		envOrPanic("DB_PORT"),
+		envOrPanic("DB_NAME"),
+		envOrPanic("DB_USER"),
+		envOrPanic("DB_PASS"),
+	)
+	if err != nil {
+		panic(err)
 	}
-
-	data := data.New(db)
 	err = server.New(
 		envOrPanic("PORT"),
 		os.Getenv("ORIGIN"),
-		[]service.Service{
-			conn.New(data),
-			api.New(data),
-			health.New(),
-		}).Listen()
+		tenant.New(db),
+	).Listen()
 
 	if err != nil {
 		panic(fmt.Errorf("failed starting server: %v", err))
 	}
-}
-
-func dev() bool {
-	return strings.ToLower(os.Getenv("DEV")) == "true"
 }
 
 func envOrPanic(key string) string {

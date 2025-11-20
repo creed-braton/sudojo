@@ -1,42 +1,51 @@
 import { type ReactElement } from "react";
 import styles from "./InputBar.module.css";
-import type { Cell } from "../../types";
 import DeleteIcon from "../../icons/DeleteIcon";
 import PencilIcon from "../../icons/PencilIcon";
+import PingIcon from "../../icons/PingIcon";
 
 const InputBar = ({
-  position,
   input,
   pencilMode,
-  toggleMode,
+  pingMode,
+  togglePencil,
+  togglePing,
 }: {
-  position: Cell | undefined;
-  input: (row: number, column: number, value: number) => void;
+  input: (value: number) => void;
   pencilMode: boolean;
-  toggleMode: () => void;
+  pingMode: boolean;
+  togglePencil: () => void;
+  togglePing: () => void;
 }): ReactElement => {
   return (
     <div className={`glassmorphism ${styles.inputbar}`}>
       <div className={styles.row}>
-        {[1, 2, 3, 4, 5, 6].map((num: number) => (
+        {[1, 2, 3, 4, 5].map((num: number) => (
           <button
             key={num}
             className={styles.button}
             onClick={() => {
-              position && input(position.row, position.column, num);
+              input(num);
             }}
           >
             {num}
           </button>
         ))}
+        <button
+          className={`${styles.button} ${pingMode ? styles.active : ""}`}
+          onClick={togglePing}
+          title={pingMode ? "Switch to normal mode" : "Switch to ping mode"}
+        >
+          <PingIcon className={styles.icon} />
+        </button>
       </div>
       <div className={styles.row}>
-        {[7, 8, 9, 0].map((num: number) => (
+        {[6, 7, 8, 9, 0].map((num: number) => (
           <button
             key={num}
             className={styles.button}
             onClick={() => {
-              position && input(position.row, position.column, num);
+              input(num);
             }}
           >
             {num !== 0 ? num : <DeleteIcon className={styles.icon} />}
@@ -44,7 +53,7 @@ const InputBar = ({
         ))}
         <button
           className={`${styles.button} ${pencilMode ? styles.active : ""}`}
-          onClick={toggleMode}
+          onClick={togglePencil}
           title={pencilMode ? "Switch to normal mode" : "Switch to pencil mode"}
         >
           <PencilIcon className={styles.icon} />

@@ -1,39 +1,29 @@
 package database
 
-import (
-	"sudojo/domain/lobby"
+import "sudojo/pkg/lobby"
 
-	"github.com/google/uuid"
-)
+type mockDatabase struct{}
 
-type mock struct{}
+var _ Database = &mockDatabase{}
 
-func NewMock() *mock {
-	return &mock{}
+func NewMock() *mockDatabase {
+	return &mockDatabase{}
 }
 
-func (db *mock) Close() {}
+func (db *mockDatabase) Close() {}
 
-func (db *mock) Lobby(id uuid.UUID) (*lobby.Lobby, error) {
+func (db *mockDatabase) Lobby(id string) (lobby.Lobby, error) {
 	return nil, nil
 }
 
-func (db *mock) InsertLobby(lobby *lobby.Lobby) error {
+func (db *mockDatabase) InsertLobby(lobby lobby.Lobby) error {
 	return nil
 }
 
-func (db *mock) UpdateLobby(lobby *lobby.Lobby) error {
+func (db *mockDatabase) UpdateLobby(lobby lobby.Lobby) error {
 	return nil
 }
 
-func (db *mock) InsertPlayer(id string, player *lobby.Player) error {
-	return nil
-}
-
-func (db *mock) Logs(id string) ([]*lobby.Log, error) {
-	return []*lobby.Log{}, nil
-}
-
-func (db *mock) InsertLogs(logs []*lobby.Log) error {
+func (db *mockDatabase) InsertPlayer(lobbyId, token, name string) error {
 	return nil
 }

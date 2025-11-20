@@ -1,21 +1,23 @@
 import type { ReactElement } from "react";
-import type { Cell, ConflictEvent, Sudoku } from "../../types";
+import type { Conflict, Position, Sudoku } from "../../types";
 import styles from "./Board.module.css";
 
 const Board = ({
-  position,
-  setPosition,
+  selected,
+  select,
   initialBoard,
   currentBoard,
   notes,
   conflictEvent,
+  pingEvent,
 }: {
-  position: Cell | undefined;
-  setPosition: (state: Cell) => void;
+  selected: Position | null;
+  select: (row: number, column: number) => void;
   initialBoard: Sudoku;
   currentBoard: Sudoku;
   notes: Map<string, Set<number>>;
-  conflictEvent: ConflictEvent | undefined;
+  conflictEvent: Conflict | null;
+  pingEvent: Position | null;
 }): ReactElement => {
   return (
     <div className={`glassmorphism ${styles.board}`}>
@@ -24,27 +26,26 @@ const Board = ({
           <div key={`${rowIndex}`} className={styles.row}>
             {row.map((cell: number, colIndex: number) => (
               <div
-                key={`${rowIndex}-${colIndex}-${conflictEvent?.timeStamp}`}
+                key={`${rowIndex}-${colIndex}-${conflictEvent?.timestamp}-${pingEvent?.timestamp}`}
                 className={`
     ${styles.cell}
-    ${position && position.row === rowIndex && position.column === colIndex ? " " + styles.selected : ""}
+    ${selected && selected.row === rowIndex && selected.column === colIndex ? " " + styles.selected : ""}
     ${initialBoard[rowIndex][colIndex] === 0 ? styles.userValue : styles.initialValue}
     ${
       conflictEvent &&
-      conflictEvent.cell &&
-      conflictEvent.cell[0] === rowIndex &&
-      conflictEvent.cell[1] === colIndex
+      conflictEvent.row === rowIndex &&
+      conflictEvent.column === colIndex
         ? " " + styles.conflict
+        : ""
+    }
+    ${
+      pingEvent && pingEvent.row === rowIndex && pingEvent.column === colIndex
+        ? " " + styles.ping
         : ""
     }
   `}
                 onClick={() => {
-                  initialBoard &&
-                    initialBoard[rowIndex][colIndex] === 0 &&
-                    setPosition({
-                      row: rowIndex,
-                      column: colIndex,
-                    } as Cell);
+                  initialBoard && select(rowIndex, colIndex);
                 }}
               >
                 {cell > 0 ? (

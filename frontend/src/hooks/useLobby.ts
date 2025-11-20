@@ -1,6 +1,15 @@
 import { useState } from "react";
 import { HTTP_URL } from "../config";
-import { ApiError } from "../types";
+
+class ApiError extends Error {
+  status: number;
+  message: string;
+  constructor(status: number, message: string) {
+    super();
+    this.status = status;
+    this.message = message;
+  }
+}
 
 const postLobby = async (): Promise<string> => {
   const response: Response = await fetch(HTTP_URL + "/lobbies", {

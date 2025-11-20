@@ -3,41 +3,63 @@ package server
 import (
 	"fmt"
 	"net/http"
-	"sudojo/service"
+	"sudojo/service/tenant"
+
+	"github.com/gorilla/websocket"
 )
 
-type Server struct {
+type Server interface {
+	Listen() error
+}
+
+type server struct {
 	port     string
 	origin   string
 	router   *http.ServeMux
-	services []service.Service
+	upgrader websocket.Upgrader
+	tenant   tenant.Service
 }
 
-func New(port, origin string, services []service.Service) *Server {
-	server := &Server{
+func New(port, origin string, tenant tenant.Service) *server {
+	s := &server{
 		port:   port,
 		origin: origin,
 		router: http.NewServeMux(),
+		upgrader: websocket.Upgrader{
+			ReadBufferSize:  1024,
+			WriteBufferSize: 1024,
+			CheckOrigin: func(r *http.Request) bool {
+				return true
+			},
+		},
+		tenant: tenant,
 	}
 
-	for _, s := range services {
-		for path, route := range s.Routes() {
-			handler := server.methodRouter(route)
-			if len(origin) > 0 {
-				handler = server.cors(handler, route)
-			}
-			server.router.Handle(fmt.Sprintf("/api%s", path), handler)
+	routes := map[string]map[string]http.HandlerFunc{
+		"/lobbies": {
+			"POST": s.postLobby,
+		},
+		"/lobbies/{id}": {
+			"GET":   s.getLobby,
+			"PATCH": s.patchLobby,
+		},
+	}
+
+	for path, route := range routes {
+		handler := s.methodRouter(route)
+		if len(origin) > 0 {
+			handler = s.cors(handler, route)
 		}
+		s.router.Handle(fmt.Sprintf("/api%s", path), handler)
 	}
-
-	return server
+	return s
 }
 
-func (s *Server) Listen() error {
+func (s *server) Listen() error {
 	return http.ListenAndServe(fmt.Sprintf(":%s", s.port), s.router)
 }
 
-func (s *Server) methodRouter(methods map[string]http.HandlerFunc) http.Handler {
+func (s *server) methodRouter(methods map[string]http.HandlerFunc) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "OPTIONS" {
 			allow := "OPTIONS, "
@@ -60,7 +82,7 @@ func (s *Server) methodRouter(methods map[string]http.HandlerFunc) http.Handler 
 	})
 }
 
-func (s *Server) cors(
+func (s *server) cors(
 	next http.Handler,
 	methods map[string]http.HandlerFunc,
 ) http.Handler {
