@@ -17,8 +17,8 @@ const (
 	readDeadline  = 60
 	writeDeadline = 10
 	pingInterval  = 20
-	rateLimit     = 2
-	burstLimit    = 4
+	rateLimit     = 4
+	burstLimit    = 7
 )
 
 var (

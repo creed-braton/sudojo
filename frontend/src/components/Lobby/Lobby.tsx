@@ -1,11 +1,17 @@
 import { useEffect, useState, type ReactElement } from "react";
-import { useLocation, type Location } from "react-router-dom";
-import type { Cell } from "../../types";
+import {
+  useLocation,
+  useNavigate,
+  type Location,
+  type NavigateFunction,
+} from "react-router-dom";
 import Board from "../Board/Board";
 import styles from "./Lobby.module.css";
 import InputBar from "../InputBar/InputBar";
 import useSudoku, { type SudokuProps } from "../../hooks/useSudoku";
 import NameInput from "../NameInput/NameInput";
+import useWebSocket from "../../hooks/useWebSocket";
+import { type LobbyProps } from "../../types";
 
 const Lobby = ({
   joinLobby,
@@ -14,27 +20,31 @@ const Lobby = ({
   joinLobby: (id: string, name: string) => Promise<string>;
   getToken: (id: string) => string | undefined;
 }): ReactElement => {
-  const [position, setPosition] = useState<Cell | undefined>(undefined);
-  const [nameInput, setNameInput] = useState<boolean>(false);
   const [id, setId] = useState<string>("");
-  const [token, setToken] = useState<string | undefined>(undefined);
+  const [nameInput, setNameInput] = useState<boolean>(false);
+  const [token, setToken] = useState<string>("");
   const location: Location = useLocation();
-  const sudoku: SudokuProps = useSudoku();
+  const navigate: NavigateFunction = useNavigate();
+  const client: LobbyProps = useWebSocket(id, token);
+  const sudoku: SudokuProps = useSudoku(client);
 
   useEffect((): void => {
     const id: string = location.pathname.split("/")[2];
     setId(id);
     const token: string | undefined = getToken(id);
     !token && setNameInput(true);
-    setToken(token);
+    setToken(token || "");
   }, [location.pathname]);
 
   useEffect((): void => {
-    const id: string = location.pathname.split("/")[2];
-    token && sudoku.connect(id, token);
-  }, [token]);
-
-  useEffect((): void => {});
+    if (!sudoku.current) return;
+    for (let i: number = 0; i < sudoku.current.length; i++) {
+      for (let j: number = 0; j < sudoku.current[i].length; j++) {
+        if (sudoku.current[i][j] === 0) return;
+      }
+    }
+    navigate(`/s/${id}`);
+  }, [sudoku.current]);
 
   return (
     <div className={styles.lobby}>
@@ -46,21 +56,23 @@ const Lobby = ({
           close={() => setNameInput(false)}
         />
       )}
-      {sudoku.initialBoard && sudoku.currentBoard && (
+      {sudoku.initial && sudoku.current && (
         <>
           <Board
-            position={position}
-            setPosition={setPosition}
-            initialBoard={sudoku.initialBoard}
-            currentBoard={sudoku.currentBoard}
+            selected={sudoku.selected}
+            select={sudoku.select}
+            initialBoard={sudoku.initial}
+            currentBoard={sudoku.current}
             notes={sudoku.notes}
             conflictEvent={sudoku.conflictEvent}
+            pingEvent={sudoku.pingEvent}
           />
           <InputBar
-            position={position}
             input={sudoku.input}
             pencilMode={sudoku.pencilMode}
-            toggleMode={sudoku.toggleMode}
+            pingMode={sudoku.pingMode}
+            togglePencil={sudoku.togglePencil}
+            togglePing={sudoku.togglePing}
           />
         </>
       )}

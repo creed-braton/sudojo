@@ -1,60 +1,52 @@
-export class ApiError extends Error {
-  status: number;
-  message: string;
-  constructor(status: number, message: string) {
-    super();
-    this.status = status;
-    this.message = message;
-  }
-}
-
-export class ConflictEvent extends Event {
-  cell: number[];
-  message: string;
-  constructor(cell: number[], message: string) {
-    super("conflict");
-    this.cell = cell;
-    this.message = message;
-  }
-}
-
 export type Sudoku = number[][];
 
-export type Cell = {
+export const isSudoku = (value: unknown): value is Sudoku => {
+  if (!Array.isArray(value)) return false;
+  if (value.length !== 9) return false;
+
+  for (const row of value) {
+    if (!Array.isArray(row)) return false;
+    if (row.length !== 9) return false;
+
+    for (const cell of row) {
+      if (typeof cell !== "number") return false;
+      if (!Number.isInteger(cell)) return false;
+      if (cell < 0 || cell > 9) return false;
+    }
+  }
+
+  return true;
+};
+
+export type Position = {
   row: number;
   column: number;
-};
-
-export type Message = {
-  type: string;
-  initial_state: Sudoku | null;
-  current_state: Sudoku | null;
-  error: string | null;
-  conflict: string | null;
-  cell: number[];
-};
-
-type Log = {
   timestamp: number;
-  row: number;
-  column: number;
-  value: number;
 };
 
-export type Score = {
-  points: Log[];
-  mistakes: Log[];
-  player_name: string;
+export type Conflict = Position & {
+  message: string;
 };
 
-export type GameStats = {
-  board: Sudoku;
-  created_at: number;
-  finished_at: number | null;
-  scores: Score[];
+export type Player = {
+  name: string;
+  active: boolean;
 };
 
-export type Points = {
-  player: string;
-  points: number;
+export const isPlayer = (value: unknown): value is Player => {
+  if (typeof value !== "object" || value === null) return false;
+  const player = value as Record<string, unknown>;
+  return typeof player.name === "string" && typeof player.active === "boolean";
+};
+
+export type LobbyProps = {
+  current: Sudoku | null;
+  initial: Sudoku | null;
+  insert: (row: number, col: number, val: number) => void;
+  ping: (row: number, col: number) => void;
+  conflictEvent: Conflict | null;
+  pingEvent: Position | null;
+  players: Player[];
+  maxPlayer: number;
+  strict: boolean | null;
 };
