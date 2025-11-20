@@ -56,7 +56,7 @@ func setupClient() (string, func()) {
 				if err != nil {
 					return
 				}
-				msg := &message{}
+				msg := &Message{}
 				if err := json.Unmarshal(b, msg); err != nil {
 					return
 				}
@@ -91,7 +91,7 @@ func TestConnection(t *testing.T) {
 
 			for range numMsg {
 				row, col := 0, 0
-				want := &message{Type: "ping", Trace: uuid.NewString(), Row: &row, Column: &col}
+				want := &Message{Type: "ping", Trace: uuid.NewString(), Row: &row, Column: &col}
 				b, err := json.Marshal(want)
 				if err != nil {
 					t.Errorf("serialize message error: %v", err)
@@ -106,7 +106,7 @@ func TestConnection(t *testing.T) {
 					t.Errorf("read message error: %v", err)
 					continue
 				}
-				got := &message{}
+				got := &Message{}
 				if err := json.Unmarshal(msg, got); err != nil {
 					t.Errorf("deserialize message error: %v", err)
 				}

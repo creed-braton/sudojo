@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"sudojo/pkg/event"
-	"sudojo/pkg/sudoku"
 	"sync"
 	"time"
 
@@ -36,8 +35,8 @@ type Message struct {
 	Type      string          `json:"type"`
 	Trace     string          `json:"trace_id,omitempty"`
 	Error     string          `json:"error,omitempty"`
-	Current   sudoku.Sudoku   `json:"current_state,omitempty"`
-	Initial   sudoku.Sudoku   `json:"initial_state,omitempty"`
+	Current   [][]int         `json:"current_state,omitempty"`
+	Initial   [][]int         `json:"initial_state,omitempty"`
 	Conflict  string          `json:"conflict,omitempty"`
 	Row       *int            `json:"row,omitempty"`
 	Column    *int            `json:"column,omitempty"`
@@ -226,8 +225,12 @@ func newMessage(e event.Event) *Message {
 		Error: e.Error(),
 	}
 	if e.Payload() != nil {
-		msg.Current = e.Payload().Current()
-		msg.Initial = e.Payload().Initial()
+		if e.Payload().Current() != nil {
+			msg.Current = e.Payload().Current().Int()
+		}
+		if e.Payload().Initial() != nil {
+			msg.Initial = e.Payload().Initial().Int()
+		}
 		msg.Conflict = e.Payload().Conflict()
 		msg.Row = e.Payload().Row()
 		msg.Column = e.Payload().Column()
