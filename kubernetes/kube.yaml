@@ -80,22 +80,22 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: backend-deployment
+  name: api-deployment
   namespace: sudojo
   labels:
-    app: backend
+    app: api
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: backend
+      app: api
   template:
     metadata:
       labels:
-        app: backend
+        app: api
     spec:
       containers:
-        - name: backend
+        - name: api
           image: ghcr.io/creed-braton/sudojo-api:latest
           ports:
             - containerPort: 8080
@@ -103,7 +103,7 @@ spec:
             - name: DB_HOST
               value: database-service.sudojo.svc.cluster.local
             - name: DB_PORT
-              value: 5432
+              value: "5432"
             - name: DB_NAME
               value: postgres
             - name: DB_USER
