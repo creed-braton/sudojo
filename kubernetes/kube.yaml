@@ -80,22 +80,22 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: api-deployment
+  name: backend-deployment
   namespace: sudojo
   labels:
-    app: api
+    app: backend
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: api
+      app: backend
   template:
     metadata:
       labels:
-        app: api
+        app: backend
     spec:
       containers:
-        - name: api
+        - name: backend
           image: ghcr.io/creed-braton/sudojo-api:latest
           ports:
             - containerPort: 8080
