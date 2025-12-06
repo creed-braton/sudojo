@@ -153,8 +153,8 @@ func TestStrict(t *testing.T) {
 			t.Error("expected error, got nil")
 			return
 		}
-		if err != ErrAlreadyFinished {
-			t.Errorf("want: %v, got: %v", ErrAlreadyFinished, err)
+		if err != ErrFinished {
+			t.Errorf("want: %v, got: %v", ErrFinished, err)
 		}
 		if s != nil {
 			t.Error("expected nil, got current board copy")
@@ -351,8 +351,8 @@ func TestLax(t *testing.T) {
 			t.Error("expected error, got nil")
 			return
 		}
-		if err != ErrAlreadyFinished {
-			t.Errorf("want: %v, got: %v", ErrAlreadyFinished, err)
+		if err != ErrFinished {
+			t.Errorf("want: %v, got: %v", ErrFinished, err)
 		}
 		if s != nil {
 			t.Error("expected nil, got current board copy")

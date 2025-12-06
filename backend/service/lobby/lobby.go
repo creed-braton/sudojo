@@ -4,9 +4,7 @@ import (
 	"log/slog"
 	"sudojo/adapter/database"
 	"sudojo/adapter/socket"
-	"sudojo/pkg/event"
 	"sudojo/pkg/lobby"
-	"sudojo/service/player"
 	"sync/atomic"
 	"time"
 
@@ -31,9 +29,7 @@ type Service interface {
 }
 
 type service struct {
-	lobby     lobby.Lobby
-	buffer    event.Buffer
-	fanout    event.Fanout
+	ctrl      lobby.Controller
 	logger    *slog.Logger
 	db        database.Database
 	lastEvent atomic.Int64
@@ -44,7 +40,7 @@ var _ Service = &service{}
 // Continuously distributes events from the broadcast buffer to all registered players.
 func (s *service) pump() {
 	for {
-		if err := s.fanout.Pump(); err != nil {
+		if err := s.ctrl.Pump(); err != nil {
 			return
 		}
 	}
@@ -56,13 +52,10 @@ func (s *service) event() {
 }
 
 // Returns a new lobby service and starts the event pump goroutine.
-func New(lobby lobby.Lobby, db database.Database, logger *slog.Logger) *service {
-	buffer := event.NewBuffer()
+func New(ctrl lobby.Controller, db database.Database, logger *slog.Logger) *service {
 	s := &service{
-		lobby:  lobby,
+		ctrl:   ctrl,
 		logger: logger,
-		buffer: buffer,
-		fanout: event.NewFanout(buffer),
 		db:     db,
 	}
 	s.event()
@@ -71,15 +64,15 @@ func New(lobby lobby.Lobby, db database.Database, logger *slog.Logger) *service 
 }
 
 func (s *service) Id() string {
-	return s.lobby.Id()
+	return s.ctrl.Lobby().Id()
 }
 
 func (s *service) Shutdown() error {
-	err := s.db.UpdateLobby(s.lobby)
+	err := s.db.UpdateLobby(s.ctrl.Lobby())
 	if err != nil {
 		s.logger.Error(err.Error())
 	}
-	s.buffer.Close()
+	s.ctrl.Close()
 	s.logger.Info("shut down lobby")
 	return err
 }
@@ -89,7 +82,7 @@ func (s *service) LastEvent() int64 {
 }
 
 func (s *service) CreatePlayer(name string) (string, error) {
-	token, err := s.lobby.Create(name)
+	token, err := s.ctrl.Create(name)
 	if err != nil {
 		return "", err
 	}
@@ -102,32 +95,17 @@ func (s *service) CreatePlayer(name string) (string, error) {
 }
 
 func (s *service) JoinPlayer(token string, conn *websocket.Conn) error {
-	p, err := s.lobby.Join(token)
+	player, err := s.ctrl.Join(token)
 	if err != nil {
 		conn.Close()
 		return err
 	}
 
-	client := socket.NewClient(conn)
-	logger := s.logger.With("player_token", token).With("client_id", client.Id())
-	buffer := event.NewBuffer()
-	s.fanout.Register(token, buffer)
-
-	err = s.buffer.Send(event.New().
-		SetType(event.JoinEvent).
-		SetSender(token).
-		SetPayload(p))
-	if err != nil {
-		return err
-	} else {
-		logger.Info("player joined")
-	}
+	client := socket.NewClient(player, conn)
+	go client.WritePump()
+	go client.ReadPump()
 
 	s.event()
-	player.New(
-		buffer, client, s.lobby, s.buffer.Send,
-		s.event, token, logger,
-	).Start()
 
 	return nil
 }

@@ -42,6 +42,10 @@ type Event interface {
 	Payload() Payload
 	// Sets the payload data.
 	SetPayload(payload Payload) Event
+	// Creation timestamp of the event.
+	Timestamp() int64
+	// Sets the creation timestamp.
+	SetTimestamp(ts int64) Event
 }
 
 type event struct {
@@ -50,6 +54,7 @@ type event struct {
 	trace     string
 	errorMsg  string
 	payload   Payload
+	timestamp int64
 }
 
 var _ Event = &event{}
@@ -101,6 +106,15 @@ func (e *event) Payload() Payload {
 
 func (e *event) SetPayload(payload Payload) Event {
 	e.payload = payload
+	return e
+}
+
+func (e *event) Timestamp() int64 {
+	return e.timestamp
+}
+
+func (e *event) SetTimestamp(ts int64) Event {
+	e.timestamp = ts
 	return e
 }
 

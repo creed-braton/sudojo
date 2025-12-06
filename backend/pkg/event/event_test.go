@@ -10,12 +10,14 @@ import (
 
 func TestEvent(t *testing.T) {
 	eventType, sender, trace, errorMsg := "test-event", "test-sender", "test-trace", "test-error"
+	now := time.Now().UTC().UnixNano()
 	e := New().
 		SetType(eventType).
 		SetSender(sender).
 		SetTrace(trace).
 		SetError(errorMsg).
-		SetPayload(NewPayload())
+		SetPayload(NewPayload()).
+		SetTimestamp(now)
 
 	if e.Type() != eventType {
 		t.Errorf("event type, want: %s, got: %s", eventType, e.Type())
@@ -28,6 +30,9 @@ func TestEvent(t *testing.T) {
 	}
 	if e.Error() != errorMsg {
 		t.Errorf("error message, want: %s, got %s", errorMsg, e.Error())
+	}
+	if e.Timestamp() != now {
+		t.Errorf("timestamp, want: %d, got %d", now, e.Timestamp())
 	}
 }
 

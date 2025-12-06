@@ -1,7 +1,6 @@
 package event
 
 import (
-	"sudojo/pkg/player"
 	"sudojo/pkg/sudoku"
 	"testing"
 )
@@ -14,9 +13,9 @@ func TestPayload(t *testing.T) {
 	row, col, val, maxPlayer := 3, 4, 7, 8
 	conflict := "duplicate number"
 
-	players := []player.Player{
-		player.New("tokenA", "Alice"),
-		player.New("tokenB", "Bob"),
+	players := []Player{
+		NewPlayer("Alice", true),
+		NewPlayer("Bob", true),
 	}
 
 	p.SetInitial(initial).

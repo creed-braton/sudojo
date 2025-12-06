@@ -3,10 +3,13 @@ package tenant
 import (
 	"log/slog"
 	"sudojo/adapter/database"
+	"sudojo/pkg/game"
 	"sudojo/pkg/lobby"
 	svc "sudojo/service/lobby"
 	"sync"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // Manages lobby lifecycle and provides access to lobby services with automatic pruning
@@ -62,37 +65,47 @@ func New(db database.Database) *service {
 }
 
 func (s *service) Create() (string, error) {
-	lobby := lobby.Open(8, false)
-	if err := s.db.InsertLobby(lobby); err != nil {
+	maxPlayer := 8
+	l := lobby.New(
+		uuid.NewString(),
+		game.Generate(time.Now().UTC().UnixNano()),
+		make(map[string]string, maxPlayer),
+		false,
+		maxPlayer,
+	)
+	l.Game().Start()
+	if err := s.db.InsertLobby(l); err != nil {
 		slog.Error(err.Error())
 		return "", err
 	}
-	l := svc.New(lobby, s.db, slog.With("lobby_id", lobby.Id()))
+	ctrl := lobby.NewController(l)
+	lobby := svc.New(ctrl, s.db, slog.With("lobby_id", l.Id()))
 	s.lock.Lock()
-	s.lobbies[l.Id()] = l
+	s.lobbies[lobby.Id()] = lobby
 	s.lock.Unlock()
-	return l.Id(), nil
+	return lobby.Id(), nil
 }
 
 func (s *service) Lobby(id string) (svc.Service, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	l, exist := s.lobbies[id]
+	lobbySvc, exist := s.lobbies[id]
 	if !exist {
-		lobby, err := s.db.Lobby(id)
+		l, err := s.db.Lobby(id)
 		if err != nil {
 			slog.Error(err.Error(), "lobby_id", id)
 			return nil, err
 		}
-		if lobby == nil {
+		if l == nil {
 			return nil, nil
 		}
 
-		l := svc.New(lobby, s.db, slog.With("lobby_id", lobby.Id()))
-		s.lobbies[l.Id()] = l
-		return l, nil
+		ctrl := lobby.NewController(l)
+		lobbySvc := svc.New(ctrl, s.db, slog.With("lobby_id", l.Id()))
+		s.lobbies[l.Id()] = lobbySvc
+		return lobbySvc, nil
 	}
 
-	return l, nil
+	return lobbySvc, nil
 }

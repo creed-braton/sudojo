@@ -3,7 +3,6 @@ package server
 import (
 	"net/http"
 	"sudojo/pkg/lobby"
-	"sudojo/pkg/player"
 
 	"github.com/google/uuid"
 )
@@ -41,8 +40,8 @@ func (s *server) patchLobby(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if err == lobby.ErrLobbyFull {
 			http.Error(w, err.Error(), 409)
-		} else if err == player.ErrInvalidChar ||
-			err == player.ErrNameTooLong {
+		} else if err == lobby.ErrInvalidChar ||
+			err == lobby.ErrNameTooLong {
 			http.Error(w, err.Error(), 404)
 		} else {
 			http.Error(w, "internal server error", 500)
@@ -68,12 +67,12 @@ func (s *server) getLobby(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	lobby, err := s.tenant.Lobby(id)
+	lobbySvc, err := s.tenant.Lobby(id)
 	if err != nil {
 		http.Error(w, "internal server error", 500)
 		return
 	}
-	if lobby == nil {
+	if lobbySvc == nil {
 		http.Error(w, "lobby not found", 404)
 		return
 	}
@@ -84,8 +83,8 @@ func (s *server) getLobby(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = lobby.JoinPlayer(token, conn)
-	if err == player.ErrPlayerNotFound {
+	err = lobbySvc.JoinPlayer(token, conn)
+	if err == lobby.ErrPlayerNotFound {
 		http.Error(w, err.Error(), 404)
 		return
 	}

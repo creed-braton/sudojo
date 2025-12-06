@@ -5,10 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"sudojo/pkg/event"
-	"sync"
+	"sudojo/pkg/lobby"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"golang.org/x/time/rate"
 )
@@ -46,178 +45,6 @@ type Message struct {
 	Strict    *bool           `json:"strict,omitempty"`
 }
 
-// Represents a WebSocket client connection. Provides methods for sending and
-// receiving messages, as well as pumping messages through the internal channels.
-type Client interface {
-	// Returns the UUID of the client.
-	Id() string
-	// Closes the client connection and cleans up resources.
-	Close()
-	// Writes continuously messages from internal channels to WebSocket connection.
-	// Also handles periodic pings to keep the connection alive. Closes read channel
-	// if read deadline runs out.
-	WritePump() error
-	// Reads continuously messages from WebSocket connection and writes them into
-	// internal channel. Enforces rate limiting and updates the read deadline
-	// based on pong messages.
-	ReadPump() error
-	// Queues non-blockingly event into internal channel to be sent to the client.
-	// Drops messages when internal channel is full. Returns error if event could
-	// not be serialized into bytes.
-	Send(e event.Event) error
-	// Retrieves blockingly next message from the client. Returns error if read
-	// channel has been closed.
-	Receive() (*Message, error)
-}
-
-type client struct {
-	id      string
-	read    chan *Message
-	write   chan []byte
-	cross   chan []byte
-	conn    *websocket.Conn
-	once    sync.Once
-	limiter *rate.Limiter
-}
-
-var _ Client = &client{}
-
-// Returns a new Client instance with a UUID. It initializes internal channels for
-// reading, writing, and cross-messages, sets up a rate limiter, and associates
-// the provided WebSocket connection.
-func NewClient(conn *websocket.Conn) *client {
-	return &client{
-		id:      uuid.NewString(),
-		read:    make(chan *Message, 256),
-		write:   make(chan []byte, 256),
-		cross:   make(chan []byte, 256),
-		conn:    conn,
-		limiter: rate.NewLimiter(rateLimit, burstLimit),
-	}
-}
-
-func (c *client) Id() string {
-	return c.id
-}
-
-func (c *client) Close() {
-	c.once.Do(func() {
-		msg := websocket.FormatCloseMessage(
-			websocket.CloseNormalClosure, "",
-		)
-		_ = c.conn.WriteControl(
-			websocket.CloseMessage,
-			msg,
-			time.Now().Add(time.Second),
-		)
-		close(c.write)
-		time.Sleep(time.Second)
-		c.conn.Close()
-	})
-}
-
-func (c *client) WritePump() error {
-	ticker := time.NewTicker(pingInterval * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case msg, ok := <-c.write:
-			if !ok {
-				return errors.New("write buffer has been closed")
-			}
-
-			c.conn.SetWriteDeadline(time.Now().Add(writeDeadline * time.Second))
-			if err := c.conn.WriteMessage(websocket.TextMessage, msg); err != nil {
-				return fmt.Errorf("failed sending message: %w", err)
-			}
-
-		case msg, ok := <-c.cross:
-			if !ok {
-				return errors.New("cross buffer has been closed")
-			}
-
-			c.conn.SetWriteDeadline(time.Now().Add(writeDeadline * time.Second))
-			if err := c.conn.WriteMessage(websocket.TextMessage, msg); err != nil {
-				return fmt.Errorf("failed sending message: %w", err)
-			}
-
-		case <-ticker.C:
-			c.conn.SetWriteDeadline(time.Now().Add(writeDeadline * time.Second))
-			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
-				return fmt.Errorf("failed sending ping: %w", err)
-			}
-		}
-	}
-}
-
-func (c *client) ReadPump() error {
-	defer func() {
-		close(c.read)
-		close(c.cross)
-	}()
-
-	c.conn.SetPongHandler(func(string) error {
-		c.conn.SetReadDeadline(time.Now().Add(readDeadline * time.Second))
-		return nil
-	})
-
-	for {
-		c.conn.SetReadDeadline(time.Now().Add(readDeadline * time.Second))
-		t, b, err := c.conn.ReadMessage()
-		if err != nil {
-			return fmt.Errorf("failed receiving message: %w", err)
-		}
-
-		if t != websocket.TextMessage {
-			continue
-		}
-
-		if !c.limiter.Allow() {
-			select {
-			case c.cross <- rateLimitMsg:
-			default:
-			}
-			continue
-		}
-
-		msg := &Message{}
-		if err := json.Unmarshal(b, msg); err != nil || len(msg.Type) < 1 {
-			select {
-			case c.cross <- invalidMsg:
-			default:
-			}
-			continue
-		}
-
-		if msg.Type == event.InsertEvent {
-			if msg.Row == nil || msg.Column == nil || msg.Value == nil {
-				select {
-				case c.cross <- invalidMsg:
-				default:
-				}
-				continue
-			}
-		} else if msg.Type == event.PingEvent {
-			if msg.Row == nil || msg.Column == nil {
-				select {
-				case c.cross <- invalidMsg:
-				default:
-				}
-				continue
-			}
-		} else if msg.Type != event.StateEvent {
-			select {
-			case c.cross <- invalidMsg:
-			default:
-			}
-			continue
-		}
-
-		c.read <- msg
-	}
-}
-
 func newMessage(e event.Event) *Message {
 	msg := &Message{
 		Type:  e.Type(),
@@ -250,24 +77,154 @@ func newMessage(e event.Event) *Message {
 	return msg
 }
 
-func (c *client) Send(e event.Event) error {
-	b, err := json.Marshal(newMessage(e))
-	if err != nil {
-		return err
-	}
-
-	select {
-	case c.write <- b:
-	default:
-	}
-
-	return nil
+type Client interface {
 }
 
-func (c *client) Receive() (*Message, error) {
-	msg, ok := <-c.read
-	if !ok {
-		return nil, errors.New("read buffer has been closed")
+type client struct {
+	player  lobby.Player
+	conn    *websocket.Conn
+	write   chan []byte
+	limiter *rate.Limiter
+}
+
+var _ Client = &client{}
+
+func NewClient(player lobby.Player, conn *websocket.Conn) *client {
+	return &client{
+		player:  player,
+		conn:    conn,
+		write:   make(chan []byte, 256),
+		limiter: rate.NewLimiter(rateLimit, burstLimit),
 	}
-	return msg, nil
+}
+
+func (c *client) WritePump() error {
+	ticker := time.NewTicker(pingInterval * time.Second)
+	defer func() {
+		ticker.Stop()
+		msg := websocket.FormatCloseMessage(
+			websocket.CloseNormalClosure, "",
+		)
+		_ = c.conn.WriteControl(
+			websocket.CloseMessage,
+			msg,
+			time.Now().Add(time.Second),
+		)
+		time.Sleep(time.Second)
+		c.conn.Close()
+	}()
+
+	ch := make(chan event.Event, 256)
+	go func() {
+		for {
+			event, err := c.player.Receive()
+			if err != nil {
+				close(ch)
+				return
+			}
+			ch <- event
+		}
+	}()
+
+	for {
+		select {
+		case event, ok := <-ch:
+			if !ok {
+				return errors.New("event channel has been closed")
+			}
+
+			msg := newMessage(event)
+			b, err := json.Marshal(msg)
+			if err != nil {
+				continue
+			}
+
+			c.conn.SetWriteDeadline(time.Now().Add(writeDeadline * time.Second))
+			if err := c.conn.WriteMessage(websocket.TextMessage, b); err != nil {
+				return fmt.Errorf("failed sending message: %w", err)
+			}
+
+		case b, ok := <-c.write:
+			if !ok {
+				return errors.New("write buffer has been closed")
+			}
+
+			c.conn.SetWriteDeadline(time.Now().Add(writeDeadline * time.Second))
+			if err := c.conn.WriteMessage(websocket.TextMessage, b); err != nil {
+				return fmt.Errorf("failed sending message: %w", err)
+			}
+
+		case <-ticker.C:
+			c.conn.SetWriteDeadline(time.Now().Add(writeDeadline * time.Second))
+			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				return fmt.Errorf("failed sending ping: %w", err)
+			}
+		}
+	}
+}
+
+func (c *client) ReadPump() error {
+	defer func() {
+		close(c.write)
+	}()
+
+	c.conn.SetPongHandler(func(string) error {
+		c.conn.SetReadDeadline(time.Now().Add(readDeadline * time.Second))
+		return nil
+	})
+
+	for {
+		c.conn.SetReadDeadline(time.Now().Add(readDeadline * time.Second))
+		t, b, err := c.conn.ReadMessage()
+		if err != nil {
+			return fmt.Errorf("failed receiving message: %w", err)
+		}
+
+		if t != websocket.TextMessage {
+			continue
+		}
+
+		if !c.limiter.Allow() {
+			select {
+			case c.write <- rateLimitMsg:
+			default:
+			}
+			continue
+		}
+
+		msg := &Message{}
+		if err := json.Unmarshal(b, msg); err != nil || len(msg.Type) < 1 {
+			select {
+			case c.write <- invalidMsg:
+			default:
+			}
+			continue
+		}
+
+		if msg.Type == event.InsertEvent {
+			if msg.Row != nil && msg.Column != nil && msg.Value != nil {
+				if err := c.player.Insert(*msg.Row, *msg.Column, *msg.Value, ""); err != nil {
+					return err
+				}
+				continue
+			}
+		} else if msg.Type == event.PingEvent {
+			if msg.Row != nil && msg.Column != nil {
+				if err := c.player.Ping(*msg.Row, *msg.Column, ""); err != nil {
+					return err
+				}
+				continue
+			}
+		} else if msg.Type == event.StateEvent {
+			if err := c.player.State(""); err != nil {
+				return err
+			}
+			continue
+		}
+
+		select {
+		case c.write <- invalidMsg:
+		default:
+		}
+	}
 }

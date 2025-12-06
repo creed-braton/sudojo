@@ -10,16 +10,16 @@ import (
 )
 
 var (
-	ErrIncorrect       = errors.New("input incorrect")
-	ErrRowConflict     = errors.New("value already exist in row")
-	ErrColConflict     = errors.New("value already exist in column")
-	ErrBoxConflict     = errors.New("value already exist in box")
-	ErrOutOfBounds     = errors.New("cell position out of bounds")
-	errLaxValRange     = fmt.Errorf("input must be between %d and %d", sudoku.EmptyCell, sudoku.MaxValue)
-	errStrictValRange  = fmt.Errorf("input must be between %d and %d", sudoku.MinValue, sudoku.MaxValue)
-	errInitialClue     = errors.New("cannot overwrite initial clue")
-	ErrAlreadyFinished = errors.New("game is already finish")
-	errNotStarted      = errors.New("game has not started yet")
+	ErrIncorrect      = errors.New("input incorrect")
+	ErrRowConflict    = errors.New("value already exist in row")
+	ErrColConflict    = errors.New("value already exist in column")
+	ErrBoxConflict    = errors.New("value already exist in box")
+	ErrOutOfBounds    = errors.New("cell position out of bounds")
+	errLaxValRange    = fmt.Errorf("input must be between %d and %d", sudoku.EmptyCell, sudoku.MaxValue)
+	errStrictValRange = fmt.Errorf("input must be between %d and %d", sudoku.MinValue, sudoku.MaxValue)
+	errInitialClue    = errors.New("cannot overwrite initial clue")
+	ErrFinished       = errors.New("game is already finish")
+	errNotStarted     = errors.New("game has not started yet")
 )
 
 // Represents a Sudoku game that encapsulates the current puzzle state, original
@@ -141,7 +141,7 @@ func (g *game) Lax(row, col, val int) (sudoku.Sudoku, error) {
 		return nil, errNotStarted
 	}
 	if g.finished.Load() != nil {
-		return nil, ErrAlreadyFinished
+		return nil, ErrFinished
 	}
 	if g.current.Cell(row, col) == val {
 		return nil, nil
@@ -180,7 +180,7 @@ func (g *game) Strict(row, col, val int) (sudoku.Sudoku, error) {
 		return nil, errNotStarted
 	}
 	if g.finished.Load() != nil {
-		return nil, ErrAlreadyFinished
+		return nil, ErrFinished
 	}
 	if g.current.Cell(row, col) == val {
 		return nil, nil

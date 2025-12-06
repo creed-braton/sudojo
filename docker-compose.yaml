@@ -25,26 +25,8 @@ services:
       DB_PORT: 5432
       DB_NAME: postgres
       DB_USER: postgres
-      DB_PASS: ${DB_PASS}
+      DB_PASS: password
       ORIGIN: http://localhost:5173
-    depends_on:
-      database:
-        condition: "service_healthy"
-
-  proxy:
-    container_name: proxy
-    build:
-      context: ./frontend
-      args:
-        API_ENDPOINT: sudojo.io/api
-    depends_on:
-      database:
-        condition: "service_healthy"
-
-  tunnel:
-    container_name: tunnel
-    image: cloudflare/cloudflared:1710-3f6b1f24d036
-    command: tunnel run --token ${TUNNEL_TOKEN}
     depends_on:
       database:
         condition: "service_healthy"

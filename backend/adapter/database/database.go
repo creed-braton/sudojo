@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"sudojo/pkg/game"
 	"sudojo/pkg/lobby"
-	"sudojo/pkg/player"
 	"sudojo/pkg/sudoku"
 
 	"github.com/jackc/pgx/v5"
@@ -117,9 +116,8 @@ func (db *database) Lobby(id string) (lobby.Lobby, error) {
 		}
 		players[token] = name
 	}
-	pool := player.NewPool(players, maxPlayer)
 
-	return lobby.New(id, strict, game, pool), nil
+	return lobby.New(id, game, players, strict, maxPlayer), nil
 }
 
 func (db *database) InsertLobby(lobby lobby.Lobby) error {
@@ -134,7 +132,7 @@ func (db *database) InsertLobby(lobby lobby.Lobby) error {
 		lobby.Game().Initial().Int(),
 		lobby.Game().Current().Int(),
 		lobby.Game().Solution().Int(),
-		lobby.MaxPlayer(),
+		lobby.Size(),
 	)
 	return err
 }
