@@ -3,6 +3,7 @@ package tenant
 import (
 	"log/slog"
 	"sudojo/adapter/database"
+	"sudojo/pkg/ctrl"
 	"sudojo/pkg/game"
 	"sudojo/pkg/lobby"
 	svc "sudojo/service/lobby"
@@ -78,7 +79,7 @@ func (s *service) Create() (string, error) {
 		slog.Error(err.Error())
 		return "", err
 	}
-	ctrl := lobby.NewController(l)
+	ctrl := ctrl.New(l)
 	lobby := svc.New(ctrl, s.db, slog.With("lobby_id", l.Id()))
 	s.lock.Lock()
 	s.lobbies[lobby.Id()] = lobby
@@ -101,7 +102,7 @@ func (s *service) Lobby(id string) (svc.Service, error) {
 			return nil, nil
 		}
 
-		ctrl := lobby.NewController(l)
+		ctrl := ctrl.New(l)
 		lobbySvc := svc.New(ctrl, s.db, slog.With("lobby_id", l.Id()))
 		s.lobbies[l.Id()] = lobbySvc
 		return lobbySvc, nil

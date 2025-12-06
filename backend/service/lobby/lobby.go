@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"sudojo/adapter/database"
 	"sudojo/adapter/socket"
-	"sudojo/pkg/lobby"
+	"sudojo/pkg/ctrl"
 	"sync/atomic"
 	"time"
 
@@ -29,7 +29,7 @@ type Service interface {
 }
 
 type service struct {
-	ctrl      lobby.Controller
+	ctrl      ctrl.Controller
 	logger    *slog.Logger
 	db        database.Database
 	lastEvent atomic.Int64
@@ -52,7 +52,7 @@ func (s *service) event() {
 }
 
 // Returns a new lobby service and starts the event pump goroutine.
-func New(ctrl lobby.Controller, db database.Database, logger *slog.Logger) *service {
+func New(ctrl ctrl.Controller, db database.Database, logger *slog.Logger) *service {
 	s := &service{
 		ctrl:   ctrl,
 		logger: logger,

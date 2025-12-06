@@ -1,8 +1,9 @@
-package lobby
+package ctrl
 
 import (
 	"sudojo/pkg/event"
 	"sudojo/pkg/game"
+	"sudojo/pkg/lobby"
 	"sudojo/pkg/sudoku"
 	"sync"
 	"time"
@@ -18,7 +19,7 @@ type Player interface {
 
 type player struct {
 	token     string
-	lobby     Lobby
+	lobby     lobby.Lobby
 	buffer    event.Buffer
 	broadcast func(e event.Event) error
 	leave     func(token string)
@@ -29,7 +30,7 @@ var _ Player = &player{}
 
 func NewPlayer(
 	token string,
-	lobby Lobby,
+	lobby lobby.Lobby,
 	buffer event.Buffer,
 	broadcast func(e event.Event) error,
 	leave func(token string),

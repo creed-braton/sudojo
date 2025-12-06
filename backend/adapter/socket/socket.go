@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sudojo/pkg/ctrl"
 	"sudojo/pkg/event"
-	"sudojo/pkg/lobby"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -81,7 +81,7 @@ type Client interface {
 }
 
 type client struct {
-	player  lobby.Player
+	player  ctrl.Player
 	conn    *websocket.Conn
 	write   chan []byte
 	limiter *rate.Limiter
@@ -89,7 +89,7 @@ type client struct {
 
 var _ Client = &client{}
 
-func NewClient(player lobby.Player, conn *websocket.Conn) *client {
+func NewClient(player ctrl.Player, conn *websocket.Conn) *client {
 	return &client{
 		player:  player,
 		conn:    conn,

@@ -1,21 +1,22 @@
-package lobby
+package ctrl
 
 import (
 	"sudojo/pkg/event"
+	"sudojo/pkg/lobby"
 	"sync"
 )
 
 type Controller interface {
 	Close()
 	Pump() error
-	Lobby() Lobby
+	Lobby() lobby.Lobby
 	Broadcast(e event.Event) error
 	Create(name string) (string, error)
 	Join(token string) (Player, error)
 }
 
 type controller struct {
-	lobby  Lobby
+	lobby  lobby.Lobby
 	buffer event.Buffer
 	fanout event.Fanout
 	active map[string]struct{}
@@ -24,7 +25,7 @@ type controller struct {
 
 var _ Controller = &controller{}
 
-func NewController(lobby Lobby) *controller {
+func New(lobby lobby.Lobby) *controller {
 	buffer := event.NewBuffer()
 	fanout := event.NewFanout(buffer)
 	return &controller{lobby: lobby, buffer: buffer, fanout: fanout}
@@ -38,7 +39,7 @@ func (c *controller) Pump() error {
 	return c.fanout.Pump()
 }
 
-func (c *controller) Lobby() Lobby {
+func (c *controller) Lobby() lobby.Lobby {
 	return c.lobby
 }
 
@@ -51,28 +52,23 @@ func (c *controller) Create(name string) (string, error) {
 }
 
 func (c *controller) leave(token string) {
-	c.lobby.Leave(token)
 	event := event.New().SetType(event.LeaveEvent).SetSender(token).
-		SetPayload(event.NewPayload().SetPlayers(c.lobby.Players()))
+		SetPayload(event.NewPayload().SetPlayers(c.lobby.Leave(token)))
 	c.Broadcast(event)
 }
 
 func (c *controller) Join(token string) (Player, error) {
-	err := c.lobby.Player(token)
+	players, err := c.lobby.Join(token)
 	if err != nil {
 		return nil, err
 	}
-	c.lobby.Join(token)
 	buffer := event.NewBuffer()
 	c.fanout.Register(token, buffer)
 
-	c.lock.RLock()
-	defer c.lock.RUnlock()
-
 	event := event.New().SetType(event.JoinEvent).SetSender(token).
-		SetPayload(event.NewPayload().SetPlayers(c.lobby.Players()))
-	err = c.Broadcast(event)
-	if err != nil {
+		SetPayload(event.NewPayload().SetPlayers(players))
+
+	if err := c.Broadcast(event); err != nil {
 		return nil, err
 	}
 
