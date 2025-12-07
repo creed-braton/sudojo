@@ -9,38 +9,62 @@ import (
 	"time"
 )
 
+// Represents a player in the lobby. Provides methods to interact
+// with the lobby as a player.
 type Player interface {
+	// Returns an event directed to the player or event.ErrClosedBuffer
+	// if the buffer is closed.
 	Receive() (event.Event, error)
+	// Sets player inactive in lobby state and closes his event buffer.
+	// Broadcasts an leave event to all players in the lobby.
 	Leave()
+	// Broadcasts a ping event to all players in the lobby if valid
+	// row and column bounds are provided, otherwise sends an error
+	// event to the player. Returns event.ErrClosedBuffer if event is
+	// broadcast and the lobby event buffer is closed or if the event
+	// is only directed to the player and his event buffer is closed.
 	Ping(row, col int, trace string) error
+	// Broadcasts an insert event to all players in the lobby if input
+	// is valid based on the game state and mode. Sends an error event
+	// directed to the player if input is invalid. Returns
+	// event.ErrClosedBuffer if event is broadcast and the lobby event
+	// buffer is closed or if the event is only directed to the player
+	// and his event buffer is closed.
 	Insert(row, col, val int, trace string) error
+	// Sends lobby state to the player. Returns event.ErrClosedBuffer
+	// if his event buffer is closed.
 	State(trace string) error
 }
 
 type player struct {
-	token     string
-	lobby     lobby.Lobby
-	buffer    event.Buffer
-	broadcast func(e event.Event) error
-	leave     func(token string)
-	once      sync.Once
+	token       string
+	lobby       lobby.Lobby
+	buffer      event.Buffer
+	broadcast   func(e event.Event) error
+	leave       func(token string)
+	updateEvent func()
+	once        sync.Once
 }
 
 var _ Player = &player{}
 
+// Returns an initialized player instance to interact with the lobby
+// as a player.
 func NewPlayer(
 	token string,
 	lobby lobby.Lobby,
 	buffer event.Buffer,
 	broadcast func(e event.Event) error,
 	leave func(token string),
+	updateEvent func(),
 ) *player {
 	return &player{
-		token:     token,
-		lobby:     lobby,
-		buffer:    buffer,
-		broadcast: broadcast,
-		leave:     leave,
+		token:       token,
+		lobby:       lobby,
+		buffer:      buffer,
+		broadcast:   broadcast,
+		leave:       leave,
+		updateEvent: updateEvent,
 	}
 }
 
@@ -64,11 +88,13 @@ func (p *player) Ping(row, col int, trace string) error {
 		event.SetError(game.ErrOutOfBounds.Error())
 		return p.buffer.Send(event)
 	}
+	p.updateEvent()
 
 	return p.broadcast(event)
 }
 
 func (p *player) Insert(row, col, val int, trace string) error {
+	p.updateEvent()
 	event := event.New().SetType(event.InsertEvent).SetSender(p.token).
 		SetTrace(trace).SetTimestamp(time.Now().UTC().UnixNano()).
 		SetPayload(event.NewPayload().SetRow(row).SetColumn(col).SetValue(val))
