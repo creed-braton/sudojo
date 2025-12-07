@@ -8,8 +8,8 @@ import (
 	"net/http/httptest"
 	"sudojo/adapter/database"
 	"sudojo/adapter/socket"
-	"sudojo/pkg/ctrl"
-	"sudojo/pkg/event"
+	"sudojo/core/ctrl"
+	"sudojo/core/event"
 	"sudojo/pkg/lobby"
 	"testing"
 

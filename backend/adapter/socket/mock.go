@@ -1,6 +1,6 @@
 package socket
 
-import "sudojo/pkg/event"
+import "sudojo/core/event"
 
 type mockClient struct {
 	close func()

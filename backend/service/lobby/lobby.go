@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"sudojo/adapter/database"
 	"sudojo/adapter/socket"
-	"sudojo/pkg/ctrl"
+	"sudojo/core/ctrl"
 
 	"github.com/gorilla/websocket"
 )

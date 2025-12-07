@@ -1,21 +1,16 @@
 package lobby
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
-	"sudojo/pkg/event"
+	"sort"
 	"sudojo/pkg/game"
 	"sync"
 	"time"
-	"unicode"
 
 	"github.com/google/uuid"
 )
 
 var (
-	ErrNameTooLong    = errors.New("player name too long")
-	ErrInvalidChar    = errors.New("player name contains invalid character")
 	ErrLobbyFull      = errors.New("lobby is already full")
 	ErrPlayerNotFound = errors.New("player not found")
 )
@@ -30,15 +25,17 @@ type Lobby interface {
 	// token. Returns an error if lobby is full or name is invalid.
 	Create(name string) (string, error)
 	// Sets the player associated with the provided token to active.
-	// Returns updated list of player state or an error if no player
-	// is associated with the token.
-	Join(token string) ([]event.Player, error)
+	// Returns updated list of player state if successful. Returns
+	// ErrPlayerNotFound if no player is associated with the token or
+	// game.ErrFinished if the game is already finished.
+	Join(token string) ([]Player, error)
 	// Sets the player associated with the provided token to inactive.
-	// Returns updated list of player state.
-	Leave(token string) []event.Player
+	// Returns updated list of player state if successful. Returns
+	// ErrPlayerNotFound if no player is associated with the token.
+	Leave(token string) ([]Player, error)
 	// Returns a list of all player names in the lobby with their
 	// and whether they are active or not.
-	Players() []event.Player
+	Players() []Player
 	// Whether the lobby is in strict mode or not.
 	Strict() bool
 	// Maximum amount of players the lobby can hold.
@@ -48,8 +45,7 @@ type Lobby interface {
 type lobby struct {
 	id      string
 	game    game.Game
-	players map[string]string
-	active  map[string]struct{}
+	players map[string]Player
 	strict  bool
 	size    int
 	lock    sync.RWMutex
@@ -61,7 +57,7 @@ var _ Lobby = &lobby{}
 func New(
 	id string,
 	game game.Game,
-	players map[string]string,
+	players map[string]Player,
 	strict bool,
 	size int,
 ) *lobby {
@@ -69,7 +65,6 @@ func New(
 		id:      id,
 		game:    game,
 		players: players,
-		active:  make(map[string]struct{}, size),
 		strict:  strict,
 		size:    size,
 	}
@@ -83,8 +78,7 @@ func Open(strict bool, size int) *lobby {
 	return &lobby{
 		id:      uuid.NewString(),
 		game:    game,
-		players: make(map[string]string, size),
-		active:  make(map[string]struct{}, size),
+		players: make(map[string]Player, size),
 		strict:  strict,
 		size:    size,
 	}
@@ -108,33 +102,6 @@ func (l *lobby) Player(token string) error {
 	return nil
 }
 
-// Generates a random 16 bytes hex string.
-func newToken() string {
-	b := make([]byte, 16)
-	_, err := rand.Read(b)
-	if err != nil {
-		panic(err)
-	}
-	return hex.EncodeToString(b)
-}
-
-// Validates the length and characters of the name. Returns ErrNameTooLong
-// or ErrInvalidChar if name is invalid.
-func validName(name string) error {
-	if len(name) > 16 {
-		return ErrNameTooLong
-	}
-	for _, c := range name {
-		if unicode.IsDigit(c) || unicode.IsLetter(c) {
-			continue
-		}
-		if string(c) != "-" && string(c) != "_" {
-			return ErrInvalidChar
-		}
-	}
-	return nil
-}
-
 func (l *lobby) Create(name string) (string, error) {
 	if l.game.Finished() != nil {
 		return "", game.ErrFinished
@@ -144,6 +111,7 @@ func (l *lobby) Create(name string) (string, error) {
 		return "", err
 	}
 	token := newToken()
+	player := NewPlayer(token, name)
 
 	l.lock.Lock()
 	defer l.lock.Unlock()
@@ -152,53 +120,61 @@ func (l *lobby) Create(name string) (string, error) {
 		return "", ErrLobbyFull
 	}
 
-	l.players[token] = name
+	l.players[token] = player
 	return token, nil
 }
 
-func (l *lobby) Join(token string) ([]event.Player, error) {
-	l.lock.Lock()
-	defer l.lock.Unlock()
-
-	if _, ok := l.players[token]; !ok {
-		return nil, ErrPlayerNotFound
+// Returns all players sorted alphabetically by token (caller must hold lock).
+func (l *lobby) sortedPlayers() []Player {
+	tokens := make([]string, 0, len(l.players))
+	for token := range l.players {
+		tokens = append(tokens, token)
 	}
-	l.active[token] = struct{}{}
+	sort.Strings(tokens)
 
-	players := []event.Player{}
-	for token, name := range l.players {
-		_, ok := l.active[token]
-		players = append(players, event.NewPlayer(name, ok))
-	}
-
-	return players, nil
-}
-
-func (l *lobby) Leave(token string) []event.Player {
-	l.lock.Lock()
-	defer l.lock.Unlock()
-
-	delete(l.active, token)
-	players := []event.Player{}
-	for token, name := range l.players {
-		_, ok := l.active[token]
-		players = append(players, event.NewPlayer(name, ok))
+	players := make([]Player, 0, len(l.players))
+	for _, token := range tokens {
+		players = append(players, l.players[token])
 	}
 
 	return players
 }
 
-func (l *lobby) Players() []event.Player {
+func (l *lobby) Join(token string) ([]Player, error) {
+	if l.game.Finished() != nil {
+		return nil, game.ErrFinished
+	}
+
+	l.lock.Lock()
+	defer l.lock.Unlock()
+
+	player, exist := l.players[token]
+	if !exist {
+		return nil, ErrPlayerNotFound
+	}
+	player.SetActive(true)
+
+	return l.sortedPlayers(), nil
+}
+
+func (l *lobby) Leave(token string) ([]Player, error) {
+	l.lock.Lock()
+	defer l.lock.Unlock()
+
+	player, exist := l.players[token]
+	if !exist {
+		return nil, ErrPlayerNotFound
+	}
+	player.SetActive(false)
+
+	return l.sortedPlayers(), nil
+}
+
+func (l *lobby) Players() []Player {
 	l.lock.RLock()
 	defer l.lock.RUnlock()
 
-	players := []event.Player{}
-	for token, name := range l.players {
-		_, ok := l.active[token]
-		players = append(players, event.NewPlayer(name, ok))
-	}
-
-	return players
+	return l.sortedPlayers()
 }
 
 func (l *lobby) Strict() bool {

@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"sudojo/pkg/ctrl"
-	"sudojo/pkg/event"
+	"sudojo/core/ctrl"
+	"sudojo/core/event"
 	"time"
 
 	"github.com/gorilla/websocket"

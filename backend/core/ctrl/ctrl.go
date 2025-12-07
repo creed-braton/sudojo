@@ -1,7 +1,7 @@
 package ctrl
 
 import (
-	"sudojo/pkg/event"
+	"sudojo/core/event"
 	"sudojo/pkg/lobby"
 	"sync"
 	"sync/atomic"

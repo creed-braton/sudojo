@@ -1,36 +1,9 @@
 package event
 
 import (
+	"sudojo/pkg/lobby"
 	"sudojo/pkg/sudoku"
 )
-
-// Represents a player with name and status.
-type Player interface {
-	// In-game name of the player.
-	Name() string
-	// Activity status of the player.
-	Active() bool
-}
-
-type player struct {
-	name   string
-	active bool
-}
-
-var _ Player = &player{}
-
-// Creates a new player with the given token and name.
-func NewPlayer(name string, active bool) *player {
-	return &player{name: name, active: active}
-}
-
-func (p *player) Name() string {
-	return p.name
-}
-
-func (p *player) Active() bool {
-	return p.active
-}
 
 // Carries arbitrary data within an event, including Sudoku board states,
 // cell updates, conflict information, and participating players.
@@ -60,9 +33,9 @@ type Payload interface {
 	// Sets the conflict description.
 	SetConflict(conflict string) Payload
 	// Players in the session, including their names and activity state.
-	Players() []Player
+	Players() []lobby.Player
 	// Sets the players.
-	SetPlayers(players []Player) Payload
+	SetPlayers(players []lobby.Player) Payload
 	// Maximum amount of players in the session.
 	MaxPlayer() int
 	// Sets the maximum player amount.
@@ -80,7 +53,7 @@ type payload struct {
 	column    *int
 	value     *int
 	conflict  string
-	players   []Player
+	players   []lobby.Player
 	maxPlayer int
 	strict    *bool
 }
@@ -145,11 +118,11 @@ func (p *payload) SetConflict(conflict string) Payload {
 	return p
 }
 
-func (p *payload) Players() []Player {
+func (p *payload) Players() []lobby.Player {
 	return p.players
 }
 
-func (p *payload) SetPlayers(players []Player) Payload {
+func (p *payload) SetPlayers(players []lobby.Player) Payload {
 	p.players = players
 	return p
 }

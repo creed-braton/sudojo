@@ -1,7 +1,7 @@
 package ctrl
 
 import (
-	"sudojo/pkg/event"
+	"sudojo/core/event"
 	"sudojo/pkg/game"
 	"sudojo/pkg/lobby"
 	"testing"

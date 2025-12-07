@@ -1,6 +1,6 @@
 package socket
 
-import "sudojo/pkg/event"
+import "sudojo/core/event"
 
 var (
 	rateLimitMsg = []byte(`{"type":"system","error":"rate limit exceeded"}`)

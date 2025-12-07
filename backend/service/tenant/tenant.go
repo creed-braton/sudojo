@@ -3,7 +3,7 @@ package tenant
 import (
 	"log/slog"
 	"sudojo/adapter/database"
-	"sudojo/pkg/ctrl"
+	"sudojo/core/ctrl"
 	"sudojo/pkg/lobby"
 	svc "sudojo/service/lobby"
 	"sync"

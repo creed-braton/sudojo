@@ -3,7 +3,7 @@ package ctrl
 import (
 	"fmt"
 	"strconv"
-	"sudojo/pkg/event"
+	"sudojo/core/event"
 	"sudojo/pkg/lobby"
 	"sync"
 	"testing"
