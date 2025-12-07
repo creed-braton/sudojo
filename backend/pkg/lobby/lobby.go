@@ -78,9 +78,11 @@ func New(
 // Creates a new lobby with the provided settings.
 func Open(strict bool, size int) *lobby {
 	now := time.Now().UTC().UnixNano()
+	game := game.Generate(now)
+	game.Start()
 	return &lobby{
 		id:      uuid.NewString(),
-		game:    game.Generate(now),
+		game:    game,
 		players: make(map[string]string, size),
 		active:  make(map[string]struct{}, size),
 		strict:  strict,

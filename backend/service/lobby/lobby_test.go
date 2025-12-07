@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"sudojo/adapter/database"
 	"sudojo/adapter/socket"
+	"sudojo/pkg/ctrl"
 	"sudojo/pkg/event"
 	"sudojo/pkg/lobby"
 	"testing"
@@ -33,9 +34,8 @@ func connect(lobby Service, token string) (string, func()) {
 }
 
 func TestService(t *testing.T) {
-	maxPlayer := 8
 	lobby := New(
-		lobby.Open(maxPlayer, false), database.NewMock(),
+		ctrl.New(lobby.Open(false, 8)), database.NewMock(),
 		slog.New(slog.NewTextHandler(io.Discard, nil)),
 	)
 	name := "test-player"
@@ -64,9 +64,6 @@ func TestService(t *testing.T) {
 
 	if msg.Type != event.JoinEvent {
 		t.Errorf("expected event type '%s', got '%s'", event.JoinEvent, msg.Type)
-	}
-	if msg.MaxPlayer != maxPlayer {
-		t.Errorf("expected max player '%d', got '%d'", maxPlayer, msg.MaxPlayer)
 	}
 	if len(msg.Players) != 1 {
 		t.Fatalf("expected players length '%d', got '%d'", 1, len(msg.Players))

@@ -5,8 +5,6 @@ import (
 	"sudojo/adapter/database"
 	"sudojo/adapter/socket"
 	"sudojo/pkg/ctrl"
-	"sync/atomic"
-	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -29,10 +27,9 @@ type Service interface {
 }
 
 type service struct {
-	ctrl      ctrl.Controller
-	logger    *slog.Logger
-	db        database.Database
-	lastEvent atomic.Int64
+	ctrl   ctrl.Controller
+	logger *slog.Logger
+	db     database.Database
 }
 
 var _ Service = &service{}
@@ -46,11 +43,6 @@ func (s *service) pump() {
 	}
 }
 
-// Updates the last event timestamp to the current time.
-func (s *service) event() {
-	s.lastEvent.Store(time.Now().UTC().Unix())
-}
-
 // Returns a new lobby service and starts the event pump goroutine.
 func New(ctrl ctrl.Controller, db database.Database, logger *slog.Logger) *service {
 	s := &service{
@@ -58,7 +50,6 @@ func New(ctrl ctrl.Controller, db database.Database, logger *slog.Logger) *servi
 		logger: logger,
 		db:     db,
 	}
-	s.event()
 	go s.pump()
 	return s
 }
@@ -78,7 +69,7 @@ func (s *service) Shutdown() error {
 }
 
 func (s *service) LastEvent() int64 {
-	return s.lastEvent.Load()
+	return s.ctrl.LastEvent()
 }
 
 func (s *service) CreatePlayer(name string) (string, error) {
@@ -89,7 +80,6 @@ func (s *service) CreatePlayer(name string) (string, error) {
 	if err := s.db.InsertPlayer(s.Id(), token, name); err != nil {
 		return "", err
 	}
-	s.event()
 	s.logger.Info("player created", "player_token", token)
 	return token, nil
 }
@@ -104,8 +94,6 @@ func (s *service) JoinPlayer(token string, conn *websocket.Conn) error {
 	client := socket.NewClient(player, conn)
 	go client.WritePump()
 	go client.ReadPump()
-
-	s.event()
 
 	return nil
 }

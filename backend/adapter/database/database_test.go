@@ -45,8 +45,8 @@ func assert(t *testing.T, want, got lobby.Lobby) {
 	if want.Strict() != got.Strict() {
 		t.Errorf("expected strict '%t', got '%t'", want.Strict(), got.Strict())
 	}
-	if want.MaxPlayer() != got.MaxPlayer() {
-		t.Errorf("expected max player '%d', got '%d'", want.MaxPlayer(), got.MaxPlayer())
+	if want.Size() != got.Size() {
+		t.Errorf("expected lobby size '%d', got '%d'", want.Size(), got.Size())
 	}
 
 	if (want.Game().Started()) == nil != (got.Game().Started() == nil) {
@@ -87,7 +87,7 @@ func TestLobby(t *testing.T) {
 	defer db.Close()
 
 	t.Run("insert and retrieve lobby", func(t *testing.T) {
-		want := lobby.Open(8, false)
+		want := lobby.Open(false, 8)
 		if err := db.InsertLobby(want); err != nil {
 			t.Fatalf("unexpected error inserting lobby '%v'", err)
 		}
@@ -113,14 +113,14 @@ func TestLobby(t *testing.T) {
 	})
 
 	t.Run("update lobby", func(t *testing.T) {
-		want := lobby.Open(8, false)
+		want := lobby.Open(false, 8)
 		if err := db.InsertLobby(want); err != nil {
 			t.Fatalf("unexpected error inserting lobby '%v'", err)
 		}
 		for i := range len(want.Game().Solution().Int()) {
 			for j := range len(want.Game().Solution().Int()[i]) {
 				val := want.Game().Solution().Int()[i][j]
-				want.Insert(i, j, val)
+				want.Game().Lax(i, j, val)
 			}
 		}
 		if err := db.UpdateLobby(want); err != nil {

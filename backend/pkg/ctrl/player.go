@@ -131,7 +131,8 @@ func (p *player) State(trace string) error {
 		SetCurrent(p.lobby.Game().Current()).
 		SetInitial(p.lobby.Game().Initial()).
 		SetStrict(p.lobby.Strict()).
-		SetPlayers(p.lobby.Players())
+		SetPlayers(p.lobby.Players()).
+		SetMaxPlayer(p.lobby.Size())
 	event := event.New().SetType(event.StateEvent).SetSender(p.token).
 		SetTrace(trace).SetTimestamp(now).SetPayload(payload)
 

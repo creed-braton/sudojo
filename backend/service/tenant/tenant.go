@@ -4,13 +4,10 @@ import (
 	"log/slog"
 	"sudojo/adapter/database"
 	"sudojo/pkg/ctrl"
-	"sudojo/pkg/game"
 	"sudojo/pkg/lobby"
 	svc "sudojo/service/lobby"
 	"sync"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 // Manages lobby lifecycle and provides access to lobby services with automatic pruning
@@ -66,15 +63,7 @@ func New(db database.Database) *service {
 }
 
 func (s *service) Create() (string, error) {
-	maxPlayer := 8
-	l := lobby.New(
-		uuid.NewString(),
-		game.Generate(time.Now().UTC().UnixNano()),
-		make(map[string]string, maxPlayer),
-		false,
-		maxPlayer,
-	)
-	l.Game().Start()
+	l := lobby.Open(false, 8)
 	if err := s.db.InsertLobby(l); err != nil {
 		slog.Error(err.Error())
 		return "", err
