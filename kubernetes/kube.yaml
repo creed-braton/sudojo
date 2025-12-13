@@ -110,6 +110,8 @@ spec:
               value: postgres
             - name: DB_PASS
               value: password123
+            - name: ORIGIN
+              value: http://localhost:5173
 
 ---
 apiVersion: v1
