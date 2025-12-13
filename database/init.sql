@@ -1,18 +1,32 @@
+CREATE TABLE IF NOT EXISTS games (
+  hash VARCHAR(64) PRIMARY KEY,
+  initial_board INT[9][9] NOT NULL,
+  solution INT[9][9] NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS lobbies (
   id VARCHAR(36) PRIMARY KEY,
   max_player INT NOT NULL,
   strict BOOLEAN NOT NULL DEFAULT FALSE,
   started_at BIGINT DEFAULT NULL,
   finished_at BIGINT DEFAULT NULL,
-  initial_board INT[9][9] NOT NULL,
-  current_board INT[9][9] NOT NULL,
-  solution INT[9][9] NOT NULL
+  game_hash VARCHAR(64) REFERENCES games(hash),
+  current_board INT[9][9] NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS players (
-  lobby_id VARCHAR(36) NOT NULL,
   token VARCHAR(32) PRIMARY KEY,
+  lobby_id VARCHAR(36) NOT NULL,
   name VARCHAR(16) NOT NULL DEFAULT ''
 );
+CREATE INDEX IF NOT EXISTS idx_players_lobby_id ON players(lobby_id);
 
-CREATE INDEX IF NOT EXISTS idx_players_lobby ON players (lobby_id);
+CREATE TABLE IF NOT EXISTS artifacts (
+  lobby_id VARCHAR(36) NOT NULL,
+  player_token VARCHAR(32) NOT NULL,
+  timestamp BIGINT NOT NULL,
+  "row" INT NOT NULL,
+  "column" INT NOT NULL,
+  "value" INT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_artifacts_lobby_id ON artifacts(lobby_id);
