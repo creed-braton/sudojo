@@ -2,6 +2,7 @@ package history
 
 import (
 	"fmt"
+	"sort"
 	"sync"
 )
 
@@ -69,9 +70,8 @@ type History interface {
 	// Appends a new artifact to the history, drops (player, row, col, val)
 	// duplicates.
 	Append(a Artifact)
-	// Returns a list of all artifacts (initial and current combined) in the
-	// history.
-	Artifacts() []Artifact
+	// Returns a map of all artifacts grouped by player, sorted by timestamp.
+	Artifacts() map[string][]Artifact
 	// Writes all current artifacts to the initial map and returns which
 	// artifacts were merged so that they can be persisted.
 	Flush() []Artifact
@@ -123,18 +123,33 @@ func (h *history) Append(a Artifact) {
 	h.artifacts[key] = a
 }
 
-func (h *history) Artifacts() []Artifact {
+func (h *history) Artifacts() map[string][]Artifact {
 	h.lock.RLock()
 	defer h.lock.RUnlock()
 
-	c := make([]Artifact, 0, len(h.initial)+len(h.artifacts))
+	artifacts := make(
+		map[string][]Artifact,
+		len(h.initial)+len(h.artifacts),
+	)
+
 	for _, a := range h.initial {
-		c = append(c, a)
+		player := a.Player()
+		artifacts[player] = append(artifacts[player], a)
 	}
 	for _, a := range h.artifacts {
-		c = append(c, a)
+		player := a.Player()
+		artifacts[player] = append(artifacts[player], a)
 	}
-	return c
+
+	for player := range artifacts {
+		subset := artifacts[player]
+		sort.Slice(subset, func(i, j int) bool {
+			return subset[i].Timestamp() < subset[j].Timestamp()
+		})
+		artifacts[player] = subset
+	}
+
+	return artifacts
 }
 
 func (h *history) Flush() []Artifact {

@@ -80,33 +80,32 @@ type artifact struct {
 }
 
 func convert(l lobby.Lobby) *response {
-	// Group artifacts by player token
-	artifacts := make(map[string][]artifact)
-	for _, a := range l.History().Artifacts() {
-		token := a.Player()
-		artifacts[token] = append(artifacts[token], artifact{
-			Timestamp: a.Timestamp(),
-			Row:       a.Row(),
-			Column:    a.Column(),
-			Value:     a.Value(),
-		})
-	}
-
-	// Build player history list
+	artifacts := l.History().Artifacts()
 	histories := make([]history, 0, len(l.Players()))
 	for _, p := range l.Players() {
 		token := p.Token()
-		artifacts := artifacts[token]
+		player := artifacts[token]
+
+		artifacts := make([]artifact, 0, len(player))
+		for _, a := range player {
+			artifacts = append(artifacts, artifact{
+				Timestamp: a.Timestamp(),
+				Row:       a.Row(),
+				Column:    a.Column(),
+				Value:     a.Value(),
+			})
+		}
+
 		if artifacts == nil {
 			artifacts = []artifact{}
 		}
+
 		histories = append(histories, history{
 			Name:      p.Name(),
 			Artifacts: artifacts,
 		})
 	}
 
-	// Get current and initial states
 	var current, initial [][]int
 	if l.Game().Current() != nil {
 		current = l.Game().Current().Int()

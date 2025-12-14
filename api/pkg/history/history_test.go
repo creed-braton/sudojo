@@ -63,7 +63,7 @@ func TestAppend(t *testing.T) {
 
 		wg.Wait()
 
-		got := h.Artifacts()
+		got := h.Artifacts()["player"]
 		want := worker * num
 		if len(got) != want {
 			t.Errorf("expected %d artifacts, got %d", want, len(got))
@@ -130,8 +130,8 @@ func TestArtifacts(t *testing.T) {
 		}
 		h := New(initial)
 		got := h.Artifacts()
-		if len(got) != 5 {
-			t.Errorf("expected 5 artifacts, got %d", len(got))
+		if len(got[""]) != 5 {
+			t.Errorf("expected 5 artifacts, got %d", len(got[""]))
 		}
 	})
 
@@ -156,8 +156,8 @@ func TestArtifacts(t *testing.T) {
 			h.Append(NewArtifact("", 0, i, i, i))
 		}
 		got := h.Artifacts()
-		if len(got) != 10 {
-			t.Errorf("expected 10 artifacts, got %d", len(got))
+		if len(got[""]) != 10 {
+			t.Errorf("expected 10 artifacts, got %d", len(got[""]))
 		}
 	})
 
@@ -168,8 +168,8 @@ func TestArtifacts(t *testing.T) {
 		}
 		h.Flush()
 		got := h.Artifacts()
-		if len(got) != 5 {
-			t.Errorf("expected 5 artifacts after flush, got %d", len(got))
+		if len(got[""]) != 5 {
+			t.Errorf("expected 5 artifacts after flush, got %d", len(got[""]))
 		}
 	})
 
@@ -182,12 +182,10 @@ func TestArtifacts(t *testing.T) {
 		for i := 0; i < 3; i++ {
 			h.Append(NewArtifact("", 0, i, i, i))
 		}
-
 		reader := 8
 		num := 100
 		var wg sync.WaitGroup
 		wg.Add(reader)
-
 		for i := 0; i < reader; i++ {
 			go func() {
 				defer wg.Done()
@@ -197,10 +195,9 @@ func TestArtifacts(t *testing.T) {
 			}()
 		}
 		wg.Wait()
-
 		got := h.Artifacts()
-		if len(got) != 5 {
-			t.Errorf("expected 5 artifacts after concurrent reads, got %d", len(got))
+		if len(got[""]) != 5 {
+			t.Errorf("expected 5 artifacts after concurrent reads, got %d", len(got[""]))
 		}
 	})
 
@@ -211,13 +208,44 @@ func TestArtifacts(t *testing.T) {
 		}
 		h := New(initial)
 		h.Append(NewArtifact("", 0, 0, 0, 1))
+		got := h.Artifacts()
+		got[""] = append(got[""], NewArtifact("", 0, 1, 1, 0))
+		check := h.Artifacts()
+		if len(check[""]) != 3 {
+			t.Errorf("expected 3 artifacts after modification, got %d", len(check[""]))
+		}
+	})
+
+	t.Run("grouped by player and sorted by timestamp", func(t *testing.T) {
+		h := New(nil)
+		players := []string{
+			"bob", "alice", "charlie", "diana",
+			"eve", "frank", "grace", "henry",
+		}
+
+		for _, player := range players {
+			for i := 0; i < 100; i++ {
+				h.Append(NewArtifact(player, int64(i*17%100), i, i, i))
+			}
+		}
 
 		got := h.Artifacts()
-		got = append(got, NewArtifact("", 0, 1, 1, 0))
+		if len(got) != len(players) {
+			t.Errorf("expected %d players, got %d", len(players), len(got))
+		}
 
-		check := h.Artifacts()
-		if len(check) != 3 {
-			t.Errorf("expected 3 artifacts after modification, got %d", len(check))
+		for _, player := range players {
+			artifacts := got[player]
+			if len(artifacts) != 100 {
+				t.Errorf("expected 100 artifacts for %s, got %d", player, len(artifacts))
+			}
+
+			for i := 0; i < len(artifacts)-1; i++ {
+				if artifacts[i].Timestamp() > artifacts[i+1].Timestamp() {
+					t.Errorf("%s: timestamps not in ascending order at index %d: %d > %d",
+						player, i, artifacts[i].Timestamp(), artifacts[i+1].Timestamp())
+				}
+			}
 		}
 	})
 }

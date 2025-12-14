@@ -40,7 +40,7 @@ func New(port, origin string, tenant tenant.Service) *server {
 			"POST": s.postLobby,
 		},
 		"/lobbies/{id}": {
-			"POST": s.getLobby,
+			"GET": s.getLobby,
 		},
 		"/lobbies/{id}/players": {
 			"POST": s.postPlayer,
