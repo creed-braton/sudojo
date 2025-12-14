@@ -39,7 +39,7 @@ const useWebSocket = (lobbyId: string, token: string): LobbyProps => {
 
     try {
       const ws: WebSocket = new WebSocket(
-        `${WS_URL}/lobbies/${lobbyId}?token=${token}`,
+        `${WS_URL}/lobbies/${lobbyId}/ws?token=${token}`,
       );
       wsRef.current = ws;
 

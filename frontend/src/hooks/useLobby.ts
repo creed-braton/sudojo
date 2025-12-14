@@ -23,11 +23,11 @@ const postLobby = async (): Promise<string> => {
   return response.text();
 };
 
-const patchLobby = async (id: string, name?: string): Promise<string> => {
-  const url = new URL(`${HTTP_URL}/lobbies/${id}`);
+const postPlayer = async (id: string, name?: string): Promise<string> => {
+  const url = new URL(`${HTTP_URL}/lobbies/${id}/players`);
   if (name) url.searchParams.append("name", name);
 
-  const response: Response = await fetch(url.toString(), { method: "PATCH" });
+  const response: Response = await fetch(url.toString(), { method: "POST" });
 
   if (!response.ok) {
     throw new ApiError(response.status, await response.text());
@@ -63,7 +63,7 @@ const useLobby = (): LobbyProps => {
 
   const join = async (id: string, name: string): Promise<string> => {
     try {
-      const token: string = await patchLobby(id, name);
+      const token: string = await postPlayer(id, name);
       setToken(id, token);
       return token;
     } catch (error) {
