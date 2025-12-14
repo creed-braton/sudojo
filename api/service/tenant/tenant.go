@@ -3,6 +3,7 @@ package tenant
 import (
 	"log/slog"
 	"sudojo/adapter/database"
+	"sudojo/pkg/game"
 	"sudojo/pkg/lobby"
 	"sudojo/pkg/manager"
 	svc "sudojo/service/lobby"
@@ -13,18 +14,21 @@ import (
 // Manages lobby lifecycle and provides access to lobby services with automatic pruning
 // of inactive lobbies.
 type Service interface {
-	// Creates a new lobby service. Returns the lobby identifier or an error if
-	// creation fails.
-	Create() (string, error)
-	// Retrieves or loads a lobby service by identifier. Returns nil if the lobby
-	// does not exist, or an error if loading from database fails.
-	Lobby(id string) (svc.Service, error)
+	// Creates a new lobby service. Returns the lobby identifier or an error if creation
+	// fails.
+	Create(strict bool, size int) (string, error)
+	// Retrieves a lobby state from the database. Returns nil if none exists with specified
+	// lobby ID or an error if database call fails.
+	Lobby(id string) (lobby.Lobby, error)
+	// Retrieves or loads a lobby service by identifier. Returns nil if the lobby does not
+	// exist, or an error if loading from database fails.
+	Service(id string) (svc.Service, error)
 }
 
 type service struct {
-	db      database.Database
-	lobbies map[string]svc.Service
-	lock    sync.RWMutex
+	db     database.Database
+	routes map[string]svc.Service
+	lock   sync.RWMutex
 }
 
 var _ Service = &service{}
@@ -38,12 +42,12 @@ func (s *service) pruner() {
 		select {
 		case <-ticker.C:
 			s.lock.Lock()
-			for id, l := range s.lobbies {
+			for id, r := range s.routes {
 				tolerance := int64(600) // 10 minutes in seconds
-				frame := time.Now().UTC().Unix() - l.LastEvent()
-				if frame > tolerance || l.Finished() {
-					if err := l.Shutdown(); err == nil {
-						delete(s.lobbies, id)
+				frame := time.Now().UTC().Unix() - r.LastEvent()
+				if frame > tolerance || r.Lobby().Game().Finished() != nil {
+					if err := r.Shutdown(); err == nil {
+						delete(s.routes, id)
 					}
 				}
 			}
@@ -54,46 +58,72 @@ func (s *service) pruner() {
 
 // Returns a new tenant service with automatic lobby pruning enabled.
 func New(db database.Database) *service {
-	s := &service{
-		db:      db,
-		lobbies: make(map[string]svc.Service),
-	}
+	s := &service{db: db, routes: make(map[string]svc.Service)}
 	go s.pruner()
 	return s
 }
 
-func (s *service) Create() (string, error) {
-	l := lobby.Open(false, 8)
-	if err := s.db.InsertLobby(l); err != nil {
+func (s *service) Create(strict bool, size int) (string, error) {
+	lobby := lobby.Open(strict, size)
+	if err := s.db.InsertLobby(lobby); err != nil {
 		slog.Error(err.Error())
 		return "", err
 	}
-	lobby := svc.New(manager.New(l), s.db, slog.With("lobby_id", l.Id()))
+	route := svc.New(
+		manager.New(lobby), s.db,
+		slog.With("lobby_id", lobby.Id()),
+	)
 	s.lock.Lock()
-	s.lobbies[lobby.Id()] = lobby
+	s.routes[lobby.Id()] = route
 	s.lock.Unlock()
 	return lobby.Id(), nil
 }
 
-func (s *service) Lobby(id string) (svc.Service, error) {
+func (s *service) Lobby(id string) (lobby.Lobby, error) {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+
+	if svc, exist := s.routes[id]; exist {
+		return svc.Lobby(), nil
+	}
+
+	lobby, err := s.db.Lobby(id)
+	if err != nil {
+		slog.Error(err.Error(), "lobby_id", id)
+		return nil, err
+	}
+	if lobby == nil {
+		return nil, nil
+	}
+
+	return lobby, nil
+}
+
+func (s *service) Service(id string) (svc.Service, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	lobbySvc, exist := s.lobbies[id]
+	route, exist := s.routes[id]
 	if !exist {
-		l, err := s.db.Lobby(id)
+		lobby, err := s.db.Lobby(id)
 		if err != nil {
 			slog.Error(err.Error(), "lobby_id", id)
 			return nil, err
 		}
-		if l == nil {
+		if lobby == nil {
 			return nil, nil
 		}
+		if lobby.Game().Finished() != nil {
+			return nil, game.ErrFinished
+		}
 
-		lobbySvc := svc.New(manager.New(l), s.db, slog.With("lobby_id", l.Id()))
-		s.lobbies[l.Id()] = lobbySvc
-		return lobbySvc, nil
+		route := svc.New(
+			manager.New(lobby), s.db,
+			slog.With("lobby_id", lobby.Id()),
+		)
+		s.routes[lobby.Id()] = route
+		return route, nil
 	}
 
-	return lobbySvc, nil
+	return route, nil
 }
