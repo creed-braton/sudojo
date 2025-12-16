@@ -32,10 +32,10 @@
 **/terraform.rc
 
 # React directories and files
-frontend/node_modules
-frontend/dist
-frontend/dist-ssr
-frontend/*.local
+**/node_modules
+**/dist
+**/dist-ssr
+**/*.local
 
 # Go binaries
 **/bin

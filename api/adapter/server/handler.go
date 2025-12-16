@@ -57,18 +57,17 @@ func (s *server) postPlayer(w http.ResponseWriter, r *http.Request) {
 }
 
 type response struct {
-	Id       string    `json:"id"`
-	Current  [][]int   `json:"current_state"`
-	Initial  [][]int   `json:"initial_state"`
-	Started  *int64    `json:"started,omitempty"`
-	Finished *int64    `json:"finished,omitempty"`
-	Players  []history `json:"players"`
-	Strict   bool      `json:"strict"`
-	Size     int       `json:"size"`
+	Current   [][]int   `json:"current_board"`
+	Initial   [][]int   `json:"initial_board"`
+	Started   *int64    `json:"started_at"`
+	Finished  *int64    `json:"finished_at"`
+	History   []history `json:"history"`
+	Strict    bool      `json:"strict"`
+	MaxPlayer int       `json:"max_player"`
 }
 
 type history struct {
-	Name      string     `json:"name"`
+	Name      string     `json:"player_name"`
 	Artifacts []artifact `json:"artifacts"`
 }
 
@@ -115,14 +114,13 @@ func convert(l lobby.Lobby) *response {
 	}
 
 	return &response{
-		Id:       l.Id(),
-		Current:  current,
-		Initial:  initial,
-		Started:  l.Game().Started(),
-		Finished: l.Game().Finished(),
-		Players:  histories,
-		Strict:   l.Strict(),
-		Size:     l.Size(),
+		Current:   current,
+		Initial:   initial,
+		Started:   l.Game().Started(),
+		Finished:  l.Game().Finished(),
+		History:   histories,
+		Strict:    l.Strict(),
+		MaxPlayer: l.Size(),
 	}
 }
 
