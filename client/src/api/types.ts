@@ -1,3 +1,12 @@
+export type UUID = string;
+
+export const isUUID = (value: unknown): value is UUID => {
+  if (typeof value !== "string") return false;
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(value);
+};
+
 export type Sudoku = number[][];
 
 const isSudoku = (value: unknown): value is Sudoku => {
@@ -304,9 +313,4 @@ export const isSystemMessage = (value: unknown): value is SystemMessage => {
   if (typeof message.error !== "string") return false;
 
   return true;
-};
-
-export type Position = {
-  row: number;
-  column: number;
 };

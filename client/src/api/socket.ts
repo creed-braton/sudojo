@@ -8,7 +8,6 @@ import {
   isStateMessage,
   isSystemMessage,
   type Player,
-  type Position,
   type Sudoku,
 } from "./types";
 import { WS_URL } from "./config";
@@ -26,8 +25,8 @@ export type WebSocketProps = {
 const useWebSocket = (
   id: string,
   token: string,
-  onConflict: (position: Position) => void,
-  onPing: (position: Position) => void,
+  onConflict: (row: number, column: number) => void,
+  onPing: (row: number, column: number) => void,
   onFinish: () => void,
   onIdle: () => void,
 ): WebSocketProps => {
@@ -92,18 +91,12 @@ const useWebSocket = (
             message.row !== undefined &&
             message.column !== undefined
           ) {
-            onConflict({
-              row: message.row,
-              column: message.column,
-            } as Position);
+            onConflict(message.row, message.column);
           }
           message.error && console.error(message.error);
         } else if (isPingMessage(message)) {
           if (message.row !== undefined && message.column !== undefined) {
-            onPing({
-              row: message.row,
-              column: message.column,
-            } as Position);
+            onPing(message.row, message.column);
           } else if (message.error !== undefined) {
             console.error(message.error);
           }
