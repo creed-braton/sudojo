@@ -224,7 +224,8 @@ func (db *database) UpdateLobby(lobby lobby.Lobby) error {
 		batch := &pgx.Batch{}
 		for _, artifact := range artifacts {
 			batch.Queue(
-				`INSERT INTO artifacts (lobby_id, player_token, timestamp, row, column, value) 
+				`INSERT INTO artifacts (lobby_id, player_token, 
+				 timestamp, "row", "column", "value") 
 				 VALUES ($1, $2, $3, $4, $5, $6);`,
 				lobby.Id(),
 				artifact.Player(),

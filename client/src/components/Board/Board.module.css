@@ -1,0 +1,134 @@
+.board {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: clamp(10px, 4vw, 40px);
+}
+
+.sudoku {
+  display: grid;
+  grid-template-rows: repeat(9, 1fr);
+  width: min(90vw, 450px);
+  height: min(90vw, 450px);
+  background-color: var(--surface-color);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 30px var(--shadow-light);
+  backdrop-filter: blur(5px);
+  border: 1px solid var(--border-glass);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  height: 100%;
+}
+
+.cell {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: clamp(1rem, 3vw, 1.5rem);
+  border: 1px solid var(--border-subtle);
+  transition: background-color 0.2s ease;
+  user-select: none;
+}
+
+.cell:hover {
+  background-color: var(--surface-hover);
+}
+
+.cell:nth-child(3),
+.cell:nth-child(6) {
+  border-right: 2px solid var(--border-strong);
+}
+
+.row:nth-child(3) .cell,
+.row:nth-child(6) .cell {
+  border-bottom: 2px solid var(--border-strong);
+}
+
+.cursor {
+  background-color: var(--accent-light);
+  box-shadow: inset 0 0 10px var(--accent-glow);
+  border: 1px solid var(--accent-border);
+}
+
+.cursor:hover {
+  background-color: var(--accent-lighter);
+}
+
+@keyframes conflict {
+  0% {
+    background-color: var(--error-strong);
+    box-shadow: inset 0 0 10px var(--error-glow);
+  }
+  50% {
+    background-color: var(--error-muted);
+    box-shadow: inset 0 0 6px var(--error-glow-muted);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: none;
+  }
+}
+
+.conflict {
+  animation: conflict 600ms ease-in-out;
+  border: 1px solid var(--border-subtle);
+}
+
+@keyframes ping {
+  0% {
+    background-color: var(--warning-color);
+    box-shadow: inset 0 0 10px var(--warning-glow);
+  }
+  50% {
+    background-color: var(--warning-muted);
+    box-shadow: inset 0 0 6px var(--warning-glow-muted);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: none;
+  }
+}
+
+.ping {
+  animation: ping 600ms ease-in-out;
+  border: 1px solid var(--border-subtle);
+}
+
+.initialValue {
+  font-weight: 700;
+  color: var(--text-strong);
+  cursor: default;
+}
+
+.userValue {
+  font-weight: 400;
+  color: var(--text-accent);
+  cursor: pointer;
+}
+
+.pencilGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  width: 100%;
+  height: 100%;
+  gap: 0;
+}
+
+.pencilCell {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: clamp(0.5rem, 1.2vw, 0.7rem);
+  font-weight: 400;
+  color: transparent;
+}
+
+.pencilMark {
+  color: var(--text-strong);
+  font-weight: 600;
+}

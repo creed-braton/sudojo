@@ -19,7 +19,7 @@ var (
 	ErrFullBuffer   = errors.New("event buffer is full")
 )
 
-// Represents a message containing type, sender, receiver, trace id, error
+// Represents a message containing type, sender, receiver, trace, error
 // message, and a payload. Provides methods for accessing event metadata.
 type Event interface {
 	// Type of the event.
@@ -30,7 +30,7 @@ type Event interface {
 	Sender() string
 	// Sets the entity causing the event.
 	SetSender(sender string) Event
-	// Trace id of the event to keep track of it.
+	// Trace of the event to identify and keep track of it.
 	Trace() string
 	// Sets the trace ID of the event.
 	SetTrace(trace string) Event

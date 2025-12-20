@@ -1,6 +1,10 @@
 package history
 
-import "sync"
+import (
+	"fmt"
+	"sort"
+	"sync"
+)
 
 // Represents an insert artifact which holds metadata about an insert event.
 type Artifact interface {
@@ -58,61 +62,105 @@ func (a *artifact) Value() int {
 }
 
 // Thread-safe lobby history to track insertion events of the game session.
-// Holds an initial and current list of artifacts. The initial artifacts were
-// provided to the constructor of the instance and are expected to be persisted
+// Holds an initial and current map of artifacts. The initial artifacts were
+// provided to the constructor of the instance and are expected to be persisted.
 // The new artifact are kept seperate to remember which artifacts needs to be
 // persisted when tearing down the history instance.
 type History interface {
-	// Appends a new artifact to the history.
+	// Appends a new artifact to the history, drops (player, row, col, val)
+	// duplicates.
 	Append(a Artifact)
-	// Returns a list of all artifacts (initial and current combined) in the
-	// history.
-	Artifacts() []Artifact
-	// Writes all current artifacts to the initial list and returns which
+	// Returns a map of all artifacts grouped by player, sorted by timestamp.
+	Artifacts() map[string][]Artifact
+	// Writes all current artifacts to the initial map and returns which
 	// artifacts were merged so that they can be persisted.
 	Flush() []Artifact
 }
 
 type history struct {
-	initial   []Artifact
-	artifacts []Artifact
+	initial   map[string]Artifact
+	artifacts map[string]Artifact
 	lock      sync.RWMutex
 }
 
 var _ History = &history{}
 
 // Creates a new history instance with the provided initial artifacts.
-func New(initial []Artifact) *history {
-	if initial == nil {
-		initial = make([]Artifact, 0)
+func New(artifacts []Artifact) *history {
+	initial := make(map[string]Artifact)
+	if artifacts != nil {
+		for _, a := range artifacts {
+			key := fmt.Sprintf(
+				"%s-%d-%d-%d", a.Player(),
+				a.Row(), a.Column(), a.Value(),
+			)
+
+			initial[key] = a
+		}
 	}
-	return &history{initial: initial, artifacts: make([]Artifact, 0)}
+	return &history{
+		initial:   initial,
+		artifacts: make(map[string]Artifact),
+	}
 }
 
 func (h *history) Append(a Artifact) {
 	h.lock.Lock()
-	h.artifacts = append(h.artifacts, a)
-	h.lock.Unlock()
+	defer h.lock.Unlock()
+
+	key := fmt.Sprintf(
+		"%s-%d-%d-%d", a.Player(),
+		a.Row(), a.Column(), a.Value(),
+	)
+
+	if _, exist := h.initial[key]; exist {
+		return
+	}
+	if _, exist := h.artifacts[key]; exist {
+		return
+	}
+
+	h.artifacts[key] = a
 }
 
-func (h *history) Artifacts() []Artifact {
+func (h *history) Artifacts() map[string][]Artifact {
 	h.lock.RLock()
 	defer h.lock.RUnlock()
 
-	c := make([]Artifact, 0, len(h.initial)+len(h.artifacts))
-	c = append(c, h.initial...)
-	c = append(c, h.artifacts...)
+	artifacts := make(
+		map[string][]Artifact,
+		len(h.initial)+len(h.artifacts),
+	)
 
-	return c
+	for _, a := range h.initial {
+		player := a.Player()
+		artifacts[player] = append(artifacts[player], a)
+	}
+	for _, a := range h.artifacts {
+		player := a.Player()
+		artifacts[player] = append(artifacts[player], a)
+	}
+
+	for player := range artifacts {
+		subset := artifacts[player]
+		sort.Slice(subset, func(i, j int) bool {
+			return subset[i].Timestamp() < subset[j].Timestamp()
+		})
+		artifacts[player] = subset
+	}
+
+	return artifacts
 }
 
 func (h *history) Flush() []Artifact {
 	h.lock.Lock()
 	defer h.lock.Unlock()
 
-	flushed := h.artifacts
-	h.initial = append(h.initial, h.artifacts...)
-	h.artifacts = make([]Artifact, 0)
-
+	flushed := make([]Artifact, 0, len(h.artifacts))
+	for key, a := range h.artifacts {
+		h.initial[key] = a
+		flushed = append(flushed, a)
+	}
+	h.artifacts = make(map[string]Artifact)
 	return flushed
 }

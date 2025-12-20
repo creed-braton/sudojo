@@ -14,10 +14,10 @@ type playerStatus struct {
 
 type Message struct {
 	Type      string          `json:"type"`
-	Trace     string          `json:"trace_id,omitempty"`
+	Trace     string          `json:"trace,omitempty"`
 	Error     string          `json:"error,omitempty"`
-	Current   [][]int         `json:"current_state,omitempty"`
-	Initial   [][]int         `json:"initial_state,omitempty"`
+	Current   [][]int         `json:"current_board,omitempty"`
+	Initial   [][]int         `json:"initial_board,omitempty"`
 	Conflict  string          `json:"conflict,omitempty"`
 	Row       *int            `json:"row,omitempty"`
 	Column    *int            `json:"column,omitempty"`

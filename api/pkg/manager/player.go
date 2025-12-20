@@ -3,6 +3,7 @@ package manager
 import (
 	"sudojo/pkg/event"
 	"sudojo/pkg/game"
+	"sudojo/pkg/history"
 	"sudojo/pkg/lobby"
 	"sudojo/pkg/sudoku"
 	"sync"
@@ -117,6 +118,13 @@ func (p *player) Insert(row, col, val int, trace string) error {
 		}
 	}
 	event.Payload().SetCurrent(current)
+
+	if current != nil {
+		p.lobby.History().Append(history.NewArtifact(
+			p.token, time.Now().UTC().UnixNano(),
+			row, col, val,
+		))
+	}
 
 	if err != nil {
 		return p.buffer.Send(event)

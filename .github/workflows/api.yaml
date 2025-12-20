@@ -1,0 +1,136 @@
+name: API
+
+on:
+  push:
+    branches: ["main"]
+    tags: ["v*"]
+    paths:
+      - "api/**"
+      - "database/**"
+      - ".github/workflows/api.yaml"
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "api/**"
+      - "database/**"
+      - ".github/workflows/api.yaml"
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 3
+    defaults:
+      run:
+        working-directory: ./api
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v6
+
+      - name: Setup Golang
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.25.1"
+          cache-dependency-path: ./api/go.sum
+
+      - name: Check formatting
+        run: |
+          if [ -n "$(gofmt -l .)" ]; then
+            echo "The following files are not formatted:"
+            gofmt -l .
+            exit 1
+          fi
+
+  test:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 10
+    needs: [lint]
+    defaults:
+      run:
+        working-directory: ./api
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v6
+
+      - name: Build and start database container
+        working-directory: .
+        run: |
+          docker build -t test-db ./database
+          docker run -d \
+            --name test-db \
+            -p 5432:5432 \
+            -e POSTGRES_PASSWORD=password \
+            test-db
+
+      - name: Wait for database to be ready
+        run: |
+          until docker exec test-db pg_isready -U postgres -d postgres; do
+            echo "Waiting for database..."
+            sleep 2
+          done
+
+      - name: Setup Golang
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.25.1"
+          cache-dependency-path: ./api/go.sum
+
+      - name: Run tests
+        run: go test -v ./...
+
+  build:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 10
+    needs: [lint, test]
+    defaults:
+      run:
+        working-directory: ./api
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v6
+
+      - name: Build image
+        run: |
+          docker build -t api:local .
+
+      - name: Save image
+        run: docker save api:local -o api-image.tar
+
+      - name: Upload image artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: api-image
+          path: api-image.tar
+          retention-days: 1
+
+  publish:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 10
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Download image artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: api-image
+
+      - name: Load image
+        run: docker load -i api-image.tar
+
+      - name: Get tag name
+        id: tag
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag and push
+        run: |
+          docker tag api:local ghcr.io/creed-braton/sudojo-api:${{ steps.tag.outputs.VERSION }}
+          docker push ghcr.io/creed-braton/sudojo-api:${{ steps.tag.outputs.VERSION }}

@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS games (
-  hash VARCHAR(64) PRIMARY KEY,
+  hash VARCHAR(16) PRIMARY KEY,
   initial_board INT[9][9] NOT NULL,
   solution INT[9][9] NOT NULL
 );
@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS lobbies (
   strict BOOLEAN NOT NULL DEFAULT FALSE,
   started_at BIGINT DEFAULT NULL,
   finished_at BIGINT DEFAULT NULL,
-  game_hash VARCHAR(64) REFERENCES games(hash),
+  game_hash VARCHAR(16) REFERENCES games(hash),
   current_board INT[9][9] NOT NULL
 );
 

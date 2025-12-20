@@ -1,0 +1,95 @@
+name: Client
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "client/**"
+      - ".github/workflows/client.yaml"
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "client/**"
+      - ".github/workflows/client.yaml"
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 3
+    defaults:
+      run:
+        working-directory: ./client
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: ./client/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check formatting
+        run: npx prettier --check .
+
+  build:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 10
+    needs: lint
+    defaults:
+      run:
+        working-directory: ./client
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v6
+
+      - name: Build container
+        run: |
+          docker build -t proxy:local --build-arg API_ENDPOINT=sudojo.io/api .
+
+      - name: Save image
+        run: docker save proxy:local -o proxy-image.tar
+
+      - name: Upload image artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: proxy-image
+          path: proxy-image.tar
+          retention-days: 1
+
+  publish:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 10
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Download image artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: proxy-image
+
+      - name: Load image
+        run: docker load -i proxy-image.tar
+
+      - name: Get tag name
+        id: tag
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag and push
+        run: |
+          docker tag proxy:local ghcr.io/creed-braton/sudojo-proxy:${{ steps.tag.outputs.VERSION }}
+          docker push ghcr.io/creed-braton/sudojo-proxy:${{ steps.tag.outputs.VERSION }}

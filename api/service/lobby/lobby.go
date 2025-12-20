@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"sudojo/adapter/database"
 	"sudojo/adapter/socket"
+	"sudojo/pkg/lobby"
 	"sudojo/pkg/manager"
 
 	"github.com/gorilla/websocket"
@@ -18,8 +19,8 @@ type Service interface {
 	Shutdown() error
 	// Returns the Unix timestamp of the last recorded event.
 	LastEvent() int64
-	// Flag if the game of the lobby is finished or not.
-	Finished() bool
+	// Returns the lobby state of the service.
+	Lobby() lobby.Lobby
 	// Creates a new player with the given name and persists it to the database.
 	// Returns the player's authentication token or an error if creation fails.
 	CreatePlayer(name string) (string, error)
@@ -74,8 +75,8 @@ func (s *service) LastEvent() int64 {
 	return s.manager.LastEvent()
 }
 
-func (s *service) Finished() bool {
-	return s.manager.Lobby().Game().Finished() != nil
+func (s *service) Lobby() lobby.Lobby {
+	return s.manager.Lobby()
 }
 
 func (s *service) CreatePlayer(name string) (string, error) {
