@@ -53,8 +53,14 @@ const useSudoku = (
   const togglePencil = (): void =>
     mode !== "pencil" ? setMode("pencil") : setMode("default");
 
-  const togglePing = (): void =>
-    mode !== "ping" ? setMode("ping") : setMode("default");
+  const togglePing = (): void => {
+    if (mode !== "ping") {
+      setMode("ping");
+      setCursor(null);
+    } else {
+      setMode("default");
+    }
+  };
 
   return {
     cursor,

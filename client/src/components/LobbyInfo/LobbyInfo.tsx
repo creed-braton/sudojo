@@ -8,7 +8,11 @@ type LobbyInfoProps = {
   strict: boolean | undefined;
 };
 
-const LobbyInfo = ({ players, maxPlayers, strict }: LobbyInfoProps): ReactElement => {
+const LobbyInfo = ({
+  players,
+  maxPlayers,
+  strict,
+}: LobbyInfoProps): ReactElement => {
   return (
     <div className={`${styles.container} glass-container`}>
       <div className={styles.info}>
@@ -29,7 +33,9 @@ const LobbyInfo = ({ players, maxPlayers, strict }: LobbyInfoProps): ReactElemen
             <div
               className={`${styles.status} ${player.active ? styles.active : styles.inactive}`}
             />
-            <span className={styles.name}>{player.name}</span>
+            <span className={styles.name}>
+              {player.name.length > 0 ? player.name : "<anonym>"}
+            </span>
           </div>
         ))}
       </div>
