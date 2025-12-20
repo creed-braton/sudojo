@@ -110,6 +110,9 @@ jobs:
     permissions:
       contents: read
       packages: write
+    defaults:
+      run:
+        working-directory: ./api
     steps:
       - name: Download image artifact
         uses: actions/download-artifact@v7
