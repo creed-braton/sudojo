@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   isFinished,
   isInsertMessage,
@@ -20,22 +20,51 @@ export type WebSocketProps = {
   strict: boolean | undefined;
   insert: (row: number, column: number, value: number) => void;
   ping: (row: number, column: number) => void;
+  animations: Map<string, Animation>;
+  finished: boolean;
+  idle: boolean;
 };
 
-const useWebSocket = (
-  id: string,
-  token: string,
-  onConflict: (row: number, column: number) => void,
-  onPing: (row: number, column: number) => void,
-  onFinish: () => void,
-  onIdle: () => void,
-): WebSocketProps => {
+export type AnimationType = "conflict" | "ping";
+
+export type Animation = {
+  type: AnimationType;
+  key: number;
+};
+
+const useWebSocket = (id: string, token: string): WebSocketProps => {
   const wsRef = useRef<WebSocket | null>(null);
   const [current, setCurrent] = useState<Sudoku | undefined>(undefined);
   const [initial, setInitial] = useState<Sudoku | undefined>(undefined);
   const [players, setPlayers] = useState<Player[]>([]);
   const [maxPlayer, setMaxPlayer] = useState<number>(0);
   const [strict, setStrict] = useState<boolean | undefined>(undefined);
+  const [animations, setAnimations] = useState<Map<string, Animation>>(
+    new Map(),
+  );
+  const [finished, setFinished] = useState<boolean>(false);
+  const [idle, setIdle] = useState<boolean>(false);
+
+  const triggerAnimation = useCallback(
+    (row: number, column: number, type: AnimationType) => {
+      const key: string = `${row}-${column}`;
+
+      setAnimations((prev: Map<string, Animation>) => {
+        const next = new Map(prev);
+        next.set(key, { type, key: Date.now() });
+        return next;
+      });
+
+      setTimeout(() => {
+        setAnimations((prev: Map<string, Animation>) => {
+          const next: Map<string, Animation> = new Map(prev);
+          next.delete(key);
+          return next;
+        });
+      }, 600);
+    },
+    [],
+  );
 
   const connect = (id: string, token: string): void => {
     if (wsRef.current) {
@@ -62,7 +91,9 @@ const useWebSocket = (
           console.error("receive closure code: ", event.code);
           connect(id, token);
         } else {
-          current !== undefined && isFinished(current) ? onFinish() : onIdle();
+          current !== undefined && isFinished(current)
+            ? setFinished(true)
+            : setIdle(true);
         }
       };
 
@@ -91,12 +122,12 @@ const useWebSocket = (
             message.row !== undefined &&
             message.column !== undefined
           ) {
-            onConflict(message.row, message.column);
+            triggerAnimation(message.row, message.column, "conflict");
           }
           message.error && console.error(message.error);
         } else if (isPingMessage(message)) {
           if (message.row !== undefined && message.column !== undefined) {
-            onPing(message.row, message.column);
+            triggerAnimation(message.row, message.column, "ping");
           } else if (message.error !== undefined) {
             console.error(message.error);
           }
@@ -122,7 +153,6 @@ const useWebSocket = (
   };
 
   const ping = (row: number, column: number): void => {
-    console.log("test");
     wsRef.current &&
       wsRef.current.send(
         JSON.stringify({
@@ -139,7 +169,18 @@ const useWebSocket = (
     }
   }, [id, token]);
 
-  return { current, initial, players, maxPlayer, strict, insert, ping };
+  return {
+    current,
+    initial,
+    players,
+    maxPlayer,
+    strict,
+    insert,
+    ping,
+    animations,
+    finished,
+    idle,
+  };
 };
 
 export default useWebSocket;

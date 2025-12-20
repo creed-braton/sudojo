@@ -25,14 +25,7 @@ const Lobby = ({
   const [token, setToken] = useState<string>("");
   const location: Location = useLocation();
   const navigate: NavigateFunction = useNavigate();
-  const socket: WebSocketProps = useWebSocket(
-    id,
-    token,
-    () => {},
-    () => {},
-    () => {},
-    () => {},
-  );
+  const socket: WebSocketProps = useWebSocket(id, token);
   const sudoku: SudokuProps = useSudoku(
     socket.initial,
     socket.current,
@@ -76,6 +69,7 @@ const Lobby = ({
             initial={socket.initial}
             current={socket.current}
             notes={sudoku.notes}
+            animations={socket.animations}
           />
           <InputBar
             input={sudoku.input}
