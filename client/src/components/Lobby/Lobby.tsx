@@ -64,7 +64,11 @@ const Lobby = ({
       )}
       {socket.initial && socket.current && (
         <>
-          <LobbyInfo players={socket.players} maxPlayers={socket.maxPlayer} strict={socket.strict} />
+          <LobbyInfo
+            players={socket.players}
+            maxPlayers={socket.maxPlayer}
+            strict={socket.strict}
+          />
           <Board
             cursor={sudoku.cursor}
             select={sudoku.select}
