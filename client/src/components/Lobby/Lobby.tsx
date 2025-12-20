@@ -9,7 +9,7 @@ import Board from "../Board/Board";
 import styles from "./Lobby.module.css";
 import InputBar from "../InputBar/InputBar";
 import NameInput from "../NameInput/NameInput";
-import Players from "../Players/Players";
+import LobbyInfo from "../LobbyInfo/LobbyInfo";
 import type { SudokuProps } from "../../hooks/sudoku";
 import useWebSocket, { type WebSocketProps } from "../../api/socket";
 import useSudoku from "../../hooks/sudoku";
@@ -64,7 +64,7 @@ const Lobby = ({
       )}
       {socket.initial && socket.current && (
         <>
-          <Players players={socket.players} maxPlayers={socket.maxPlayer} />
+          <LobbyInfo players={socket.players} maxPlayers={socket.maxPlayer} strict={socket.strict} />
           <Board
             cursor={sudoku.cursor}
             select={sudoku.select}

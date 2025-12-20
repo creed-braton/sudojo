@@ -21,7 +21,7 @@ const useLobby = (): LobbyProps => {
   };
 
   const create = (): void => {
-    postLobby(4, true)
+    postLobby(6, true)
       .then((id: string) => setId(id))
       .catch((error: Error) => console.log(error));
   };
