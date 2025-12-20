@@ -1,0 +1,80 @@
+name: API
+
+on:
+  push:
+    branches: ["**"]
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 3
+    defaults:
+      run:
+        working-directory: ./api
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v6
+
+      - name: Setup Golang
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.25.1"
+
+      - name: Check formatting
+        run: |
+          if [ -n "$(gofmt -l .)" ]; then
+            echo "The following files are not formatted:"
+            gofmt -l .
+            exit 1
+          fi
+
+  test:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 10
+    needs: [lint]
+    defaults:
+      run:
+        working-directory: ./api
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v6
+
+      - name: Build and start database container
+        working-directory: .
+        run: |
+          docker build -t test-db ./database
+          docker run -d \
+            --name test-db \
+            -p 5432:5432 \
+            -e POSTGRES_PASSWORD=password \
+            test-db
+
+      - name: Wait for database to be ready
+        run: |
+          until docker exec test-db pg_isready -U postgres -d postgres; do
+            echo "Waiting for database..."
+            sleep 2
+          done
+
+      - name: Setup Golang
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.25.1"
+
+      - name: Run tests
+        run: go test -v ./...
+
+  build:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 10
+    needs: [lint, test]
+    defaults:
+      run:
+        working-directory: ./api
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v6
+
+      - name: Build container
+        run: |
+          docker build -t api .

@@ -9,5 +9,9 @@ run:
 test:
 	@go test -race -v ./...
 
+lint:
+	@gofmt -l .
+	@test -z "`gofmt -l .`"
+
 clean:
 	@rm ./bin

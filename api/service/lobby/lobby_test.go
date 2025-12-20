@@ -8,9 +8,9 @@ import (
 	"net/http/httptest"
 	"sudojo/adapter/database"
 	"sudojo/adapter/socket"
-	"sudojo/core/ctrl"
-	"sudojo/core/event"
+	"sudojo/pkg/event"
 	"sudojo/pkg/lobby"
+	"sudojo/pkg/manager"
 	"testing"
 
 	"github.com/gorilla/websocket"
@@ -35,7 +35,7 @@ func connect(lobby Service, token string) (string, func()) {
 
 func TestService(t *testing.T) {
 	lobby := New(
-		ctrl.New(lobby.Open(false, 8)), database.NewMock(),
+		manager.New(lobby.Open(false, 8)), database.NewMock(),
 		slog.New(slog.NewTextHandler(io.Discard, nil)),
 	)
 	name := "test-player"
