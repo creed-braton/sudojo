@@ -18,7 +18,7 @@ const NameInput = ({
 
   const validName = (value: string): boolean => {
     const validPattern = /^[a-zA-Z0-9_-]*$/;
-    return validPattern.test(value) && value.length <= 12;
+    return validPattern.test(value) && value.length <= 16;
   };
 
   const handleNameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -43,7 +43,7 @@ const NameInput = ({
             onChange={handleNameChange}
             placeholder="Display name"
             className={style.input}
-            maxLength={12}
+            maxLength={16}
             autoFocus
           />
         </div>

@@ -35,10 +35,6 @@ const Lobby = ({
   );
 
   useEffect((): void => {
-    console.log(socket.players);
-  }, [socket.players]);
-
-  useEffect((): void => {
     const id: string = location.pathname.split("/")[2];
     setId(id);
     const token: string | undefined = getToken(id);

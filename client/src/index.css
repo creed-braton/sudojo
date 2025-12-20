@@ -25,7 +25,7 @@
   --border-subtle: rgba(255, 255, 255, 0.08);
   --border-color: rgba(255, 255, 255, 0.1);
   --border-strong: rgba(255, 255, 255, 0.3);
-  --border-glass: rgba(255, 255, 255, 0.18);
+  --border-glass: rgba(255, 255, 255, 0.24);
 
   /* Shadows */
   --shadow-color: rgba(0, 0, 0, 0.5);
@@ -138,6 +138,6 @@ body {
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   box-shadow: 0 10px 40px var(--shadow-color);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-glass);
   border-radius: 20px;
 }

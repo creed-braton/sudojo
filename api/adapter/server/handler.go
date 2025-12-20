@@ -10,7 +10,16 @@ import (
 )
 
 func (s *server) postLobby(w http.ResponseWriter, r *http.Request) {
-	id, err := s.tenant.Create(false, 8)
+	var req struct {
+		Strict    bool `json:"strict"`
+		MaxPlayer int  `json:"max_player"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	id, err := s.tenant.Create(req.Strict, req.MaxPlayer)
 	if err != nil {
 		http.Error(w, "internal server error", 500)
 		return

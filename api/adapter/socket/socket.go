@@ -64,6 +64,7 @@ func (c *client) WritePump() error {
 		for {
 			event, err := c.player.Receive()
 			if err != nil {
+				c.player.Leave()
 				close(ch)
 				return
 			}
@@ -110,6 +111,7 @@ func (c *client) WritePump() error {
 
 func (c *client) ReadPump() error {
 	defer func() {
+		c.player.Leave()
 		close(c.write)
 	}()
 
