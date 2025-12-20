@@ -2,8 +2,8 @@ name: API
 
 on:
   push:
-    branches: ["main"]
     tags: ["v*"]
+    branches: ["main"]
     paths:
       - "api/**"
       - "database/**"
@@ -99,7 +99,7 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: api-image
-          path: api-image.tar
+          path: ./api/api-image.tar
           retention-days: 1
 
   publish:

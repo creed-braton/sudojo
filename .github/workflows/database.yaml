@@ -2,6 +2,7 @@ name: Database
 
 on:
   push:
+    tags: ["v*"]
     branches: ["main"]
     paths:
       - "database/**"
@@ -34,7 +35,7 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: database-image
-          path: database-image.tar
+          path: ./database/database-image.tar
           retention-days: 1
 
   publish:

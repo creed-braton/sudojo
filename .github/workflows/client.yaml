@@ -2,6 +2,7 @@ name: Client
 
 on:
   push:
+    tags: ["v*"]
     branches: ["main"]
     paths:
       - "client/**"
@@ -58,7 +59,7 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: proxy-image
-          path: proxy-image.tar
+          path: ./client/proxy-image.tar
           retention-days: 1
 
   publish:
