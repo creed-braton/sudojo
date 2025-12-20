@@ -9,6 +9,7 @@ import Board from "../Board/Board";
 import styles from "./Lobby.module.css";
 import InputBar from "../InputBar/InputBar";
 import NameInput from "../NameInput/NameInput";
+import Players from "../Players/Players";
 import type { SudokuProps } from "../../hooks/sudoku";
 import useWebSocket, { type WebSocketProps } from "../../api/socket";
 import useSudoku from "../../hooks/sudoku";
@@ -32,6 +33,10 @@ const Lobby = ({
     socket.insert,
     socket.ping,
   );
+
+  useEffect((): void => {
+    console.log(socket.players);
+  }, [socket.players]);
 
   useEffect((): void => {
     const id: string = location.pathname.split("/")[2];
@@ -63,6 +68,7 @@ const Lobby = ({
       )}
       {socket.initial && socket.current && (
         <>
+          <Players players={socket.players} maxPlayers={socket.maxPlayer} />
           <Board
             cursor={sudoku.cursor}
             select={sudoku.select}

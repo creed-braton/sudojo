@@ -29,7 +29,6 @@
   justify-content: center;
   align-items: center;
   font-size: clamp(1rem, 3vw, 1.5rem);
-  line-height: 1;
   border: 1px solid var(--border-subtle);
   transition: background-color 0.2s ease;
   user-select: none;
