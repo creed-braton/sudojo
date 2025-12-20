@@ -26,17 +26,7 @@ jobs:
 
       - name: Build image
         run: |
-          docker build -t database:local .
-
-      - name: Save image
-        run: docker save database:local -o database-image.tar
-
-      - name: Upload image artifact
-        uses: actions/upload-artifact@v6
-        with:
-          name: database-image
-          path: ./database/database-image.tar
-          retention-days: 1
+          docker build -t database .
 
   publish:
     runs-on: ubuntu-24.04-arm
@@ -50,13 +40,12 @@ jobs:
       run:
         working-directory: ./database
     steps:
-      - name: Download image artifact
-        uses: actions/download-artifact@v7
-        with:
-          name: database-image
+      - name: Checkout source code
+        uses: actions/checkout@v6
 
-      - name: Load image
-        run: docker load -i database-image.tar
+      - name: Build image
+        run: |
+          docker build -t database .
 
       - name: Get tag name
         id: tag
@@ -71,5 +60,5 @@ jobs:
 
       - name: Tag and push
         run: |
-          docker tag database:local ghcr.io/creed-braton/sudojo-database:${{ steps.tag.outputs.VERSION }}
+          docker tag database ghcr.io/creed-braton/sudojo-database:${{ steps.tag.outputs.VERSION }}
           docker push ghcr.io/creed-braton/sudojo-database:${{ steps.tag.outputs.VERSION }}
