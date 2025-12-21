@@ -51,12 +51,13 @@ const Plot = ({ insertions, players, startTimestamp }: Props) => {
 
     // Sort insertions by timestamp
     const sortedInsertions = [...insertions].sort(
-      (a, b) => a.timestamp - b.timestamp
+      (a, b) => a.timestamp - b.timestamp,
     );
 
     // Calculate time range (relative to start)
     const lastTimestamp =
-      sortedInsertions[sortedInsertions.length - 1]?.timestamp ?? startTimestamp;
+      sortedInsertions[sortedInsertions.length - 1]?.timestamp ??
+      startTimestamp;
 
     // X scale: time from start (0) to last insertion
     const xScale = d3
@@ -96,9 +97,7 @@ const Plot = ({ insertions, players, startTimestamp }: Props) => {
       .tickSize(-width)
       .tickFormat(() => "");
 
-    g.append("g")
-      .attr("class", styles.grid)
-      .call(yGridlines);
+    g.append("g").attr("class", styles.grid).call(yGridlines);
 
     // Build line data for each player
     const playerLines = new Map<
@@ -108,7 +107,9 @@ const Plot = ({ insertions, players, startTimestamp }: Props) => {
 
     for (const player of players) {
       // Start at (0, 0) for each player
-      playerLines.set(player.name, [{ time: 0, count: 0, color: player.color }]);
+      playerLines.set(player.name, [
+        { time: 0, count: 0, color: player.color },
+      ]);
     }
 
     // Track running counts
@@ -143,13 +144,27 @@ const Plot = ({ insertions, players, startTimestamp }: Props) => {
       .curve(d3.curveLinear);
 
     // Draw lines for each player
-    const lineGroups: { visible: d3.Selection<SVGPathElement, { time: number; count: number; color: string }[], null, undefined>, hitArea: d3.Selection<SVGPathElement, { time: number; count: number; color: string }[], null, undefined> }[] = [];
+    const lineGroups: {
+      visible: d3.Selection<
+        SVGPathElement,
+        { time: number; count: number; color: string }[],
+        null,
+        undefined
+      >;
+      hitArea: d3.Selection<
+        SVGPathElement,
+        { time: number; count: number; color: string }[],
+        null,
+        undefined
+      >;
+    }[] = [];
 
     for (const player of players) {
       const lineData = playerLines.get(player.name);
       if (lineData && lineData.length > 1) {
         // Invisible hit area with larger stroke width
-        const hitArea = g.append("path")
+        const hitArea = g
+          .append("path")
           .datum(lineData)
           .attr("fill", "none")
           .attr("stroke", "transparent")
@@ -158,7 +173,8 @@ const Plot = ({ insertions, players, startTimestamp }: Props) => {
           .attr("class", styles.line);
 
         // Visible line
-        const visible = g.append("path")
+        const visible = g
+          .append("path")
           .datum(lineData)
           .attr("fill", "none")
           .attr("stroke", player.color)
@@ -243,7 +259,9 @@ const Plot = ({ insertions, players, startTimestamp }: Props) => {
     // X axis
     const xDomain = lastTimestamp - startTimestamp;
     const isMobile = window.innerWidth < 800;
-    const xAxis = d3.axisBottom(xScale).tickFormat((d) => formatTime(d as number));
+    const xAxis = d3
+      .axisBottom(xScale)
+      .tickFormat((d) => formatTime(d as number));
     if (isMobile) {
       xAxis.tickValues([0, xDomain / 2, xDomain]);
     } else {

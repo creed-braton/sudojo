@@ -20,7 +20,9 @@
   font-weight: 600;
   color: var(--text-strong);
   pointer-events: none;
-  transition: opacity 0.15s ease, visibility 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    visibility 0.15s ease;
   z-index: 10;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   visibility: hidden;

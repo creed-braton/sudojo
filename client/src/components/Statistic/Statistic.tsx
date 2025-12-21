@@ -143,10 +143,14 @@ const Statistic = (): ReactElement => {
 
     for (const insertion of insertions) {
       const playerIndex = playersData.findIndex(
-        (p) => p.name === insertion.playerName && p.color === insertion.playerColor
+        (p) =>
+          p.name === insertion.playerName && p.color === insertion.playerColor,
       );
       if (playerIndex !== -1) {
-        insertionCounts.set(playerIndex, (insertionCounts.get(playerIndex) ?? 0) + 1);
+        insertionCounts.set(
+          playerIndex,
+          (insertionCounts.get(playerIndex) ?? 0) + 1,
+        );
       }
     }
 
@@ -281,7 +285,7 @@ const Statistic = (): ReactElement => {
           >
             {tooltip.text}
           </div>,
-          document.body
+          document.body,
         )}
     </div>
   );

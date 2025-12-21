@@ -78,7 +78,7 @@ const LobbyInfo = ({
           >
             {tooltip.text}
           </div>,
-          document.body
+          document.body,
         )}
     </div>
   );
