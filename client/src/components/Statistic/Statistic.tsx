@@ -98,6 +98,9 @@ const Statistic = (): ReactElement => {
       const currentValue = lobby.current_board[artifact.row][artifact.column];
       if (currentValue === 0) continue;
 
+      // In strict mode, only count insertion if the value matches the current board
+      if (lobby.strict && artifact.value !== currentValue) continue;
+
       // First insertion for this cell - claim it for this player
       claimed.add(cellKey);
       correctInsertions.push({

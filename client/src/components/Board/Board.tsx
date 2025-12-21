@@ -3,6 +3,7 @@ import styles from "./Board.module.css";
 import type { Sudoku } from "../../api/types";
 import type { Position } from "../../hooks/sudoku";
 import type { Animation } from "../../api/socket";
+import DeleteIcon from "../../icons/DeleteIcon";
 
 export type Insertion = {
   row: number;
@@ -70,6 +71,20 @@ const Board = ({
                       return insertion.value;
                     }
                     if (cell > 0) {
+                      const isInitial = initial[rowIndex][colIndex] > 0;
+                      const isMistake = insertions && !isInitial && !insertion;
+                      if (isMistake) {
+                        return (
+                          <DeleteIcon
+                            style={{
+                              display: "flex",
+                              justifyContent: "center",
+                              alignItems: "center",
+                              color: "var(--text-muted)",
+                            }}
+                          />
+                        );
+                      }
                       return cell;
                     }
                     return (
