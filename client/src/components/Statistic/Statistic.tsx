@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ReactElement } from "react";
 import { getLobby } from "../../api/api";
 import type { Lobby } from "../../api/types";
 import Board, { type Insertion } from "../Board/Board";
+import Plot from "../Plot/Plot";
 import styles from "./Statistic.module.css";
 
 const emptyNotes = new Map<string, Set<number>>();
@@ -109,83 +110,100 @@ const Statistic = (): ReactElement => {
         value: currentValue,
         playerName: artifact.playerName,
         playerColor: artifact.playerColor,
+        timestamp: artifact.timestamp,
       });
     }
 
     return correctInsertions;
   }, [lobby]);
 
-  const players = lobby?.history.map((h) => h.player_name ?? "") ?? [];
+  const playerNames = lobby?.history.map((h) => h.player_name ?? "") ?? [];
+
+  const playersData = useMemo(() => {
+    return playerNames.map((name, index) => ({
+      name: name.length > 0 ? name : "<anonym>",
+      color: PLAYER_COLORS[index % PLAYER_COLORS.length],
+    }));
+  }, [playerNames]);
 
   return (
     <div className={styles.wrapper}>
       {lobby && (
-        <>
-          <Board
-            cursor={null}
-            select={noop}
-            initial={lobby.initial_board}
-            current={lobby.current_board}
-            notes={emptyNotes}
-            animations={emptyAnimations}
-            insertions={insertions}
-          />
-          <div className={styles.sidebar}>
-            <div className={`${styles.container} glass-container`}>
-              <span className={styles.mode}>
-                {lobby.strict ? "Strict Mode" : "Lax Mode"}
-              </span>
-              <div className={styles.divider} />
-              <span className={styles.timestamp}>
-                <span className={styles.timestampLabel}>Start</span>
-                <span className={styles.timestampValue}>
-                  {formatTimestamp(lobby.started_at)}
+        <div className={styles.content}>
+          <div className={styles.topSection}>
+            <Board
+              cursor={null}
+              select={noop}
+              initial={lobby.initial_board}
+              current={lobby.current_board}
+              notes={emptyNotes}
+              animations={emptyAnimations}
+              insertions={insertions}
+            />
+            <div className={styles.sidebar}>
+              <div className={`${styles.container} glass-container`}>
+                <span className={styles.mode}>
+                  {lobby.strict ? "Strict Mode" : "Lax Mode"}
                 </span>
-              </span>
-              <span className={styles.timestamp}>
-                <span className={styles.timestampLabel}>Finish</span>
-                <span className={styles.timestampValue}>
-                  {lobby.finished_at !== null
-                    ? formatTimestamp(lobby.finished_at)
-                    : "<null>"}
+                <div className={styles.divider} />
+                <span className={styles.timestamp}>
+                  <span className={styles.timestampLabel}>Start</span>
+                  <span className={styles.timestampValue}>
+                    {formatTimestamp(lobby.started_at)}
+                  </span>
                 </span>
-              </span>
-              <span className={styles.timestamp}>
-                <span className={styles.timestampLabel}>Duration</span>
-                <span className={styles.timestampValue}>
-                  {lobby.finished_at !== null
-                    ? formatDuration(lobby.started_at, lobby.finished_at)
-                    : "<null>"}
+                <span className={styles.timestamp}>
+                  <span className={styles.timestampLabel}>Finish</span>
+                  <span className={styles.timestampValue}>
+                    {lobby.finished_at !== null
+                      ? formatTimestamp(lobby.finished_at)
+                      : "<null>"}
+                  </span>
                 </span>
-              </span>
-            </div>
-            <div className={`${styles.container} glass-container`}>
-              <div className={styles.header}>
-                <span className={styles.title}>Players</span>
-                <span className={styles.count}>
-                  {players.length}/{lobby.max_player}
+                <span className={styles.timestamp}>
+                  <span className={styles.timestampLabel}>Duration</span>
+                  <span className={styles.timestampValue}>
+                    {lobby.finished_at !== null
+                      ? formatDuration(lobby.started_at, lobby.finished_at)
+                      : "<null>"}
+                  </span>
                 </span>
               </div>
-              <div className={styles.list}>
-                {players.map((name, index) => (
-                  <div key={index} className={styles.player} title={name.length > 0 ? name : "<anonym>"}>
-                    <div
-                      className={styles.colorIndicator}
-                      style={{
-                        backgroundColor:
-                          PLAYER_COLORS[index % PLAYER_COLORS.length],
-                        boxShadow: `0 0 6px ${PLAYER_COLORS[index % PLAYER_COLORS.length]}80`,
-                      }}
-                    />
-                    <span className={styles.name}>
-                      {name.length > 0 ? name : "<anonym>"}
-                    </span>
-                  </div>
-                ))}
+              <div className={`${styles.container} glass-container`}>
+                <div className={styles.header}>
+                  <span className={styles.title}>Players</span>
+                  <span className={styles.count}>
+                    {playerNames.length}/{lobby.max_player}
+                  </span>
+                </div>
+                <div className={styles.list}>
+                  {playerNames.map((name, index) => (
+                    <div key={index} className={styles.player} title={name.length > 0 ? name : "<anonym>"}>
+                      <div
+                        className={styles.colorIndicator}
+                        style={{
+                          backgroundColor:
+                            PLAYER_COLORS[index % PLAYER_COLORS.length],
+                          boxShadow: `0 0 6px ${PLAYER_COLORS[index % PLAYER_COLORS.length]}80`,
+                        }}
+                      />
+                      <span className={styles.name}>
+                        {name.length > 0 ? name : "<anonym>"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
-        </>
+          <div className={`${styles.plotContainer} glass-container`}>
+            <Plot
+              insertions={insertions}
+              players={playersData}
+              startTimestamp={lobby.started_at}
+            />
+          </div>
+        </div>
       )}
     </div>
   );

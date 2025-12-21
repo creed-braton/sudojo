@@ -11,6 +11,7 @@ export type Insertion = {
   value: number;
   playerName: string;
   playerColor: string;
+  timestamp: number;
 };
 
 const Board = ({
