@@ -1,4 +1,5 @@
-import type { ReactElement } from "react";
+import { useState, type ReactElement } from "react";
+import { createPortal } from "react-dom";
 import styles from "./Board.module.css";
 import type { Sudoku } from "../../api/types";
 import type { Position } from "../../hooks/sudoku";
@@ -31,6 +32,12 @@ const Board = ({
   animations: Map<string, Animation>;
   insertions?: Insertion[] | null;
 }): ReactElement => {
+  const [tooltip, setTooltip] = useState<{
+    text: string;
+    x: number;
+    y: number;
+  } | null>(null);
+
   const insertionMap = new Map<string, Insertion>();
   if (insertions) {
     for (const insertion of insertions) {
@@ -62,7 +69,25 @@ const Board = ({
                   style={
                     hasInsertion ? { color: insertion.playerColor } : undefined
                   }
-                  title={hasInsertion ? insertion.playerName : undefined}
+                  onMouseEnter={(e) => {
+                    if (hasInsertion) {
+                      setTooltip({
+                        text: insertion.playerName,
+                        x: e.clientX + 10,
+                        y: e.clientY - 10,
+                      });
+                    }
+                  }}
+                  onMouseMove={(e) => {
+                    if (hasInsertion && tooltip) {
+                      setTooltip({
+                        text: insertion.playerName,
+                        x: e.clientX + 10,
+                        y: e.clientY - 10,
+                      });
+                    }
+                  }}
+                  onMouseLeave={() => setTooltip(null)}
                   onClick={() => {
                     initial && select(rowIndex, colIndex);
                   }}
@@ -113,6 +138,19 @@ const Board = ({
           </div>
         ))}
       </div>
+      {tooltip &&
+        createPortal(
+          <div
+            className={styles.tooltip}
+            style={{
+              left: tooltip.x,
+              top: tooltip.y,
+            }}
+          >
+            {tooltip.text}
+          </div>,
+          document.body
+        )}
     </div>
   );
 };

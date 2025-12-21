@@ -1,4 +1,5 @@
-import type { ReactElement } from "react";
+import { useState, type ReactElement } from "react";
+import { createPortal } from "react-dom";
 import type { Player } from "../../api/types";
 import styles from "./LobbyInfo.module.css";
 
@@ -13,6 +14,12 @@ const LobbyInfo = ({
   maxPlayers,
   strict,
 }: LobbyInfoProps): ReactElement => {
+  const [tooltip, setTooltip] = useState<{
+    text: string;
+    x: number;
+    y: number;
+  } | null>(null);
+
   return (
     <div className={`${styles.container} glass-container`}>
       <div className={styles.info}>
@@ -28,17 +35,51 @@ const LobbyInfo = ({
       </div>
       <div className={styles.divider} />
       <div className={styles.list}>
-        {players.map((player, index) => (
-          <div key={index} className={styles.player} title={player.name.length > 0 ? player.name : "<anonym>"}>
+        {players.map((player, index) => {
+          const displayName = player.name.length > 0 ? player.name : "<anonym>";
+          return (
             <div
-              className={`${styles.status} ${player.active ? styles.active : styles.inactive}`}
-            />
-            <span className={styles.name}>
-              {player.name.length > 0 ? player.name : "<anonym>"}
-            </span>
-          </div>
-        ))}
+              key={index}
+              className={styles.player}
+              onMouseEnter={(e) => {
+                setTooltip({
+                  text: displayName,
+                  x: e.clientX + 10,
+                  y: e.clientY - 10,
+                });
+              }}
+              onMouseMove={(e) => {
+                if (tooltip) {
+                  setTooltip({
+                    text: displayName,
+                    x: e.clientX + 10,
+                    y: e.clientY - 10,
+                  });
+                }
+              }}
+              onMouseLeave={() => setTooltip(null)}
+            >
+              <div
+                className={`${styles.status} ${player.active ? styles.active : styles.inactive}`}
+              />
+              <span className={styles.name}>{displayName}</span>
+            </div>
+          );
+        })}
       </div>
+      {tooltip &&
+        createPortal(
+          <div
+            className={styles.tooltip}
+            style={{
+              left: tooltip.x,
+              top: tooltip.y,
+            }}
+          >
+            {tooltip.text}
+          </div>,
+          document.body
+        )}
     </div>
   );
 };

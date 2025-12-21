@@ -155,8 +155,17 @@ const Plot = ({ insertions, players, startTimestamp }: Props) => {
       }
     }
 
+    // Create tooltip
+    const tooltip = d3
+      .select(svgRef.current.parentElement)
+      .append("div")
+      .attr("class", styles.tooltip)
+      .style("opacity", 0);
+
     // Add hover interactions
     lineGroups.forEach((group, index) => {
+      const lineData = Array.from(playerLines.values())[index];
+
       group.hitArea
         .on("mouseenter", () => {
           lineGroups.forEach((otherGroup, otherIndex) => {
@@ -164,11 +173,38 @@ const Plot = ({ insertions, players, startTimestamp }: Props) => {
               otherGroup.visible.style("opacity", 0.2);
             }
           });
+          tooltip.style("opacity", 1).style("visibility", "visible");
+        })
+        .on("mousemove", (event) => {
+          const [mouseX] = d3.pointer(event);
+          const xValue = xScale.invert(mouseX);
+
+          // Find closest data point
+          let closestPoint = lineData[0];
+          let minDist = Math.abs(lineData[0].time - xValue);
+
+          for (const point of lineData) {
+            const dist = Math.abs(point.time - xValue);
+            if (dist < minDist) {
+              minDist = dist;
+              closestPoint = point;
+            }
+          }
+
+          const svgRect = svgRef.current!.getBoundingClientRect();
+          const tooltipX = event.clientX - svgRect.left + 10;
+          const tooltipY = event.clientY - svgRect.top - 10;
+
+          tooltip
+            .html(`${Math.round(closestPoint.count)}`)
+            .style("left", `${tooltipX}px`)
+            .style("top", `${tooltipY}px`);
         })
         .on("mouseleave", () => {
           lineGroups.forEach((otherGroup) => {
             otherGroup.visible.style("opacity", 1);
           });
+          tooltip.style("opacity", 0).style("visibility", "hidden");
         });
     });
 
@@ -230,9 +266,18 @@ const Plot = ({ insertions, players, startTimestamp }: Props) => {
       .attr("text-anchor", "middle")
       .attr("class", styles.axisLabel)
       .text("Points");
+
+    // Cleanup tooltip on unmount
+    return () => {
+      tooltip.remove();
+    };
   }, [insertions, players, startTimestamp]);
 
-  return <svg ref={svgRef} className={styles.svg} />;
+  return (
+    <div className={styles.container}>
+      <svg ref={svgRef} className={styles.svg} />
+    </div>
+  );
 };
 
 export default Plot;

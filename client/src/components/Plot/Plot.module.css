@@ -1,6 +1,29 @@
+.container {
+  position: relative;
+  width: 100%;
+}
+
 .svg {
   width: 100%;
   height: 250px;
+}
+
+.tooltip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 6px 10px;
+  background-color: var(--background-color);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-strong);
+  pointer-events: none;
+  transition: opacity 0.15s ease, visibility 0.15s ease;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  visibility: hidden;
 }
 
 .grid line {

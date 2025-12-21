@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState, type ReactElement } from "react";
+import { createPortal } from "react-dom";
 import { getLobby } from "../../api/api";
 import type { Lobby } from "../../api/types";
 import Board, { type Insertion } from "../Board/Board";
 import Plot from "../Plot/Plot";
+import CrownIcon from "../../icons/CrownIcon";
 import styles from "./Statistic.module.css";
 
 const emptyNotes = new Map<string, Set<number>>();
@@ -51,6 +53,11 @@ export const PLAYER_COLORS = [
 const Statistic = (): ReactElement => {
   const [id, setId] = useState<string>("");
   const [lobby, setLobby] = useState<Lobby | undefined>(undefined);
+  const [tooltip, setTooltip] = useState<{
+    text: string;
+    x: number;
+    y: number;
+  } | null>(null);
 
   useEffect((): void => {
     const id: string = location.pathname.split("/")[2];
@@ -126,6 +133,40 @@ const Statistic = (): ReactElement => {
     }));
   }, [playerNames]);
 
+  const leaderIndex = useMemo((): number | null => {
+    if (playerNames.length < 2) return null;
+
+    const insertionCounts = new Map<number, number>();
+    for (let i = 0; i < playerNames.length; i++) {
+      insertionCounts.set(i, 0);
+    }
+
+    for (const insertion of insertions) {
+      const playerIndex = playersData.findIndex(
+        (p) => p.name === insertion.playerName && p.color === insertion.playerColor
+      );
+      if (playerIndex !== -1) {
+        insertionCounts.set(playerIndex, (insertionCounts.get(playerIndex) ?? 0) + 1);
+      }
+    }
+
+    let maxCount = 0;
+    let leader: number | null = null;
+    let isTie = false;
+
+    for (const [index, count] of insertionCounts) {
+      if (count > maxCount) {
+        maxCount = count;
+        leader = index;
+        isTie = false;
+      } else if (count === maxCount && count > 0) {
+        isTie = true;
+      }
+    }
+
+    return isTie || maxCount === 0 ? null : leader;
+  }, [playerNames, insertions, playersData]);
+
   return (
     <div className={styles.wrapper}>
       {lobby && (
@@ -177,21 +218,45 @@ const Statistic = (): ReactElement => {
                   </span>
                 </div>
                 <div className={styles.list}>
-                  {playerNames.map((name, index) => (
-                    <div key={index} className={styles.player} title={name.length > 0 ? name : "<anonym>"}>
+                  {playerNames.map((name, index) => {
+                    const displayName = name.length > 0 ? name : "<anonym>";
+                    return (
                       <div
-                        className={styles.colorIndicator}
-                        style={{
-                          backgroundColor:
-                            PLAYER_COLORS[index % PLAYER_COLORS.length],
-                          boxShadow: `0 0 6px ${PLAYER_COLORS[index % PLAYER_COLORS.length]}80`,
+                        key={index}
+                        className={styles.player}
+                        onMouseEnter={(e) => {
+                          setTooltip({
+                            text: displayName,
+                            x: e.clientX + 10,
+                            y: e.clientY - 10,
+                          });
                         }}
-                      />
-                      <span className={styles.name}>
-                        {name.length > 0 ? name : "<anonym>"}
-                      </span>
-                    </div>
-                  ))}
+                        onMouseMove={(e) => {
+                          if (tooltip) {
+                            setTooltip({
+                              text: displayName,
+                              x: e.clientX + 10,
+                              y: e.clientY - 10,
+                            });
+                          }
+                        }}
+                        onMouseLeave={() => setTooltip(null)}
+                      >
+                        <div
+                          className={styles.colorIndicator}
+                          style={{
+                            backgroundColor:
+                              PLAYER_COLORS[index % PLAYER_COLORS.length],
+                            boxShadow: `0 0 6px ${PLAYER_COLORS[index % PLAYER_COLORS.length]}80`,
+                          }}
+                        />
+                        <span className={styles.name}>{displayName}</span>
+                        {leaderIndex === index && (
+                          <CrownIcon className={styles.crown} />
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -205,6 +270,19 @@ const Statistic = (): ReactElement => {
           </div>
         </div>
       )}
+      {tooltip &&
+        createPortal(
+          <div
+            className={styles.tooltip}
+            style={{
+              left: tooltip.x,
+              top: tooltip.y,
+            }}
+          >
+            {tooltip.text}
+          </div>,
+          document.body
+        )}
     </div>
   );
 };
