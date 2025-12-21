@@ -45,7 +45,7 @@ spec:
     spec:
       containers:
         - name: database
-          image: ghcr.io/creed-braton/sudojo-database:v0.0.0-beta
+          image: ghcr.io/creed-braton/sudojo-database:v1.0.0-beta
           ports:
             - containerPort: 5432
           volumeMounts:
@@ -96,7 +96,7 @@ spec:
     spec:
       containers:
         - name: api
-          image: ghcr.io/creed-braton/sudojo-api:v0.0.0-beta
+          image: ghcr.io/creed-braton/sudojo-api:v1.0.0-beta
           ports:
             - containerPort: 8080
           env:
@@ -148,7 +148,7 @@ spec:
     spec:
       containers:
         - name: proxy
-          image: ghcr.io/creed-braton/sudojo-proxy:v0.0.0-beta
+          image: ghcr.io/creed-braton/sudojo-proxy:v1.0.0-beta
           ports:
             - containerPort: 80
 
