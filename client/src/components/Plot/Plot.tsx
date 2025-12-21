@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
 import type { Insertion } from "../Board/Board";
 import styles from "./Plot.module.css";
@@ -16,6 +16,22 @@ type Props = {
 
 const Plot = ({ insertions, players, startTimestamp }: Props) => {
   const svgRef = useRef<SVGSVGElement>(null);
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        setDimensions({ width, height });
+      }
+    });
+
+    resizeObserver.observe(svg);
+    return () => resizeObserver.disconnect();
+  }, []);
 
   useEffect(() => {
     if (!svgRef.current || insertions.length === 0 || players.length === 0) {
@@ -225,10 +241,14 @@ const Plot = ({ insertions, players, startTimestamp }: Props) => {
     };
 
     // X axis
-    const xAxis = d3
-      .axisBottom(xScale)
-      .ticks(6)
-      .tickFormat((d) => formatTime(d as number));
+    const xDomain = lastTimestamp - startTimestamp;
+    const isMobile = window.innerWidth < 800;
+    const xAxis = d3.axisBottom(xScale).tickFormat((d) => formatTime(d as number));
+    if (isMobile) {
+      xAxis.tickValues([0, xDomain / 2, xDomain]);
+    } else {
+      xAxis.ticks(6);
+    }
 
     g.append("g")
       .attr("transform", `translate(0,${height})`)
@@ -271,7 +291,7 @@ const Plot = ({ insertions, players, startTimestamp }: Props) => {
     return () => {
       tooltip.remove();
     };
-  }, [insertions, players, startTimestamp]);
+  }, [insertions, players, startTimestamp, dimensions]);
 
   return (
     <div className={styles.container}>
