@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"net/http"
+	"sudojo/pkg/game"
 	"sudojo/pkg/lobby"
 	"sudojo/pkg/player"
 
@@ -177,6 +178,10 @@ func (s *server) getConn(w http.ResponseWriter, r *http.Request) {
 	}
 
 	svc, err := s.tenant.Service(id)
+	if err == game.ErrFinished {
+		http.Error(w, "game is finished permanently", 410)
+		return
+	}
 	if err != nil {
 		http.Error(w, "internal server error", 500)
 		return
