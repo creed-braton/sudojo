@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  isFinished,
   isInsertMessage,
   isJoinMessage,
   isLeaveMessage,
@@ -21,7 +20,6 @@ export type WebSocketProps = {
   insert: (row: number, column: number, value: number) => void;
   ping: (row: number, column: number) => void;
   animations: Map<string, Animation>;
-  finished: boolean;
   idle: boolean;
 };
 
@@ -42,7 +40,6 @@ const useWebSocket = (id: string, token: string): WebSocketProps => {
   const [animations, setAnimations] = useState<Map<string, Animation>>(
     new Map(),
   );
-  const [finished, setFinished] = useState<boolean>(false);
   const [idle, setIdle] = useState<boolean>(false);
 
   const triggerAnimation = useCallback(
@@ -91,9 +88,7 @@ const useWebSocket = (id: string, token: string): WebSocketProps => {
           console.error("receive closure code: ", event.code);
           connect(id, token);
         } else {
-          current !== undefined && isFinished(current)
-            ? setFinished(true)
-            : setIdle(true);
+          setIdle(true);
         }
       };
 
@@ -178,7 +173,6 @@ const useWebSocket = (id: string, token: string): WebSocketProps => {
     insert,
     ping,
     animations,
-    finished,
     idle,
   };
 };

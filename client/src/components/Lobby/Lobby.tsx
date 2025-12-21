@@ -43,14 +43,8 @@ const Lobby = ({
   }, [location.pathname]);
 
   useEffect((): void => {
-    if (!socket.current) return;
-    for (let i: number = 0; i < socket.current.length; i++) {
-      for (let j: number = 0; j < socket.current[i].length; j++) {
-        if (socket.current[i][j] === 0) return;
-      }
-    }
-    navigate(`/s/${id}`);
-  }, [socket.current]);
+    sudoku.finished && navigate(`/s/${id}`);
+  }, [sudoku.finished]);
 
   return (
     <div className={styles.lobby}>

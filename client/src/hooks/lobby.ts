@@ -23,7 +23,7 @@ const useLobby = (): LobbyProps => {
   const create = (): void => {
     postLobby(6, true)
       .then((id: string) => setId(id))
-      .catch((error: Error) => console.log(error));
+      .catch((error: Error) => console.error(error));
   };
 
   const join = async (id: string, name: string): Promise<string> => {

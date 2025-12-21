@@ -7,5 +7,6 @@
   gap: clamp(15px, 4vw, 25px);
   padding: clamp(10px, 2vw, 20px);
   min-height: 100vh;
+  min-height: 100dvh;
   box-sizing: border-box;
 }

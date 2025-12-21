@@ -1,5 +1,5 @@
-import { useState } from "react";
-import type { Sudoku } from "../api/types";
+import { useEffect, useState } from "react";
+import { isFinished, type Sudoku } from "../api/types";
 import usePencil, { type PencilProps } from "./pencil";
 
 export type Position = {
@@ -17,6 +17,7 @@ export type SudokuProps = {
   notes: Map<string, Set<number>>;
   togglePencil: () => void;
   togglePing: () => void;
+  finished: boolean;
 };
 
 const useSudoku = (
@@ -28,6 +29,7 @@ const useSudoku = (
   const pencil: PencilProps = usePencil(initial);
   const [cursor, setCursor] = useState<Position | null>(null);
   const [mode, setMode] = useState<Mode>("default");
+  const [finished, setFinished] = useState<boolean>(false);
 
   const select = (row: number, column: number): void => {
     if (mode === "ping") {
@@ -40,7 +42,7 @@ const useSudoku = (
   };
 
   const input = (value: number): void => {
-    if (!initial || !current) return;
+    if (!initial || !current || finished) return;
     if (mode === "ping") return;
     if (!cursor) return;
     if (initial[cursor.row][cursor.column] !== 0) return;
@@ -62,6 +64,10 @@ const useSudoku = (
     }
   };
 
+  useEffect((): void => {
+    current && isFinished(current) && setFinished(true);
+  }, [current]);
+
   return {
     cursor,
     mode,
@@ -70,6 +76,7 @@ const useSudoku = (
     notes: pencil.notes,
     togglePencil,
     togglePing,
+    finished,
   };
 };
 
