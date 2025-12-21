@@ -29,7 +29,7 @@ const LobbyInfo = ({
       <div className={styles.divider} />
       <div className={styles.list}>
         {players.map((player, index) => (
-          <div key={index} className={styles.player} title={player.name}>
+          <div key={index} className={styles.player} title={player.name.length > 0 ? player.name : "<anonym>"}>
             <div
               className={`${styles.status} ${player.active ? styles.active : styles.inactive}`}
             />
