@@ -6,21 +6,35 @@ import (
 	"sudojo/pkg/game"
 	"sudojo/pkg/lobby"
 	"sudojo/pkg/player"
+	"sudojo/service/tenant"
 
 	"github.com/google/uuid"
 )
 
 func (s *server) postLobby(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Strict    bool `json:"strict"`
-		MaxPlayer int  `json:"max_player"`
+		Strict     bool   `json:"strict"`
+		MaxPlayer  int    `json:"max_player"`
+		Difficulty string `json:"difficulty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
 
-	id, err := s.tenant.Create(req.Strict, req.MaxPlayer)
+	id, err := s.tenant.Create(req.Strict, req.MaxPlayer, req.Difficulty)
+	if err == tenant.ErrInvalidDifficulty {
+		http.Error(w, err.Error(), 400)
+		return
+	}
+	if err == tenant.ErrInvalidSize {
+		http.Error(w, err.Error(), 400)
+		return
+	}
+	if err == tenant.ErrDifficultyNotFound {
+		http.Error(w, err.Error(), 404)
+		return
+	}
 	if err != nil {
 		http.Error(w, "internal server error", 500)
 		return
@@ -67,13 +81,14 @@ func (s *server) postPlayer(w http.ResponseWriter, r *http.Request) {
 }
 
 type response struct {
-	Current   [][]int   `json:"current_board"`
-	Initial   [][]int   `json:"initial_board"`
-	Started   *int64    `json:"started_at"`
-	Finished  *int64    `json:"finished_at"`
-	History   []history `json:"history"`
-	Strict    bool      `json:"strict"`
-	MaxPlayer int       `json:"max_player"`
+	Current    [][]int   `json:"current_board"`
+	Initial    [][]int   `json:"initial_board"`
+	Started    *int64    `json:"started_at"`
+	Finished   *int64    `json:"finished_at"`
+	History    []history `json:"history"`
+	Strict     bool      `json:"strict"`
+	MaxPlayer  int       `json:"max_player"`
+	Difficulty string    `json:"difficulty"`
 }
 
 type history struct {
@@ -124,13 +139,14 @@ func convert(l lobby.Lobby) *response {
 	}
 
 	return &response{
-		Current:   current,
-		Initial:   initial,
-		Started:   l.Game().Started(),
-		Finished:  l.Game().Finished(),
-		History:   histories,
-		Strict:    l.Strict(),
-		MaxPlayer: l.Size(),
+		Current:    current,
+		Initial:    initial,
+		Started:    l.Game().Started(),
+		Finished:   l.Game().Finished(),
+		History:    histories,
+		Strict:     l.Strict(),
+		MaxPlayer:  l.Size(),
+		Difficulty: l.Game().Difficulty(),
 	}
 }
 
@@ -143,6 +159,10 @@ func (s *server) getLobby(w http.ResponseWriter, r *http.Request) {
 	}
 
 	lobby, err := s.tenant.Lobby(id)
+	if err == game.ErrNotFinished {
+		http.Error(w, err.Error(), 409)
+		return
+	}
 	if err != nil {
 		http.Error(w, "internal server error", 500)
 		return

@@ -29,6 +29,8 @@ type Database interface {
 	// Inserts provided player attributes in the database under
 	// the lobby ID.
 	InsertPlayer(id, token, name string) error
+	// Returns a random game with the provided difficulty.
+	SampleGame(difficulty string) (game.Game, error)
 }
 
 type database struct {
@@ -110,6 +112,7 @@ func (db *database) history(id string) (history.History, error) {
 }
 
 func (db *database) Lobby(id string) (lobby.Lobby, error) {
+	var difficulty string
 	var start, finish pgtype.Int8
 	var initial, current, solution [][]int
 	strict, maxPlayer := false, 0
@@ -118,6 +121,7 @@ func (db *database) Lobby(id string) (lobby.Lobby, error) {
 		`SELECT games.initial_board, 
        lobbies.current_board, 
        games.solution, 
+			 games.difficulty,
        lobbies.started_at, 
        lobbies.finished_at, 
        lobbies.strict, 
@@ -130,6 +134,7 @@ func (db *database) Lobby(id string) (lobby.Lobby, error) {
 		&initial,
 		&current,
 		&solution,
+		&difficulty,
 		&start,
 		&finish,
 		&strict,
@@ -153,7 +158,7 @@ func (db *database) Lobby(id string) (lobby.Lobby, error) {
 		sudoku.NewFromInts(current),
 		sudoku.NewFromInts(initial),
 		sudoku.NewFromInts(solution),
-		started, finished,
+		started, finished, difficulty,
 	)
 
 	players, err := db.players(id)
@@ -173,12 +178,13 @@ func (db *database) InsertLobby(lobby lobby.Lobby) error {
 	hash := lobby.Game().Hash()
 	_, err := db.conn.Exec(
 		context.Background(),
-		`INSERT INTO games (hash, initial_board, solution) 
-		 VALUES ($1, $2, $3)
+		`INSERT INTO games (hash, initial_board, solution, difficulty) 
+		 VALUES ($1, $2, $3, $4)
 		 ON CONFLICT (hash) DO NOTHING;`,
 		hash,
 		lobby.Game().Initial().Int(),
 		lobby.Game().Solution().Int(),
+		lobby.Game().Difficulty(),
 	)
 	if err != nil {
 		return err
@@ -253,4 +259,29 @@ func (db *database) InsertPlayer(id, token, name string) error {
 		id, token, name,
 	)
 	return err
+}
+
+func (db *database) SampleGame(difficulty string) (game.Game, error) {
+	var initial, solution [][]int
+	err := db.conn.QueryRow(
+		context.Background(),
+		`SELECT initial_board, solution 
+		 FROM games 
+		 WHERE difficulty = $1 
+		 ORDER BY RANDOM() 
+		 LIMIT 1;`,
+		difficulty,
+	).Scan(&initial, &solution)
+	if err == pgx.ErrNoRows {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	return game.New(
+		sudoku.NewFromInts(initial), // current starts as initial
+		sudoku.NewFromInts(initial),
+		sudoku.NewFromInts(solution),
+		nil, nil, difficulty,
+	), nil
 }
