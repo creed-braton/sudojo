@@ -1,11 +1,17 @@
 import { useState } from "react";
 import { postLobby, postPlayer } from "../api/api";
 
+export type LobbyConfig = {
+  maxPlayers: number;
+  strict: boolean;
+  difficulty: string;
+};
+
 export type LobbyProps = {
   id: string | null;
   setId: (state: string | null) => void;
   getToken: (id: string) => string | undefined;
-  create: () => void;
+  create: (config: LobbyConfig) => void;
   join: (id: string, name: string) => Promise<string>;
 };
 
@@ -20,8 +26,8 @@ const useLobby = (): LobbyProps => {
     localStorage.setItem(id, token);
   };
 
-  const create = (): void => {
-    postLobby(6, true, "joker")
+  const create = (config: LobbyConfig): void => {
+    postLobby(config.maxPlayers, config.strict, config.difficulty)
       .then((id: string) => setId(id))
       .catch((error: Error) => console.error(error));
   };
