@@ -40,6 +40,13 @@
 # Go binaries
 **/bin
 
+# Python directories and files
+**/.venv
+**/venv
+**/uv.lock
+**/*.egg-info
+**/__pycache__
+
 # Editor directories and files
 **/.vscode/*
 **/!.vscode/extensions.json
