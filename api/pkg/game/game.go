@@ -19,7 +19,16 @@ var (
 	errStrictValRange = fmt.Errorf("input must be between %d and %d", sudoku.MinValue, sudoku.MaxValue)
 	errInitialClue    = errors.New("cannot overwrite initial clue")
 	ErrFinished       = errors.New("game is already finish")
+	ErrNotFinished    = errors.New("game is not finished")
 	errNotStarted     = errors.New("game has not started yet")
+)
+
+const (
+	Easy    = "easy"
+	Medium  = "medium"
+	Hard    = "hard"
+	Extreme = "extreme"
+	Joker   = "joker"
 )
 
 // Represents a Sudoku game that encapsulates the current puzzle state, original
@@ -50,25 +59,32 @@ type Game interface {
 	Started() *int64
 	// Returns nano second finish timestamp, nil if not finished.
 	Finished() *int64
+	// Returns the difficulty of the game (easy, medium, hard, expert, joker).
+	Difficulty() string
 }
 
 type game struct {
-	hash     string
-	current  sudoku.Sudoku // mutable
-	initial  sudoku.Sudoku // immutable
-	solution sudoku.Sudoku // immutable
-	started  atomic.Pointer[int64]
-	finished atomic.Pointer[int64]
-	lock     sync.RWMutex // mutex to synchronize operations on current state
+	hash       string
+	current    sudoku.Sudoku // mutable
+	initial    sudoku.Sudoku // immutable
+	solution   sudoku.Sudoku // immutable
+	started    atomic.Pointer[int64]
+	finished   atomic.Pointer[int64]
+	difficulty string
+	lock       sync.RWMutex // mutex to synchronize operations on current state
 }
 
 var _ Game = &game{}
 
-func New(current, initial, solution sudoku.Sudoku, started, finished *int64) *game {
+func New(
+	current, initial, solution sudoku.Sudoku,
+	started, finished *int64, difficulty string,
+) *game {
 	g := &game{
-		current:  current,
-		initial:  initial,
-		solution: solution,
+		current:    current,
+		initial:    initial,
+		solution:   solution,
+		difficulty: difficulty,
 	}
 	if started != nil {
 		g.started.Store(started)
@@ -96,9 +112,10 @@ func Generate(seed int64) *game {
 	initial.Copy(current)
 
 	return &game{
-		current:  current,
-		initial:  initial,
-		solution: solution,
+		current:    current,
+		initial:    initial,
+		solution:   solution,
+		difficulty: "joker",
 	}
 }
 
@@ -231,4 +248,8 @@ func (g *game) Started() *int64 {
 
 func (g *game) Finished() *int64 {
 	return g.finished.Load()
+}
+
+func (g *game) Difficulty() string {
+	return g.difficulty
 }

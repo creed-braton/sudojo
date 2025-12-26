@@ -44,18 +44,23 @@ type Payload interface {
 	Strict() *bool
 	// Sets the strict mode.
 	SetStrict(strict bool) Payload
+	// Difficulty of the session.
+	Difficulty() string
+	// Sets the difficulty.
+	SetDifficulty(difficulty string) Payload
 }
 
 type payload struct {
-	current   sudoku.Sudoku
-	initial   sudoku.Sudoku
-	row       *int
-	column    *int
-	value     *int
-	conflict  string
-	players   []player.Player
-	maxPlayer int
-	strict    *bool
+	current    sudoku.Sudoku
+	initial    sudoku.Sudoku
+	row        *int
+	column     *int
+	value      *int
+	conflict   string
+	players    []player.Player
+	maxPlayer  int
+	strict     *bool
+	difficulty string
 }
 
 var _ Payload = &payload{}
@@ -142,5 +147,14 @@ func (p *payload) Strict() *bool {
 
 func (p *payload) SetStrict(strict bool) Payload {
 	p.strict = &strict
+	return p
+}
+
+func (p *payload) Difficulty() string {
+	return p.difficulty
+}
+
+func (p *payload) SetDifficulty(difficulty string) Payload {
+	p.difficulty = difficulty
 	return p
 }

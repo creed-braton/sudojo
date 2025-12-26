@@ -13,18 +13,19 @@ type playerStatus struct {
 }
 
 type Message struct {
-	Type      string          `json:"type"`
-	Trace     string          `json:"trace,omitempty"`
-	Error     string          `json:"error,omitempty"`
-	Current   [][]int         `json:"current_board,omitempty"`
-	Initial   [][]int         `json:"initial_board,omitempty"`
-	Conflict  string          `json:"conflict,omitempty"`
-	Row       *int            `json:"row,omitempty"`
-	Column    *int            `json:"column,omitempty"`
-	Value     *int            `json:"value,omitempty"`
-	Players   []*playerStatus `json:"players,omitempty"`
-	MaxPlayer int             `json:"max_player,omitempty"`
-	Strict    *bool           `json:"strict,omitempty"`
+	Type       string          `json:"type"`
+	Trace      string          `json:"trace,omitempty"`
+	Error      string          `json:"error,omitempty"`
+	Current    [][]int         `json:"current_board,omitempty"`
+	Initial    [][]int         `json:"initial_board,omitempty"`
+	Conflict   string          `json:"conflict,omitempty"`
+	Row        *int            `json:"row,omitempty"`
+	Column     *int            `json:"column,omitempty"`
+	Value      *int            `json:"value,omitempty"`
+	Players    []*playerStatus `json:"players,omitempty"`
+	MaxPlayer  int             `json:"max_player,omitempty"`
+	Strict     *bool           `json:"strict,omitempty"`
+	Difficulty string          `json:"difficulty,omitempty"`
 }
 
 func newMessage(e event.Event) *Message {
@@ -46,6 +47,7 @@ func newMessage(e event.Event) *Message {
 		msg.Value = e.Payload().Value()
 		msg.MaxPlayer = e.Payload().MaxPlayer()
 		msg.Strict = e.Payload().Strict()
+		msg.Difficulty = e.Payload().Difficulty()
 		if e.Payload().Players() != nil {
 			msg.Players = []*playerStatus{}
 			for _, p := range e.Payload().Players() {

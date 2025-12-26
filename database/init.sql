@@ -1,8 +1,12 @@
+CREATE TYPE difficulty AS ENUM ('easy', 'medium', 'hard', 'extreme', 'joker');
+
 CREATE TABLE IF NOT EXISTS games (
   hash VARCHAR(16) PRIMARY KEY,
   initial_board INT[9][9] NOT NULL,
-  solution INT[9][9] NOT NULL
+  solution INT[9][9] NOT NULL,
+  difficulty difficulty NOT NULL
 );
+CREATE INDEX IF NOT EXISTS idx_games_difficulty ON games(difficulty);
 
 CREATE TABLE IF NOT EXISTS lobbies (
   id VARCHAR(36) PRIMARY KEY,

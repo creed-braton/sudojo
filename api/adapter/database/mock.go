@@ -1,6 +1,9 @@
 package database
 
-import "sudojo/pkg/lobby"
+import (
+	"sudojo/pkg/game"
+	"sudojo/pkg/lobby"
+)
 
 type mockDatabase struct{}
 
@@ -26,4 +29,8 @@ func (db *mockDatabase) UpdateLobby(lobby lobby.Lobby) error {
 
 func (db *mockDatabase) InsertPlayer(id, token, name string) error {
 	return nil
+}
+
+func (db *mockDatabase) SampleGame(difficulty string) (game.Game, error) {
+	return nil, nil
 }

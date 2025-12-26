@@ -91,6 +91,18 @@ const isHistory = (value: unknown): value is History => {
   );
 };
 
+export type Difficulty = "easy" | "medium" | "hard" | "extreme" | "joker";
+
+const isDifficulty = (value: unknown): value is Difficulty => {
+  return (
+    value === "easy" ||
+    value === "medium" ||
+    value === "hard" ||
+    value === "extreme" ||
+    value === "joker"
+  );
+};
+
 export type Lobby = {
   current_board: Sudoku;
   initial_board: Sudoku;
@@ -99,6 +111,7 @@ export type Lobby = {
   history: History[];
   started_at: number;
   finished_at: number | null;
+  difficulty: Difficulty;
 };
 
 export const isLobby = (value: unknown): value is Lobby => {
@@ -112,6 +125,7 @@ export const isLobby = (value: unknown): value is Lobby => {
   if (!("history" in lobby)) return false;
   if (!("started_at" in lobby)) return false;
   if (!("finished_at" in lobby)) return false;
+  if (!("difficulty" in lobby)) return false;
 
   if (!isSudoku(lobby.current_board)) return false;
   if (!isSudoku(lobby.initial_board)) return false;
@@ -134,6 +148,8 @@ export const isLobby = (value: unknown): value is Lobby => {
     if (!Number.isInteger(lobby.finished_at)) return false;
     if (lobby.finished_at < 0) return false;
   }
+
+  if (!isDifficulty(lobby.difficulty)) return false;
 
   return true;
 };
@@ -186,6 +202,7 @@ export type StateMessage = {
   players: Player[];
   max_player: number;
   strict: boolean;
+  difficulty: Difficulty;
 };
 
 export const isStateMessage = (value: unknown): value is StateMessage => {
@@ -201,6 +218,7 @@ export const isStateMessage = (value: unknown): value is StateMessage => {
   if (!("players" in message)) return false;
   if (!("max_player" in message)) return false;
   if (!("strict" in message)) return false;
+  if (!("difficulty" in message)) return false;
 
   if ("trace" in message && typeof message.trace !== "string") return false;
   if (!isSudoku(message.current_board)) return false;
@@ -211,6 +229,7 @@ export const isStateMessage = (value: unknown): value is StateMessage => {
   if (!Number.isInteger(message.max_player)) return false;
   if (message.max_player < 1) return false;
   if (typeof message.strict !== "boolean") return false;
+  if (!isDifficulty(message.difficulty)) return false;
 
   return true;
 };

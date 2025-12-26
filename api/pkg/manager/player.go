@@ -140,7 +140,8 @@ func (p *player) State(trace string) error {
 		SetInitial(p.lobby.Game().Initial()).
 		SetStrict(p.lobby.Strict()).
 		SetPlayers(p.lobby.Players()).
-		SetMaxPlayer(p.lobby.Size())
+		SetMaxPlayer(p.lobby.Size()).
+		SetDifficulty(p.lobby.Game().Difficulty())
 	event := event.New().SetType(event.StateEvent).SetSender(p.token).
 		SetTrace(trace).SetTimestamp(now).SetPayload(payload)
 

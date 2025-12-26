@@ -29,12 +29,14 @@ export const getLobby = async (id: string): Promise<Lobby> => {
 export const postLobby = async (
   maxPlayer: number,
   strict: boolean,
+  difficulty: string,
 ): Promise<UUID> => {
   const response: Response = await fetch(HTTP_URL + "/lobbies", {
     method: "POST",
     body: JSON.stringify({
       max_player: maxPlayer,
       strict: strict,
+      difficulty: difficulty,
     }),
   });
 
