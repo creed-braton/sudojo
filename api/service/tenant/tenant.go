@@ -56,8 +56,12 @@ func (s *service) pruner() {
 			for id, r := range s.routes {
 				tolerance := int64(600) // 10 minutes in seconds
 				frame := time.Now().UTC().Unix() - r.LastEvent()
-				if frame > tolerance || r.Lobby().Game().Finished() != nil {
-					if err := r.Shutdown(); err == nil {
+				if frame > tolerance {
+					if err := r.Shutdown(4000); err == nil {
+						delete(s.routes, id)
+					}
+				} else if r.Lobby().Game().Finished() != nil {
+					if err := r.Shutdown(4002); err == nil {
 						delete(s.routes, id)
 					}
 				}

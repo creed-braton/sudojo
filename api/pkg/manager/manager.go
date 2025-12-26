@@ -11,8 +11,9 @@ import (
 // Holds lobby state and handles event flow logic.
 type Manager interface {
 	// Closes the central event buffer, causing the fanout to close
-	// out all player buffers if Pump() is being called.
-	Close()
+	// out all player buffers if Pump() is being called. Puts a
+	// close event with provided reason code to notify players.
+	Close(reason int)
 	// Pumps event from the central buffer through the fanout to the
 	// player buffers. Returns event.ErrClosedBuffer if the central
 	// buffer has been closed.
@@ -57,7 +58,6 @@ func (m *manager) updateEvent() {
 // Returns a manager initialized with central event buffer and event
 // fanout.
 func New(lobby lobby.Lobby) *manager {
-
 	buffer := event.NewBuffer()
 	fanout := event.NewFanout(buffer)
 	mng := &manager{lobby: lobby, buffer: buffer, fanout: fanout}
@@ -65,7 +65,9 @@ func New(lobby lobby.Lobby) *manager {
 	return mng
 }
 
-func (m *manager) Close() {
+func (m *manager) Close(reason int) {
+	event := event.New().SetType(event.CloseEvent).SetReason(reason)
+	m.buffer.Send(event)
 	m.buffer.Close()
 }
 

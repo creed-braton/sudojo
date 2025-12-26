@@ -26,13 +26,15 @@ type Message struct {
 	MaxPlayer  int             `json:"max_player,omitempty"`
 	Strict     *bool           `json:"strict,omitempty"`
 	Difficulty string          `json:"difficulty,omitempty"`
+	Reason     int             `json:"reason,omitempty"`
 }
 
 func newMessage(e event.Event) *Message {
 	msg := &Message{
-		Type:  e.Type(),
-		Trace: e.Trace(),
-		Error: e.Error(),
+		Type:   e.Type(),
+		Trace:  e.Trace(),
+		Error:  e.Error(),
+		Reason: e.Reason(),
 	}
 	if e.Payload() != nil {
 		if e.Payload().Current() != nil {
