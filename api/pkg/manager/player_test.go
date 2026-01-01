@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func setup(strict bool) ([]string, []Player, func()) {
+func setup(strict bool) ([]string, []Player, func(reason int)) {
 	size := 8
 	lobby := lobby.Open(strict, size)
 	mng := New(lobby)
@@ -58,7 +58,7 @@ func TestPlayerLeave(t *testing.T) {
 func TestPlayerPing(t *testing.T) {
 	t.Run("ping out of bounds", func(t *testing.T) {
 		_, players, teardown := setup(false)
-		defer teardown()
+		defer teardown(event.BufferReason)
 		if err := players[0].Ping(9, 9, ""); err != nil {
 			t.Fatalf("unexpected error pinging '%v'", err)
 		}
@@ -73,7 +73,7 @@ func TestPlayerPing(t *testing.T) {
 
 	t.Run("ping distribution", func(t *testing.T) {
 		tokens, players, teardown := setup(false)
-		defer teardown()
+		defer teardown(event.BufferReason)
 		for i, p := range players {
 			if err := p.Ping(0, 0, tokens[i]); err != nil {
 				t.Fatalf("unexpected error pinging player '%d': '%v'", i, err)
