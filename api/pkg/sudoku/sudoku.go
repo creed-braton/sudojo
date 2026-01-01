@@ -19,27 +19,34 @@ const (
 // placements, checking board completeness, generating randomly complete
 // boards, deriving uniquely solvable puzzles, and more utility functions.
 type Sudoku interface {
-	// Returns the value at the specified row and column.
+	// Returns the value at the specified row and column. Doesn't validate board
+	// bounds and will panic when row or column is out of range.
 	Cell(row, col int) int
-	// Sets the value at the specified row and column.
+	// Sets the value at the specified row and column. Doesn't validate board bounds
+	// and will panic when row or column is out of range.
 	SetCell(row, col, val int)
 	// Compares two Sudoku boards for equality by checking if all cells contain
 	// identical values at corresponding positions. It returns true if both boards
-	// are exactly the same, false otherwise. It doesn't check validity of either board.
+	// are exactly the same, false otherwise. Doesn't check validity of either board.
+	// Panics if the provided Sudoku interface is not the same type as the implementing
+	// struct.
 	Equal(s Sudoku) bool
 	// Exports the Sudoku structs values into a 9x9 integer matrix.
 	Int() [][]int
 	// Checks if a given value can be placed in the specified row without
 	// violating Sudoku row constraints. Returns true if the value doesn't
-	// already exist in that row, false otherwise.
+	// already exist in that row, false otherwise. Doesn't validate board bounds
+	// and will panic when row is out of range.
 	ValidRow(row, val int) bool
 	// Checks if a given value can be placed in the specified column without
 	// violating Sudoku column constraints. Returns true if the value doesn't
-	// already exist in that column, false otherwise.
+	// already exist in that column, false otherwise. Doesn't validate board bounds
+	// and will panic when column is out of range.
 	ValidCol(col, val int) bool
 	// Checks if a given value can be placed in the specified box without
 	// violating Sudoku box constraints. Returns true if the value doesn't
-	// already exist in that box, false otherwise.
+	// already exist in that box, false otherwise. Doesn't validate board bounds
+	// and will panic when row or column is out of range.
 	ValidBox(row, col, val int) bool
 	// Checks whether the Sudoku board is completely filled by verifying that all cells
 	// contain non-empty values. Returns true if no empty cells are found, false otherwise.
