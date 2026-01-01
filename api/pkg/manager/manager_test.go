@@ -28,7 +28,7 @@ func TestManager(t *testing.T) {
 			}
 		}()
 		time.Sleep(time.Second)
-		mng.Close()
+		mng.Close(event.BufferReason)
 		wg.Wait()
 	})
 
@@ -82,14 +82,14 @@ func TestManager(t *testing.T) {
 			}
 		}
 
-		mng.Close()
+		mng.Close(event.BufferReason)
 		wg.Wait()
 	})
 
 	t.Run("join non-existing player", func(t *testing.T) {
 		l := lobby.Open(false, 8)
 		mng := New(l)
-		defer mng.Close()
+		defer mng.Close(event.BufferReason)
 		_, err := mng.Join("test-token")
 		if err == nil {
 			t.Fatal("expected error joining player got nil")
@@ -103,7 +103,7 @@ func TestManager(t *testing.T) {
 		size := 8
 		l := lobby.Open(false, size)
 		mng := New(l)
-		defer mng.Close()
+		defer mng.Close(event.BufferReason)
 		for range size {
 			_, err := mng.Create("")
 			if err != nil {
@@ -180,7 +180,7 @@ func TestManager(t *testing.T) {
 			}
 		}
 
-		mng.Close()
+		mng.Close(event.BufferReason)
 		wg.Wait()
 	})
 }
