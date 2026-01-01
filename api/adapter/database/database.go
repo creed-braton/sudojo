@@ -154,12 +154,15 @@ func (db *database) Lobby(id string) (lobby.Lobby, error) {
 		finished = &finish.Int64
 	}
 
-	game := game.New(
+	game, err := game.New(
 		sudoku.NewFromInts(current),
 		sudoku.NewFromInts(initial),
 		sudoku.NewFromInts(solution),
 		started, finished, difficulty,
 	)
+	if err != nil {
+		return nil, err
+	}
 
 	players, err := db.players(id)
 	if err != nil {
@@ -283,5 +286,5 @@ func (db *database) SampleGame(difficulty string) (game.Game, error) {
 		sudoku.NewFromInts(initial),
 		sudoku.NewFromInts(solution),
 		nil, nil, difficulty,
-	), nil
+	)
 }

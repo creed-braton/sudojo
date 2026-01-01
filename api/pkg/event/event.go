@@ -6,12 +6,16 @@ import (
 )
 
 const (
-	LeaveEvent  = "leave"
-	JoinEvent   = "join"
-	StateEvent  = "state"
-	InsertEvent = "insert"
-	PingEvent   = "ping"
-	bufferSize  = 256
+	LeaveEvent   = "leave"
+	JoinEvent    = "join"
+	StateEvent   = "state"
+	InsertEvent  = "insert"
+	PingEvent    = "ping"
+	CloseEvent   = "close"
+	bufferSize   = 256
+	BufferReason = 4000
+	IdleReason   = 4001
+	FinishReason = 4002
 )
 
 var (
@@ -38,7 +42,7 @@ type Event interface {
 	Error() string
 	// Sets the error message.
 	SetError(msg string) Event
-	// Data attached ot the event.
+	// Data attached to the event.
 	Payload() Payload
 	// Sets the payload data.
 	SetPayload(payload Payload) Event
@@ -46,6 +50,10 @@ type Event interface {
 	Timestamp() int64
 	// Sets the creation timestamp.
 	SetTimestamp(ts int64) Event
+	// Closure code why the session is getting closed.
+	Reason() int
+	// Sets the reason code.
+	SetReason(reason int) Event
 }
 
 type event struct {
@@ -53,6 +61,7 @@ type event struct {
 	sender    string
 	trace     string
 	errorMsg  string
+	reason    int
 	payload   Payload
 	timestamp int64
 }
@@ -115,6 +124,15 @@ func (e *event) Timestamp() int64 {
 
 func (e *event) SetTimestamp(ts int64) Event {
 	e.timestamp = ts
+	return e
+}
+
+func (e *event) Reason() int {
+	return e.reason
+}
+
+func (e *event) SetReason(reason int) Event {
+	e.reason = reason
 	return e
 }
 

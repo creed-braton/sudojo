@@ -6,6 +6,7 @@ import (
 	"sudojo/service/tenant"
 
 	"github.com/gorilla/websocket"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type Server interface {
@@ -57,6 +58,8 @@ func New(port, origin string, tenant tenant.Service) *server {
 		}
 		s.router.Handle(fmt.Sprintf("/api%s", path), handler)
 	}
+	s.router.Handle("/metrics", promhttp.Handler())
+
 	return s
 }
 

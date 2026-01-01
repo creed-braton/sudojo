@@ -16,7 +16,7 @@ type Service interface {
 	Id() string
 	// Persists the current lobby state to the database and closes the event buffer.
 	// Returns an error if the lobby update in the database fails.
-	Shutdown() error
+	Shutdown(reason int) error
 	// Returns the Unix timestamp of the last recorded event.
 	LastEvent() int64
 	// Returns the lobby state of the service.
@@ -61,12 +61,12 @@ func (s *service) Id() string {
 	return s.manager.Lobby().Id()
 }
 
-func (s *service) Shutdown() error {
+func (s *service) Shutdown(reason int) error {
 	err := s.db.UpdateLobby(s.manager.Lobby())
 	if err != nil {
 		s.logger.Error(err.Error())
 	}
-	s.manager.Close()
+	s.manager.Close(reason)
 	s.logger.Info("shut down lobby")
 	return err
 }

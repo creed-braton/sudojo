@@ -10,17 +10,18 @@ import (
 )
 
 var (
-	ErrIncorrect      = errors.New("input incorrect")
-	ErrRowConflict    = errors.New("value already exist in row")
-	ErrColConflict    = errors.New("value already exist in column")
-	ErrBoxConflict    = errors.New("value already exist in box")
-	ErrOutOfBounds    = errors.New("cell position out of bounds")
-	errLaxValRange    = fmt.Errorf("input must be between %d and %d", sudoku.EmptyCell, sudoku.MaxValue)
-	errStrictValRange = fmt.Errorf("input must be between %d and %d", sudoku.MinValue, sudoku.MaxValue)
-	errInitialClue    = errors.New("cannot overwrite initial clue")
-	ErrFinished       = errors.New("game is already finish")
-	ErrNotFinished    = errors.New("game is not finished")
-	errNotStarted     = errors.New("game has not started yet")
+	ErrIncorrect         = errors.New("input incorrect")
+	ErrRowConflict       = errors.New("value already exist in row")
+	ErrColConflict       = errors.New("value already exist in column")
+	ErrBoxConflict       = errors.New("value already exist in box")
+	ErrOutOfBounds       = errors.New("cell position out of bounds")
+	errLaxValRange       = fmt.Errorf("input must be between %d and %d", sudoku.EmptyCell, sudoku.MaxValue)
+	errStrictValRange    = fmt.Errorf("input must be between %d and %d", sudoku.MinValue, sudoku.MaxValue)
+	errInitialClue       = errors.New("cannot overwrite initial clue")
+	ErrFinished          = errors.New("game is already finish")
+	ErrNotFinished       = errors.New("game is not finished")
+	errNotStarted        = errors.New("game has not started yet")
+	ErrInvalidDifficulty = errors.New("invalid game difficulty")
 )
 
 const (
@@ -79,7 +80,13 @@ var _ Game = &game{}
 func New(
 	current, initial, solution sudoku.Sudoku,
 	started, finished *int64, difficulty string,
-) *game {
+) (*game, error) {
+	if difficulty != Easy && difficulty != Medium &&
+		difficulty != Hard && difficulty != Extreme &&
+		difficulty != Joker {
+		return nil, ErrInvalidDifficulty
+	}
+
 	g := &game{
 		current:    current,
 		initial:    initial,
@@ -92,11 +99,12 @@ func New(
 	if finished != nil {
 		g.finished.Store(finished)
 	}
-	return g
+	return g, nil
 }
 
 // Generates a full valid Sudoku solution, derives a uniquely solvable puzzle,
-// and initializes the current game state.
+// and initializes the current game state. The generated game is of joker
+// difficulty.
 func Generate(seed int64) *game {
 	s := sudoku.New()
 	s.Fill(seed)
@@ -115,7 +123,7 @@ func Generate(seed int64) *game {
 		current:    current,
 		initial:    initial,
 		solution:   solution,
-		difficulty: "joker",
+		difficulty: Joker,
 	}
 }
 
