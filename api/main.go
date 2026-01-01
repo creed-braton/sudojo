@@ -4,11 +4,16 @@ import (
 	"fmt"
 	"os"
 	"sudojo/adapter/database"
+	"sudojo/adapter/metrics"
 	"sudojo/adapter/server"
 	"sudojo/service/tenant"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 func main() {
+	m := metrics.New(prometheus.DefaultRegisterer)
+
 	db, err := database.New(
 		envOrPanic("DB_HOST"),
 		envOrPanic("DB_PORT"),
@@ -22,7 +27,7 @@ func main() {
 	err = server.New(
 		envOrPanic("PORT"),
 		os.Getenv("ORIGIN"),
-		tenant.New(db),
+		tenant.New(db, m),
 	).Listen()
 
 	if err != nil {
@@ -33,7 +38,7 @@ func main() {
 func envOrPanic(key string) string {
 	val := os.Getenv(key)
 	if len(val) < 1 {
-		panic(fmt.Errorf("env variable %s missing", key))
+		panic(fmt.Errorf("env variable '%s' missing", key))
 	}
 	return val
 }

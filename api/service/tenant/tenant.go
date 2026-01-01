@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log/slog"
 	"sudojo/adapter/database"
+	"sudojo/adapter/metrics"
 	"sudojo/pkg/game"
 	"sudojo/pkg/history"
 	"sudojo/pkg/lobby"
@@ -37,9 +38,10 @@ type Service interface {
 }
 
 type service struct {
-	db     database.Database
-	routes map[string]svc.Service
-	lock   sync.RWMutex
+	db      database.Database
+	metrics metrics.Metrics
+	routes  map[string]svc.Service
+	lock    sync.RWMutex
 }
 
 var _ Service = &service{}
@@ -59,10 +61,12 @@ func (s *service) pruner() {
 				if frame > tolerance {
 					if err := r.Shutdown(4000); err == nil {
 						delete(s.routes, id)
+						s.metrics.SetActiveLobbies(len(s.routes))
 					}
 				} else if r.Lobby().Game().Finished() != nil {
 					if err := r.Shutdown(4002); err == nil {
 						delete(s.routes, id)
+						s.metrics.SetActiveLobbies(len(s.routes))
 					}
 				}
 			}
@@ -72,8 +76,8 @@ func (s *service) pruner() {
 }
 
 // Returns a new tenant service with automatic lobby pruning enabled.
-func New(db database.Database) *service {
-	s := &service{db: db, routes: make(map[string]svc.Service)}
+func New(db database.Database, metrics metrics.Metrics) *service {
+	s := &service{db: db, metrics: metrics, routes: make(map[string]svc.Service)}
 	go s.pruner()
 	return s
 }
@@ -120,6 +124,7 @@ func (s *service) Create(strict bool, size int, difficulty string) (string, erro
 	)
 	s.lock.Lock()
 	s.routes[l.Id()] = route
+	s.metrics.SetActiveLobbies(len(s.routes))
 	s.lock.Unlock()
 	return l.Id(), nil
 }
@@ -173,6 +178,7 @@ func (s *service) Service(id string) (svc.Service, error) {
 			slog.With("lobby_id", lobby.Id()),
 		)
 		s.routes[lobby.Id()] = route
+		s.metrics.SetActiveLobbies(len(s.routes))
 		return route, nil
 	}
 
