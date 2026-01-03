@@ -6,54 +6,19 @@ import (
 	"sudojo/pkg/game"
 	"sudojo/pkg/history"
 	"sudojo/pkg/player"
-	"sudojo/pkg/sudoku"
 	"sync"
 	"testing"
 
 	"github.com/google/uuid"
 )
 
-const now = int64(42)
-
-func setupLobby(strict bool, maxSize int) *lobby {
-	initial := sudoku.NewFromInts(
-		[][]int{
-			{0, 0, 0, 0, 0, 0, 0, 1, 0},
-			{0, 0, 0, 0, 0, 2, 0, 0, 3},
-			{0, 0, 0, 4, 0, 0, 0, 0, 0},
-			{0, 0, 0, 0, 0, 0, 5, 0, 0},
-			{4, 0, 1, 6, 0, 0, 0, 0, 0},
-			{0, 0, 7, 1, 0, 0, 0, 0, 0},
-			{0, 5, 0, 0, 0, 0, 2, 0, 0},
-			{0, 0, 0, 0, 8, 0, 0, 4, 0},
-			{0, 3, 0, 9, 1, 0, 0, 0, 0},
-		},
-	)
-	current := sudoku.New()
-	initial.Copy(current)
-	solution := sudoku.NewFromInts(
-		[][]int{
-			{7, 4, 5, 3, 6, 8, 9, 1, 2},
-			{8, 1, 9, 5, 7, 2, 4, 6, 3},
-			{3, 6, 2, 4, 9, 1, 8, 5, 7},
-			{6, 9, 3, 8, 2, 4, 5, 7, 1},
-			{4, 2, 1, 6, 5, 7, 3, 9, 8},
-			{5, 8, 7, 1, 3, 9, 6, 2, 4},
-			{1, 5, 8, 7, 4, 6, 2, 3, 9},
-			{9, 7, 6, 2, 8, 3, 1, 4, 5},
-			{2, 3, 4, 9, 1, 5, 7, 8, 6},
-		},
-	)
-	// insert one value so it differs from initial board
-	current.SetCell(8, 8, solution.Cell(8, 8))
-	game, _ := game.New(current, initial, solution, nil, nil, "joker")
-
+func setupLobby(start, strict bool, maxSize int) *lobby {
 	config, _ := NewConfig(strict, false, false, maxSize)
 
 	return New(
 		uuid.NewString(),
 		config,
-		game,
+		game.NewMock(start),
 		history.New(nil),
 		make(map[string]player.Player),
 	)
@@ -61,8 +26,7 @@ func setupLobby(strict bool, maxSize int) *lobby {
 
 func TestCreate(t *testing.T) {
 	t.Run("invalid name", func(t *testing.T) {
-		l := setupLobby(false, 4)
-		l.game.Start(now)
+		l := setupLobby(true, false, 4)
 
 		_, err := l.Create("username123456789")
 		if err == nil {
@@ -72,8 +36,7 @@ func TestCreate(t *testing.T) {
 
 	t.Run("full lobby", func(t *testing.T) {
 		size := 4
-		l := setupLobby(false, size)
-		l.game.Start(now)
+		l := setupLobby(true, false, size)
 
 		for range size {
 			_, err := l.Create("")
@@ -93,8 +56,7 @@ func TestCreate(t *testing.T) {
 
 func TestJoin(t *testing.T) {
 	t.Run("non-existing player", func(t *testing.T) {
-		l := setupLobby(false, 4)
-		l.game.Start(now)
+		l := setupLobby(true, false, 4)
 
 		token := player.NewToken()
 		_, err := l.Join(token)
@@ -107,8 +69,7 @@ func TestJoin(t *testing.T) {
 	})
 
 	t.Run("join player", func(t *testing.T) {
-		l := setupLobby(false, 4)
-		l.game.Start(now)
+		l := setupLobby(true, false, 4)
 
 		token, err := l.Create("")
 		if err != nil {
@@ -127,8 +88,7 @@ func TestJoin(t *testing.T) {
 	})
 
 	t.Run("join initial player", func(t *testing.T) {
-		l := setupLobby(false, 4)
-		l.game.Start(now)
+		l := setupLobby(true, false, 4)
 
 		token, err := l.Create("")
 		if err != nil {
@@ -151,8 +111,7 @@ func TestJoin(t *testing.T) {
 
 func TestLeave(t *testing.T) {
 	t.Run("leave player", func(t *testing.T) {
-		l := setupLobby(false, 4)
-		l.game.Start(now)
+		l := setupLobby(true, false, 4)
 
 		token, err := l.Create("")
 		if err != nil {
@@ -177,10 +136,9 @@ func TestLeave(t *testing.T) {
 
 func TestInsert(t *testing.T) {
 	t.Run("strict insert call", func(t *testing.T) {
-		l := setupLobby(true, 4)
-		l.game.Start(now)
+		l := setupLobby(true, true, 4)
 
-		_, err := l.Insert(8, 8, 10, "", now) // invalid value range
+		_, err := l.Insert(8, 8, 10, "", int64(42)) // invalid value range
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -190,10 +148,9 @@ func TestInsert(t *testing.T) {
 	})
 
 	t.Run("lax insert call", func(t *testing.T) {
-		l := setupLobby(false, 4)
-		l.game.Start(now)
+		l := setupLobby(true, false, 4)
 
-		_, err := l.Insert(8, 8, 10, "", now) // invalid value range
+		_, err := l.Insert(8, 8, 10, "", int64(42)) // invalid value range
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -224,10 +181,9 @@ func TestInsert(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			l := setupLobby(tt.strict, 4)
-			l.game.Start(now)
+			l := setupLobby(true, tt.strict, 4)
 
-			l.Insert(tt.input[0], tt.input[1], tt.input[2], "", now)
+			l.Insert(tt.input[0], tt.input[1], tt.input[2], "", int64(42))
 			got := len(l.history.Artifacts()) > 0
 			if got != tt.want {
 				t.Errorf("expected history empty: '%t', got: '%t'", tt.want, got)
@@ -237,9 +193,9 @@ func TestInsert(t *testing.T) {
 
 	t.Run("history on not started game", func(t *testing.T) {
 		want := false
-		l := setupLobby(true, 4)
+		l := setupLobby(false, true, 4)
 
-		l.Insert(0, 0, 7, "", now)
+		l.Insert(0, 0, 7, "", int64(42))
 		got := len(l.history.Artifacts()) > 0
 		if got != want {
 			t.Errorf("expected history empty: '%t', got: '%t'", want, got)
@@ -248,11 +204,10 @@ func TestInsert(t *testing.T) {
 
 	t.Run("history on finished game", func(t *testing.T) {
 		want := false
-		l := setupLobby(true, 4)
-		l.game.Start(now)
-		l.game.Finish(now)
+		l := setupLobby(true, true, 4)
+		l.game.Finish(int64(42))
 
-		l.Insert(0, 0, 7, "", now)
+		l.Insert(0, 0, 7, "", int64(42))
 		got := len(l.history.Artifacts()) > 0
 		if got != want {
 			t.Errorf("expected history empty: '%t', got: '%t'", want, got)
@@ -265,8 +220,7 @@ func TestUnderLoad(t *testing.T) {
 	iterations := 1000
 
 	for i := 0; i < 100; i++ {
-		l := setupLobby(true, 8)
-		l.game.Start(now)
+		l := setupLobby(true, true, 8)
 
 		tokens := make([]string, 8)
 		for j := 0; j < 8; j++ {

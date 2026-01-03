@@ -8,47 +8,6 @@ import (
 	"testing"
 )
 
-const now = int64(42)
-
-func setUp() *game {
-	initial := sudoku.NewFromInts(
-		[][]int{
-			{0, 0, 0, 0, 0, 0, 0, 1, 0},
-			{0, 0, 0, 0, 0, 2, 0, 0, 3},
-			{0, 0, 0, 4, 0, 0, 0, 0, 0},
-			{0, 0, 0, 0, 0, 0, 5, 0, 0},
-			{4, 0, 1, 6, 0, 0, 0, 0, 0},
-			{0, 0, 7, 1, 0, 0, 0, 0, 0},
-			{0, 5, 0, 0, 0, 0, 2, 0, 0},
-			{0, 0, 0, 0, 8, 0, 0, 4, 0},
-			{0, 3, 0, 9, 1, 0, 0, 0, 0},
-		},
-	)
-	current := sudoku.New()
-	initial.Copy(current)
-	solution := sudoku.NewFromInts(
-		[][]int{
-			{7, 4, 5, 3, 6, 8, 9, 1, 2},
-			{8, 1, 9, 5, 7, 2, 4, 6, 3},
-			{3, 6, 2, 4, 9, 1, 8, 5, 7},
-			{6, 9, 3, 8, 2, 4, 5, 7, 1},
-			{4, 2, 1, 6, 5, 7, 3, 9, 8},
-			{5, 8, 7, 1, 3, 9, 6, 2, 4},
-			{1, 5, 8, 7, 4, 6, 2, 3, 9},
-			{9, 7, 6, 2, 8, 3, 1, 4, 5},
-			{2, 3, 4, 9, 1, 5, 7, 8, 6},
-		},
-	)
-	// insert one value so it differs from initial board
-	current[8][8] = solution[8][8]
-
-	return &game{
-		initial:  initial,
-		current:  current,
-		solution: solution,
-	}
-}
-
 func TestNew(t *testing.T) {
 	t.Run("valid values", func(t *testing.T) {
 		initial := sudoku.NewFromInts(
@@ -162,26 +121,26 @@ func TestNew(t *testing.T) {
 
 func TestStart(t *testing.T) {
 	t.Run("initialized game", func(t *testing.T) {
-		if setUp().StartedAt() != nil {
+		if NewMock(false).StartedAt() != nil {
 			t.Fatal("expected game to be not started initially")
 		}
 	})
 
 	t.Run("starting game", func(t *testing.T) {
-		g := setUp()
-		g.Start(now)
+		g := NewMock(false)
+		g.Start(int64(42))
 
 		got := g.StartedAt()
 		if got == nil {
 			t.Fatal("expected start timestamp to be not nil after start")
 		}
-		if *got != now {
+		if *got != int64(42) {
 			t.Error("expected start timestamp to be inserted timestamp")
 		}
 	})
 
 	t.Run("starting game again", func(t *testing.T) {
-		g := setUp()
+		g := NewMock(false)
 		g.Start(int64(0))
 		want := *g.StartedAt()
 		g.Start(int64(1))
@@ -193,7 +152,7 @@ func TestStart(t *testing.T) {
 
 	t.Run("strict insert on non-started game", func(t *testing.T) {
 		row, col, val := 0, 0, 5
-		s, err := setUp().Strict(row, col, val, now)
+		s, err := NewMock(false).Strict(row, col, val, int64(42))
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -207,7 +166,7 @@ func TestStart(t *testing.T) {
 
 	t.Run("lax insert on non-started game", func(t *testing.T) {
 		row, col, val := 0, 0, 5
-		s, err := setUp().Lax(row, col, val, now)
+		s, err := NewMock(false).Lax(row, col, val, int64(42))
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -220,13 +179,13 @@ func TestStart(t *testing.T) {
 	})
 
 	t.Run("get current board on non-started game", func(t *testing.T) {
-		if setUp().Current() != nil {
+		if NewMock(false).Current() != nil {
 			t.Error("expected nil, got current board")
 		}
 	})
 
 	t.Run("get initial board on non-started game", func(t *testing.T) {
-		if setUp().Initial() != nil {
+		if NewMock(false).Initial() != nil {
 			t.Error("expected nil, got initial board")
 		}
 	})
@@ -234,16 +193,15 @@ func TestStart(t *testing.T) {
 
 func TestFinish(t *testing.T) {
 	t.Run("initialized game", func(t *testing.T) {
-		if setUp().FinishedAt() != nil {
+		if NewMock(false).FinishedAt() != nil {
 			t.Fatal("expected game to be not finished initially")
 		}
 	})
 
 	t.Run("setting game finish", func(t *testing.T) {
-		g := setUp()
-		g.Start(now)
+		g := NewMock(true)
 
-		err := g.Finish(now)
+		err := g.Finish(int64(42))
 		if err != nil {
 			t.Fatalf("expected nil, got: '%v'", err)
 		}
@@ -252,15 +210,15 @@ func TestFinish(t *testing.T) {
 		if got == nil {
 			t.Fatal("expected finish timestamp to be not nil after finish")
 		}
-		if *got != now {
+		if *got != int64(42) {
 			t.Error("expected finish timestamp to be inserted timestamp")
 		}
 	})
 
 	t.Run("setting non-started game finish", func(t *testing.T) {
-		g := setUp()
+		g := NewMock(false)
 
-		err := g.Finish(now)
+		err := g.Finish(int64(42))
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -275,9 +233,8 @@ func TestFinish(t *testing.T) {
 	})
 
 	t.Run("setting game finish again", func(t *testing.T) {
-		g := setUp()
-		g.Start(now)
-		g.Finish(now)
+		g := NewMock(true)
+		g.Finish(int64(42))
 		want := *g.FinishedAt()
 		g.Finish(int64(0))
 
@@ -287,30 +244,28 @@ func TestFinish(t *testing.T) {
 	})
 
 	t.Run("strict insert finishing game", func(t *testing.T) {
-		g := setUp()
-		g.Start(now)
+		g := NewMock(true)
 
 		for row := range sudoku.BoardSize {
 			for col := range sudoku.BoardSize {
 				val := g.Solution().Cell(row, col)
-				g.Strict(row, col, val, now)
+				g.Strict(row, col, val, int64(42))
 			}
 		}
 
 		if g.FinishedAt() == nil {
 			t.Fatal("expected finish timestamp to be not nil after game completion")
 		}
-		if *g.FinishedAt() != now {
+		if *g.FinishedAt() != int64(42) {
 			t.Error("expected finish timestamp to be strict inserted timestamp")
 		}
 	})
 
 	t.Run("strict insert on already finished game", func(t *testing.T) {
 		row, col, val := 0, 0, 7
-		g := setUp()
-		g.Start(now)
-		g.Finish(now)
-		s, err := g.Strict(row, col, val, now)
+		g := NewMock(true)
+		g.Finish(int64(42))
+		s, err := g.Strict(row, col, val, int64(42))
 		if err == nil {
 			t.Error("expected error, got nil")
 		}
@@ -323,30 +278,28 @@ func TestFinish(t *testing.T) {
 	})
 
 	t.Run("lax insert finishing game", func(t *testing.T) {
-		g := setUp()
-		g.Start(now)
+		g := NewMock(true)
 
 		for row := range sudoku.BoardSize {
 			for col := range sudoku.BoardSize {
 				val := g.Solution().Cell(row, col)
-				g.Lax(row, col, val, now)
+				g.Lax(row, col, val, int64(42))
 			}
 		}
 
 		if g.FinishedAt() == nil {
 			t.Fatal("expected finish timestamp to be not nil after game completion")
 		}
-		if *g.FinishedAt() != now {
+		if *g.FinishedAt() != int64(42) {
 			t.Error("expected finish timestamp to be lax inserted timestamp")
 		}
 	})
 
 	t.Run("lax insert on already finished game", func(t *testing.T) {
 		row, col, val := 0, 0, 7
-		g := setUp()
-		g.Start(now)
-		g.Finish(now)
-		s, err := g.Lax(row, col, val, now)
+		g := NewMock(true)
+		g.Finish(int64(42))
+		s, err := g.Lax(row, col, val, int64(42))
 		if err == nil {
 			t.Error("expected error, got nil")
 		}
@@ -362,9 +315,8 @@ func TestFinish(t *testing.T) {
 func TestStrict(t *testing.T) {
 	t.Run("incorrect value", func(t *testing.T) {
 		row, col, val := 0, 0, 8
-		g := setUp()
-		g.Start(now)
-		s, err := g.Strict(row, col, val, now)
+		g := NewMock(true)
+		s, err := g.Strict(row, col, val, int64(42))
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -388,9 +340,8 @@ func TestStrict(t *testing.T) {
 
 	t.Run("constraint conflict", func(t *testing.T) {
 		row, col, val := 0, 0, 4
-		g := setUp()
-		g.Start(now)
-		s, err := g.Strict(row, col, val, now)
+		g := NewMock(true)
+		s, err := g.Strict(row, col, val, int64(42))
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -414,9 +365,8 @@ func TestStrict(t *testing.T) {
 
 	t.Run("correct value", func(t *testing.T) {
 		row, col, val := 0, 0, 7
-		g := setUp()
-		g.Start(now)
-		s, err := g.Strict(row, col, val, now)
+		g := NewMock(true)
+		s, err := g.Strict(row, col, val, int64(42))
 		if err != nil {
 			t.Errorf("expected nil, got error '%v'", err)
 		}
@@ -437,9 +387,8 @@ func TestStrict(t *testing.T) {
 
 	t.Run("out of bounds", func(t *testing.T) {
 		row, col, val := 9, 0, 2
-		g := setUp()
-		g.Start(now)
-		s, err := g.Strict(row, col, val, now)
+		g := NewMock(true)
+		s, err := g.Strict(row, col, val, int64(42))
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -453,9 +402,8 @@ func TestStrict(t *testing.T) {
 
 	t.Run("invalid value range", func(t *testing.T) {
 		row, col, val := 0, 0, 10
-		g := setUp()
-		g.Start(now)
-		s, err := g.Strict(row, col, val, now)
+		g := NewMock(true)
+		s, err := g.Strict(row, col, val, int64(42))
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -469,9 +417,8 @@ func TestStrict(t *testing.T) {
 
 	t.Run("empty cell value", func(t *testing.T) {
 		row, col, val := 0, 0, sudoku.EmptyCell
-		g := setUp()
-		g.Start(now)
-		s, err := g.Strict(row, col, val, now)
+		g := NewMock(true)
+		s, err := g.Strict(row, col, val, int64(42))
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -485,9 +432,8 @@ func TestStrict(t *testing.T) {
 
 	t.Run("initial clue position", func(t *testing.T) {
 		row, col, val := 4, 0, 4
-		g := setUp()
-		g.Start(now)
-		s, err := g.Strict(row, col, val, now)
+		g := NewMock(true)
+		s, err := g.Strict(row, col, val, int64(42))
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -501,9 +447,8 @@ func TestStrict(t *testing.T) {
 
 	t.Run("correct value already exist", func(t *testing.T) {
 		row, col, val := 8, 8, 6
-		g := setUp()
-		g.Start(now)
-		s, err := g.Strict(row, col, val, now)
+		g := NewMock(true)
+		s, err := g.Strict(row, col, val, int64(42))
 		if err != nil {
 			t.Errorf("expected nil, got error '%v'", err)
 		}
@@ -516,9 +461,8 @@ func TestStrict(t *testing.T) {
 func TestLax(t *testing.T) {
 	t.Run("incorrect value", func(t *testing.T) {
 		row, col, val := 0, 0, 8
-		g := setUp()
-		g.Start(now)
-		s, err := g.Lax(row, col, val, now)
+		g := NewMock(true)
+		s, err := g.Lax(row, col, val, int64(42))
 		if err != nil {
 			t.Errorf("expected nil, got error: '%v'", err)
 		}
@@ -539,9 +483,8 @@ func TestLax(t *testing.T) {
 
 	t.Run("row constraint conflict", func(t *testing.T) {
 		row, col, val := 0, 0, 1
-		g := setUp()
-		g.Start(now)
-		s, err := g.Lax(row, col, val, now)
+		g := NewMock(true)
+		s, err := g.Lax(row, col, val, int64(42))
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -555,9 +498,8 @@ func TestLax(t *testing.T) {
 
 	t.Run("column constraint conflict", func(t *testing.T) {
 		row, col, val := 0, 0, 4
-		g := setUp()
-		g.Start(now)
-		s, err := g.Lax(row, col, val, now)
+		g := NewMock(true)
+		s, err := g.Lax(row, col, val, int64(42))
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -571,9 +513,8 @@ func TestLax(t *testing.T) {
 
 	t.Run("box constraint conflict", func(t *testing.T) {
 		row, col, val := 3, 0, 1
-		g := setUp()
-		g.Start(now)
-		s, err := g.Lax(row, col, val, now)
+		g := NewMock(true)
+		s, err := g.Lax(row, col, val, int64(42))
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -587,9 +528,8 @@ func TestLax(t *testing.T) {
 
 	t.Run("correct value", func(t *testing.T) {
 		row, col, val := 0, 0, 7
-		g := setUp()
-		g.Start(now)
-		s, err := g.Lax(row, col, val, now)
+		g := NewMock(true)
+		s, err := g.Lax(row, col, val, int64(42))
 		if err != nil {
 			t.Errorf("expected nil, got error '%v'", err)
 		}
@@ -610,9 +550,8 @@ func TestLax(t *testing.T) {
 
 	t.Run("out of bounds", func(t *testing.T) {
 		row, col, val := 9, 0, 2
-		g := setUp()
-		g.Start(now)
-		s, err := g.Lax(row, col, val, now)
+		g := NewMock(true)
+		s, err := g.Lax(row, col, val, int64(42))
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -626,9 +565,8 @@ func TestLax(t *testing.T) {
 
 	t.Run("invalid value range", func(t *testing.T) {
 		row, col, val := 0, 0, 10
-		g := setUp()
-		g.Start(now)
-		s, err := g.Lax(row, col, val, now)
+		g := NewMock(true)
+		s, err := g.Lax(row, col, val, int64(42))
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -642,9 +580,8 @@ func TestLax(t *testing.T) {
 
 	t.Run("empty cell value", func(t *testing.T) {
 		row, col, val := 8, 8, sudoku.EmptyCell
-		g := setUp()
-		g.Start(now)
-		s, err := g.Lax(row, col, val, now)
+		g := NewMock(true)
+		s, err := g.Lax(row, col, val, int64(42))
 		if err != nil {
 			t.Errorf("expected nil, got error '%v'", err)
 		}
@@ -665,9 +602,8 @@ func TestLax(t *testing.T) {
 
 	t.Run("initial clue position", func(t *testing.T) {
 		row, col, val := 4, 0, 4
-		g := setUp()
-		g.Start(now)
-		s, err := g.Lax(row, col, val, now)
+		g := NewMock(true)
+		s, err := g.Lax(row, col, val, int64(42))
 		if err == nil {
 			t.Error("expected error, got nil")
 			return
@@ -682,9 +618,8 @@ func TestLax(t *testing.T) {
 
 	t.Run("correct value already exist", func(t *testing.T) {
 		row, col, val := 8, 8, 6
-		g := setUp()
-		g.Start(now)
-		s, err := g.Lax(row, col, val, now)
+		g := NewMock(true)
+		s, err := g.Lax(row, col, val, int64(42))
 		if err != nil {
 			t.Errorf("expected nil, got error '%v'", err)
 		}
@@ -700,7 +635,7 @@ func TestUnderLoad(t *testing.T) {
 
 	for i := 0; i < 100; i++ {
 		g := Generate(int64(i))
-		g.Start(now)
+		g.Start(int64(42))
 
 		for j := 0; j < num; j++ {
 			wg.Add(1)
@@ -716,7 +651,7 @@ func TestUnderLoad(t *testing.T) {
 					row := id % 9
 					col := (id / 9) % 9
 					val := (id % 9) + 1
-					g.Lax(row, col, val, now)
+					g.Lax(row, col, val, int64(42))
 				case 1:
 					g.Current()
 				}

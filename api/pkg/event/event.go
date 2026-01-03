@@ -31,6 +31,10 @@ type Event interface {
 	Error() string
 	// Sets the error message.
 	SetError(msg string) Event
+	// Configuration of the lobby.
+	Config() lobby.Config
+	// Sets the lobby configuration.
+	SetConfig(config lobby.Config) Event
 	// The current Sudoku board state.
 	Current() sudoku.Sudoku
 	// Updates the current Sudoku board state.
