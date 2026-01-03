@@ -27,10 +27,14 @@ type config struct {
 
 var _ Config = &config{}
 
+func validSize(maxSize int) bool {
+	return maxSize >= 1 && maxSize <= 8
+}
+
 // Creates a new config with the specified settings. Returns
 // ErrInvalidSize if maxSize is not between 1 and 8.
 func NewConfig(strict, ping, notes bool, maxSize int) (*config, error) {
-	if maxSize < 1 || maxSize > 8 {
+	if !validSize(maxSize) {
 		return nil, ErrInvalidSize
 	}
 

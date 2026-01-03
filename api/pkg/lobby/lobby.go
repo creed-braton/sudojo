@@ -158,15 +158,21 @@ func (l *lobby) Leave(token string) ([]player.Player, error) {
 }
 
 func (l *lobby) Insert(row, col, val int, token string, now int64) (sudoku.Sudoku, error) {
-	if !sudoku.ValidBounds(row, col) {
-		return nil, game.ErrOutOfBounds
-	}
-
-	l.history.Append(history.NewArtifact(row, col, val, token, now))
+	var (
+		current sudoku.Sudoku
+		err     error
+	)
 
 	if l.config.Strict() {
-		return l.Game().Strict(row, col, val, now)
+		current, err = l.Game().Strict(row, col, val, now)
 	} else {
-		return l.Game().Lax(row, col, val, now)
+		current, err = l.Game().Lax(row, col, val, now)
 	}
+
+	if current != nil || err == game.ErrRowConflict ||
+		err == game.ErrColConflict || err == game.ErrBoxConflict {
+		l.history.Append(history.NewArtifact(row, col, val, token, now))
+	}
+
+	return current, err
 }
