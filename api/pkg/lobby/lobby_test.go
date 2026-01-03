@@ -1,10 +1,13 @@
 package lobby
 
 import (
+	"math/rand"
+	"runtime"
 	"sudojo/pkg/game"
 	"sudojo/pkg/history"
 	"sudojo/pkg/player"
 	"sudojo/pkg/sudoku"
+	"sync"
 	"testing"
 
 	"github.com/google/uuid"
@@ -258,7 +261,42 @@ func TestInsert(t *testing.T) {
 }
 
 func TestUnderLoad(t *testing.T) {
-	l := setupLobby(true, 8)
-	l.game.Start(now)
-	// TODO
+	var wg sync.WaitGroup
+	iterations := 1000
+
+	for i := 0; i < 100; i++ {
+		l := setupLobby(true, 8)
+		l.game.Start(now)
+
+		tokens := make([]string, 8)
+		for j := 0; j < 8; j++ {
+			token, err := l.Create("")
+			if err != nil {
+				t.Fatalf("unexpected error creating player %d: '%v'", j, err)
+			}
+			tokens[j] = token
+		}
+
+		for _, token := range tokens {
+			wg.Add(1)
+			go func(token string) {
+				defer wg.Done()
+
+				for k := 0; k < iterations; k++ {
+					if rand.Intn(10) == 0 {
+						runtime.Gosched()
+					}
+
+					switch rand.Intn(2) {
+					case 0:
+						l.Join(token)
+					case 1:
+						l.Leave(token)
+					}
+				}
+			}(token)
+		}
+	}
+
+	wg.Wait()
 }
