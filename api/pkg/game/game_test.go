@@ -49,6 +49,117 @@ func setUp() *game {
 	}
 }
 
+func TestNew(t *testing.T) {
+	t.Run("valid values", func(t *testing.T) {
+		initial := sudoku.NewFromInts(
+			[][]int{
+				{0, 0, 0, 0, 0, 0, 0, 1, 0},
+				{0, 0, 0, 0, 0, 2, 0, 0, 3},
+				{0, 0, 0, 4, 0, 0, 0, 0, 0},
+				{0, 0, 0, 0, 0, 0, 5, 0, 0},
+				{4, 0, 1, 6, 0, 0, 0, 0, 0},
+				{0, 0, 7, 1, 0, 0, 0, 0, 0},
+				{0, 5, 0, 0, 0, 0, 2, 0, 0},
+				{0, 0, 0, 0, 8, 0, 0, 4, 0},
+				{0, 3, 0, 9, 1, 0, 0, 0, 0},
+			},
+		)
+		current := sudoku.New()
+		initial.Copy(current)
+		solution := sudoku.NewFromInts(
+			[][]int{
+				{7, 4, 5, 3, 6, 8, 9, 1, 2},
+				{8, 1, 9, 5, 7, 2, 4, 6, 3},
+				{3, 6, 2, 4, 9, 1, 8, 5, 7},
+				{6, 9, 3, 8, 2, 4, 5, 7, 1},
+				{4, 2, 1, 6, 5, 7, 3, 9, 8},
+				{5, 8, 7, 1, 3, 9, 6, 2, 4},
+				{1, 5, 8, 7, 4, 6, 2, 3, 9},
+				{9, 7, 6, 2, 8, 3, 1, 4, 5},
+				{2, 3, 4, 9, 1, 5, 7, 8, 6},
+			},
+		)
+		started := int64(100)
+		finished := int64(200)
+		difficulty := Hard
+
+		g, err := New(current, initial, solution, &started, &finished, difficulty)
+		if err != nil {
+			t.Fatalf("expected nil error, got: '%v'", err)
+		}
+		if g == nil {
+			t.Fatal("expected game, got nil")
+		}
+		if !g.Current().Equal(current) {
+			t.Error("current board not set correctly")
+		}
+		if !g.Initial().Equal(initial) {
+			t.Error("initial board not set correctly")
+		}
+		if !g.Solution().Equal(solution) {
+			t.Error("solution board not set correctly")
+		}
+		if g.Difficulty() != difficulty {
+			t.Errorf("expected difficulty: '%v', got: '%v'", difficulty, g.Difficulty())
+		}
+		if g.StartedAt() == nil {
+			t.Fatal("expected started timestamp, got nil")
+		}
+		if *g.StartedAt() != started {
+			t.Errorf("expected started: %d, got: %d", started, *g.StartedAt())
+		}
+		if g.FinishedAt() == nil {
+			t.Fatal("expected finished timestamp, got nil")
+		}
+		if *g.FinishedAt() != finished {
+			t.Errorf("expected finished: %d, got: %d", finished, *g.FinishedAt())
+		}
+	})
+
+	t.Run("invalid difficulty", func(t *testing.T) {
+		initial := sudoku.NewFromInts(
+			[][]int{
+				{0, 0, 0, 0, 0, 0, 0, 1, 0},
+				{0, 0, 0, 0, 0, 2, 0, 0, 3},
+				{0, 0, 0, 4, 0, 0, 0, 0, 0},
+				{0, 0, 0, 0, 0, 0, 5, 0, 0},
+				{4, 0, 1, 6, 0, 0, 0, 0, 0},
+				{0, 0, 7, 1, 0, 0, 0, 0, 0},
+				{0, 5, 0, 0, 0, 0, 2, 0, 0},
+				{0, 0, 0, 0, 8, 0, 0, 4, 0},
+				{0, 3, 0, 9, 1, 0, 0, 0, 0},
+			},
+		)
+		current := sudoku.New()
+		initial.Copy(current)
+		solution := sudoku.NewFromInts(
+			[][]int{
+				{7, 4, 5, 3, 6, 8, 9, 1, 2},
+				{8, 1, 9, 5, 7, 2, 4, 6, 3},
+				{3, 6, 2, 4, 9, 1, 8, 5, 7},
+				{6, 9, 3, 8, 2, 4, 5, 7, 1},
+				{4, 2, 1, 6, 5, 7, 3, 9, 8},
+				{5, 8, 7, 1, 3, 9, 6, 2, 4},
+				{1, 5, 8, 7, 4, 6, 2, 3, 9},
+				{9, 7, 6, 2, 8, 3, 1, 4, 5},
+				{2, 3, 4, 9, 1, 5, 7, 8, 6},
+			},
+		)
+		difficulty := "invalid"
+
+		g, err := New(current, initial, solution, nil, nil, difficulty)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		if err != ErrDifficulty {
+			t.Errorf("expected error: '%v', got: '%v'", ErrDifficulty, err)
+		}
+		if g != nil {
+			t.Error("expected nil game, got game")
+		}
+	})
+}
+
 func TestStart(t *testing.T) {
 	t.Run("initialized game", func(t *testing.T) {
 		if setUp().StartedAt() != nil {

@@ -145,7 +145,7 @@ func (g *game) Hash() string {
 
 // Updates the current board with the given value and marks the game as finished
 // using the provided now timestamp if the board becomes complete. Returns a deep
-// copy of the updated state. Isn't concurrency safe so write lock must be held
+// copy of the updated state. Isn't concurrency-safe so write lock must be held
 // by the caller.
 func (g *game) insert(row, col, val int, now int64) sudoku.Sudoku {
 	g.current.SetCell(row, col, val)
