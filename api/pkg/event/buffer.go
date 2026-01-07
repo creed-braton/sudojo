@@ -7,14 +7,25 @@ import (
 	"sync/atomic"
 )
 
+const (
+	TakeoverReason = 1
+	TimeoutReason  = 2
+	IdleReason     = 3
+	FinishReason   = 4
+)
+
+// Error returned when attempting to send to or receive from a closed Buffer.
+// Contains the reason why the buffer was closed.
 type BufferClosedError struct {
 	reason int
 }
 
+// Returns an error message containing the close reason.
 func (e *BufferClosedError) Error() string {
 	return fmt.Sprintf("event buffer is closed, reason: %d", e.reason)
 }
 
+// Returns the reason code why the buffer was closed.
 func (e *BufferClosedError) Reason() int {
 	return e.reason
 }
