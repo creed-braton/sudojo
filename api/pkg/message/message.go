@@ -6,18 +6,32 @@ import (
 )
 
 const (
-	InsertMsg = "insert"
-	PingMsg   = "ping"
-	StateMsg  = "state"
+	InsertMsg = "insert" // Insert a value into the board at a specific cell.
+	PingMsg   = "ping"   // Highlight a cell without inserting a value.
+	StateMsg  = "state"  // Request or broadcast the current game state.
 )
 
+// Represents a client message used as input to proccess. Each message has a
+// type identifying the kind of action (insert, ping, or state), a sender
+// set after construction, and optional row, column, and value fields whose
+// relevance depends on the message type.
 type Message interface {
+	// Type of the message.
 	Type() string
+	// Identifier of the player who sent the message. Required but must be set
+	// via SetSender after initialization, not during construction.
 	Sender() string
+	// Sets the sender identifier of the message.
 	SetSender(sender string) Message
+	// Row of the targeted cell.
 	Row() *int
+	// Column of the targeted cell.
 	Column() *int
+	// Value to insert into the cell.
 	Value() *int
+	// Validates the message based on its type. Returns an error if the sender
+	// is not set, if required fields are missing, or if forbidden fields are
+	// present for the given type.
 	Validate() error
 }
 
@@ -28,6 +42,7 @@ type message struct {
 
 var _ Message = &message{}
 
+// Creates a new message with the given type, row, column, and value.
 func New(t string, row, col, val *int) *message {
 	return &message{msgType: t, row: row, col: col, val: val}
 }
@@ -58,6 +73,10 @@ func (m *message) Value() *int {
 }
 
 func (m *message) Validate() error {
+	if len(m.sender) < 1 {
+		return errors.New("sender could not be resolved")
+	}
+
 	switch m.msgType {
 	case InsertMsg:
 		if m.row == nil || m.col == nil || m.val == nil {
