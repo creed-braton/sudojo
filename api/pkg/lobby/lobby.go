@@ -28,6 +28,9 @@ type Lobby interface {
 	// Returns a list of all players in the lobby with their
 	// name and whether they are active or not.
 	Players() []player.Player
+	// Returns the player with the token in the lobby. Returns nil if no
+	// specified token exists.
+	Player(token string) player.Player
 	// Creates a player with provided name and returns the generated
 	// token. Returns ErrLobbyFull if lobby is full, player.ErrNameTooLong
 	// or player.ErrInvalidChar if the player name is invalid.
@@ -92,6 +95,13 @@ func (l *lobby) Config() Config {
 
 func (l *lobby) Game() game.Game {
 	return l.game
+}
+
+func (l *lobby) Player(token string) player.Player {
+	l.lock.RLock()
+	defer l.lock.RUnlock()
+
+	return l.players[token]
 }
 
 func (l *lobby) Players() []player.Player {

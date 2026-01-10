@@ -35,9 +35,10 @@ func NewMock(start bool) *game {
 	current[8][8] = solution[8][8]
 
 	g := &game{
-		initial:  initial,
-		current:  current,
-		solution: solution,
+		initial:    initial,
+		current:    current,
+		solution:   solution,
+		difficulty: Joker,
 	}
 
 	if start {

@@ -311,6 +311,105 @@ func TestBroadcast(t *testing.T) {
 	})
 }
 
+func TestSend(t *testing.T) {
+	t.Parallel()
+
+	t.Run("non-existent ID", func(t *testing.T) {
+		t.Parallel()
+
+		hub := NewHub()
+		defer hub.Close(0)
+
+		// Should not panic
+		hub.Send("non-existent", New(JoinEvent, int64(42), "test"))
+	})
+
+	t.Run("registered buffer", func(t *testing.T) {
+		t.Parallel()
+
+		hub := NewHub()
+		defer hub.Close(0)
+
+		buffer := NewBuffer(8)
+		if err := hub.Register("player-1", buffer); err != nil {
+			t.Fatalf("unexpected register error: '%v'", err)
+		}
+
+		event := New(InsertEvent, int64(42), "send-test")
+		hub.Send("player-1", event)
+
+		received, err := buffer.Receive()
+		if err != nil {
+			t.Fatalf("unexpected receive error: '%v'", err)
+		}
+		if received.Trace() != event.Trace() {
+			t.Errorf("expected trace '%s', got: '%s'", event.Trace(), received.Trace())
+		}
+	})
+
+	t.Run("multiple buffers targeted", func(t *testing.T) {
+		t.Parallel()
+
+		hub := NewHub()
+		defer hub.Close(0)
+
+		buffer1 := NewBuffer(8)
+		buffer2 := NewBuffer(8)
+
+		if err := hub.Register("player-1", buffer1); err != nil {
+			t.Fatalf("unexpected register error: '%v'", err)
+		}
+		if err := hub.Register("player-2", buffer2); err != nil {
+			t.Fatalf("unexpected register error: '%v'", err)
+		}
+
+		event := New(PingEvent, int64(42), "targeted-send")
+		hub.Send("player-1", event)
+
+		// player-1 should receive the event
+		received, err := buffer1.Receive()
+		if err != nil {
+			t.Fatalf("unexpected receive error: '%v'", err)
+		}
+		if received.Trace() != event.Trace() {
+			t.Errorf("expected trace '%s', got: '%s'", event.Trace(), received.Trace())
+		}
+
+		// player-2 should NOT receive the event
+		select {
+		case <-buffer2.events:
+			t.Error("buffer2 should not have received any event")
+		default:
+			// Expected: no event in buffer2
+		}
+	})
+
+	t.Run("closed buffer cleanup", func(t *testing.T) {
+		t.Parallel()
+
+		hub := NewHub()
+		defer hub.Close(0)
+
+		buffer := NewBuffer(8)
+		if err := hub.Register("player-1", buffer); err != nil {
+			t.Fatalf("unexpected register error: '%v'", err)
+		}
+
+		// Close the buffer before sending
+		buffer.Close(IdleReason)
+
+		// Send should clean up the closed buffer
+		hub.Send("player-1", New(StateEvent, int64(42), "cleanup-test"))
+
+		// Re-register with same ID should work (proves cleanup happened)
+		newBuffer := NewBuffer(8)
+		defer newBuffer.Close(0)
+		if err := hub.Register("player-1", newBuffer); err != nil {
+			t.Fatalf("unexpected register error after cleanup: '%v'", err)
+		}
+	})
+}
+
 func TestClose(t *testing.T) {
 	t.Parallel()
 
@@ -486,6 +585,70 @@ func TestConcurrentBroadcast(t *testing.T) {
 	}
 }
 
+func TestConcurrentSend(t *testing.T) {
+	t.Parallel()
+
+	const (
+		numBuffers = 8
+		senders    = 4
+		sends      = 50
+	)
+
+	hub := NewHub()
+	defer hub.Close(0)
+
+	buffers := make([]*buffer, numBuffers)
+	for i := range buffers {
+		buffers[i] = NewBuffer(256)
+		if err := hub.Register(string(rune('a'+i)), buffers[i]); err != nil {
+			t.Fatalf("unexpected register error: '%v'", err)
+		}
+	}
+
+	var wg sync.WaitGroup
+
+	// Start concurrent senders targeting specific buffers
+	for id := range senders {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			targetId := string(rune('a' + (id % numBuffers)))
+			for i := range sends {
+				event := New(StateEvent, int64(id*sends+i), "concurrent")
+				hub.Send(targetId, event)
+			}
+		}(id)
+	}
+
+	wg.Wait()
+
+	// Verify each buffer received events only from its targeted senders
+	for i, buf := range buffers {
+		count := 0
+		for {
+			select {
+			case <-buf.events:
+				count++
+			default:
+				goto done
+			}
+		}
+	done:
+		// Calculate expected events for this buffer
+		expectedSenders := 0
+		for id := range senders {
+			if id%numBuffers == i {
+				expectedSenders++
+			}
+		}
+		expectedCount := expectedSenders * sends
+
+		if count != expectedCount {
+			t.Errorf("buffer %d: expected %d events, got: %d", i, expectedCount, count)
+		}
+	}
+}
+
 func TestUnderloadHub(t *testing.T) {
 	t.Run("register during close", func(t *testing.T) {
 		for i := range 1000 {
@@ -610,6 +773,106 @@ func TestUnderloadHub(t *testing.T) {
 						hub.Broadcast(New(StateEvent, int64(42), ""))
 					}
 				}()
+			}
+
+			close(ready)
+			wg.Wait()
+			hub.Close(0)
+
+			// Verify no panic occurred
+			_ = i
+		}
+	})
+
+	t.Run("send during close", func(t *testing.T) {
+		for i := range 1000 {
+			hub := NewHub()
+
+			// Pre-register some buffers
+			buffers := make([]*buffer, 5)
+			for j := range buffers {
+				buffers[j] = NewBuffer(256)
+				hub.Register(string(rune('a'+j)), buffers[j])
+			}
+
+			var wg sync.WaitGroup
+			ready := make(chan struct{})
+
+			const numSenders = 10
+
+			for id := range numSenders {
+				wg.Add(1)
+				go func(id int) {
+					defer wg.Done()
+					<-ready
+					targetId := string(rune('a' + (id % 5)))
+					for range 100 {
+						hub.Send(targetId, New(StateEvent, int64(42), ""))
+					}
+				}(id)
+			}
+
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				<-ready
+				hub.Close(FinishReason)
+			}()
+
+			close(ready)
+			wg.Wait()
+
+			// Verify no panic occurred
+			_ = i
+		}
+	})
+
+	t.Run("register deregister send", func(t *testing.T) {
+		for i := range 500 {
+			hub := NewHub()
+
+			var wg sync.WaitGroup
+			ready := make(chan struct{})
+
+			const workers = 8
+
+			// Registerers
+			for id := range workers {
+				wg.Add(1)
+				go func(id int) {
+					defer wg.Done()
+					<-ready
+					for range 50 {
+						buffer := NewBuffer(8)
+						hub.Register(string(rune('a'+id)), buffer)
+						buffer.Close(0)
+					}
+				}(id)
+			}
+
+			// Deregisterers
+			for id := range workers {
+				wg.Add(1)
+				go func(id int) {
+					defer wg.Done()
+					<-ready
+					for range 50 {
+						hub.Deregister(string(rune('a' + id)))
+					}
+				}(id)
+			}
+
+			// Senders
+			for id := range workers {
+				wg.Add(1)
+				go func(id int) {
+					defer wg.Done()
+					<-ready
+					targetId := string(rune('a' + (id % workers)))
+					for range 50 {
+						hub.Send(targetId, New(StateEvent, int64(42), ""))
+					}
+				}(id)
 			}
 
 			close(ready)

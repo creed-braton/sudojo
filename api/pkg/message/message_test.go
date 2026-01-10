@@ -3,16 +3,19 @@ package message
 import "testing"
 
 func TestMessage(t *testing.T) {
-	sender := "player-123"
+	sender, trace := "player-123", "abc"
 	row, col, val := 4, 7, 9
 
-	msg := New(InsertMsg, &row, &col, &val).SetSender(sender)
+	msg := New(InsertMsg, &row, &col, &val, trace).SetSender(sender)
 
 	if msg == nil {
 		t.Fatal("expected message, got nil")
 	}
 	if msg.Type() != InsertMsg {
 		t.Errorf("expected type '%s', got '%s'", InsertMsg, msg.Type())
+	}
+	if msg.Trace() != trace {
+		t.Errorf("expected trace '%s', got '%s'", trace, msg.Trace())
 	}
 	if msg.Sender() != sender {
 		t.Errorf("expected sender '%s', got '%s'", sender, msg.Sender())
@@ -47,72 +50,72 @@ func TestValidate(t *testing.T) {
 	}{
 		{
 			name: "valid insert message",
-			msg:  New(InsertMsg, pointer(0), pointer(0), pointer(1)).SetSender("player"),
+			msg:  New(InsertMsg, pointer(0), pointer(0), pointer(1), "").SetSender("player"),
 			want: false,
 		},
 		{
 			name: "valid ping message",
-			msg:  New(PingMsg, pointer(0), pointer(0), nil).SetSender("player"),
+			msg:  New(PingMsg, pointer(0), pointer(0), nil, "").SetSender("player"),
 			want: false,
 		},
 		{
 			name: "valid state message",
-			msg:  New(StateMsg, nil, nil, nil).SetSender("player"),
+			msg:  New(StateMsg, nil, nil, nil, "").SetSender("player"),
 			want: false,
 		},
 		{
 			name: "missing sender",
-			msg:  New(InsertMsg, pointer(0), pointer(0), pointer(1)),
+			msg:  New(InsertMsg, pointer(0), pointer(0), pointer(1), ""),
 			want: true,
 		},
 		{
 			name: "insert missing row",
-			msg:  New(InsertMsg, nil, pointer(0), pointer(1)).SetSender("player"),
+			msg:  New(InsertMsg, nil, pointer(0), pointer(1), "").SetSender("player"),
 			want: true,
 		},
 		{
 			name: "insert missing column",
-			msg:  New(InsertMsg, pointer(0), nil, pointer(1)).SetSender("player"),
+			msg:  New(InsertMsg, pointer(0), nil, pointer(1), "").SetSender("player"),
 			want: true,
 		},
 		{
 			name: "insert missing value",
-			msg:  New(InsertMsg, pointer(0), pointer(0), nil).SetSender("player"),
+			msg:  New(InsertMsg, pointer(0), pointer(0), nil, "").SetSender("player"),
 			want: true,
 		},
 		{
 			name: "ping missing row",
-			msg:  New(PingMsg, nil, pointer(0), nil).SetSender("player"),
+			msg:  New(PingMsg, nil, pointer(0), nil, "").SetSender("player"),
 			want: true,
 		},
 		{
 			name: "ping missing column",
-			msg:  New(PingMsg, pointer(0), nil, nil).SetSender("player"),
+			msg:  New(PingMsg, pointer(0), nil, nil, "").SetSender("player"),
 			want: true,
 		},
 		{
 			name: "ping with forbidden value",
-			msg:  New(PingMsg, pointer(0), pointer(0), pointer(1)).SetSender("player"),
+			msg:  New(PingMsg, pointer(0), pointer(0), pointer(1), "").SetSender("player"),
 			want: true,
 		},
 		{
 			name: "state with forbidden row",
-			msg:  New(StateMsg, pointer(0), nil, nil).SetSender("player"),
+			msg:  New(StateMsg, pointer(0), nil, nil, "").SetSender("player"),
 			want: true,
 		},
 		{
 			name: "state with forbidden column",
-			msg:  New(StateMsg, nil, pointer(0), nil).SetSender("player"),
+			msg:  New(StateMsg, nil, pointer(0), nil, "").SetSender("player"),
 			want: true,
 		},
 		{
 			name: "state with forbidden value",
-			msg:  New(StateMsg, nil, nil, pointer(1)).SetSender("player"),
+			msg:  New(StateMsg, nil, nil, pointer(1), "").SetSender("player"),
 			want: true,
 		},
 		{
 			name: "unknown message type",
-			msg:  New("unknown", nil, nil, nil).SetSender("player"),
+			msg:  New("unknown", nil, nil, nil, "").SetSender("player"),
 			want: true,
 		},
 	}

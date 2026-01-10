@@ -13,11 +13,14 @@ const (
 
 // Represents a client message used as input to proccess. Each message has a
 // type identifying the kind of action (insert, ping, or state), a sender
-// set after construction, and optional row, column, and value fields whose
-// relevance depends on the message type.
+// set after construction, an optional trace identifier for the sender to
+// recognize their own messages, and optional row, column, and value fields
+// whose relevance depends on the message type.
 type Message interface {
 	// Type of the message.
 	Type() string
+	// Trace identifier echoed back to the sender for correlation.
+	Trace() string
 	// Identifier of the player who sent the message. Required but must be set
 	// via SetSender after initialization, not during construction.
 	Sender() string
@@ -36,19 +39,26 @@ type Message interface {
 }
 
 type message struct {
-	msgType, sender string
-	row, col, val   *int
+	msgType, trace, sender string
+	row, col, val          *int
 }
 
 var _ Message = &message{}
 
 // Creates a new message with the given type, row, column, and value.
-func New(t string, row, col, val *int) *message {
-	return &message{msgType: t, row: row, col: col, val: val}
+func New(t string, row, col, val *int, trace string) *message {
+	return &message{
+		msgType: t, trace: trace,
+		row: row, col: col, val: val,
+	}
 }
 
 func (m *message) Type() string {
 	return m.msgType
+}
+
+func (m *message) Trace() string {
+	return m.trace
 }
 
 func (m *message) Sender() string {

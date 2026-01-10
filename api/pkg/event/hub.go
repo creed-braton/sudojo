@@ -24,6 +24,10 @@ type Hub interface {
 	// Closes all registered buffers with the provided reason and marks the hub
 	// as closed. Subsequent calls to Register will return ErrHubClosed.
 	Close(reason int)
+	// Sends the event to a specific buffer under the provided ID. If no buffer is
+	// registered under that ID, the message is silently dropped. De-registers
+	// closed buffers from the hub.
+	Send(id string, event Event)
 }
 
 type hub struct {
@@ -68,6 +72,20 @@ func (h *hub) Broadcast(event Event) {
 		}
 	}
 	h.lock.Unlock()
+}
+
+func (h *hub) Send(id string, event Event) {
+	h.lock.Lock()
+	defer h.lock.Unlock()
+
+	buffer, ok := h.buffers[id]
+	if !ok {
+		return
+	}
+
+	if _, ok := buffer.Send(event).(*BufferClosedError); ok {
+		delete(h.buffers, id)
+	}
 }
 
 func (h *hub) Close(reason int) {
