@@ -72,6 +72,21 @@ func TestBuffer(t *testing.T) {
 		}
 	})
 
+	t.Run("receive on closed event buffer", func(t *testing.T) {
+		buffer := NewBuffer(256)
+		if err := buffer.Send(New("", int64(42), "")); err != nil {
+			t.Fatalf("unexpected send error: '%v'", err)
+		}
+		buffer.Close(0)
+		e, err := buffer.Receive()
+		if err != nil {
+			t.Fatalf("unexpected receive error: '%v'", err)
+		}
+		if e == nil {
+			t.Error("expected event, got nil")
+		}
+	})
+
 	t.Run("concurrent senders", func(t *testing.T) {
 		const (
 			sender = 8

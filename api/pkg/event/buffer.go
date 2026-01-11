@@ -48,6 +48,8 @@ type Buffer interface {
 	// Closes the buffered channel with provided reason. All sender and receiver will
 	// get a BufferClosedError which contains the provided reason.
 	Close(reason int)
+	Reason() int
+	Chan() chan Event
 }
 
 type buffer struct {
@@ -102,4 +104,12 @@ func (b *buffer) Close(reason int) {
 		close(b.events)
 		b.lock.Unlock()
 	})
+}
+
+func (b *buffer) Reason() int {
+	return int(b.reason.Load())
+}
+
+func (b *buffer) Chan() chan Event {
+	return b.events
 }

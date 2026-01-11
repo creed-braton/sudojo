@@ -41,7 +41,7 @@ func TestMessage(t *testing.T) {
 }
 
 func TestValidate(t *testing.T) {
-	pointer := func(v int) *int { return &v }
+	ptr := func(v int) *int { return &v }
 
 	var tests = []struct {
 		name string
@@ -50,12 +50,12 @@ func TestValidate(t *testing.T) {
 	}{
 		{
 			name: "valid insert message",
-			msg:  New(InsertMsg, pointer(0), pointer(0), pointer(1), "").SetSender("player"),
+			msg:  New(InsertMsg, ptr(0), ptr(0), ptr(1), "").SetSender("player"),
 			want: false,
 		},
 		{
 			name: "valid ping message",
-			msg:  New(PingMsg, pointer(0), pointer(0), nil, "").SetSender("player"),
+			msg:  New(PingMsg, ptr(0), ptr(0), nil, "").SetSender("player"),
 			want: false,
 		},
 		{
@@ -65,52 +65,52 @@ func TestValidate(t *testing.T) {
 		},
 		{
 			name: "missing sender",
-			msg:  New(InsertMsg, pointer(0), pointer(0), pointer(1), ""),
+			msg:  New(InsertMsg, ptr(0), ptr(0), ptr(1), ""),
 			want: true,
 		},
 		{
 			name: "insert missing row",
-			msg:  New(InsertMsg, nil, pointer(0), pointer(1), "").SetSender("player"),
+			msg:  New(InsertMsg, nil, ptr(0), ptr(1), "").SetSender("player"),
 			want: true,
 		},
 		{
 			name: "insert missing column",
-			msg:  New(InsertMsg, pointer(0), nil, pointer(1), "").SetSender("player"),
+			msg:  New(InsertMsg, ptr(0), nil, ptr(1), "").SetSender("player"),
 			want: true,
 		},
 		{
 			name: "insert missing value",
-			msg:  New(InsertMsg, pointer(0), pointer(0), nil, "").SetSender("player"),
+			msg:  New(InsertMsg, ptr(0), ptr(0), nil, "").SetSender("player"),
 			want: true,
 		},
 		{
 			name: "ping missing row",
-			msg:  New(PingMsg, nil, pointer(0), nil, "").SetSender("player"),
+			msg:  New(PingMsg, nil, ptr(0), nil, "").SetSender("player"),
 			want: true,
 		},
 		{
 			name: "ping missing column",
-			msg:  New(PingMsg, pointer(0), nil, nil, "").SetSender("player"),
+			msg:  New(PingMsg, ptr(0), nil, nil, "").SetSender("player"),
 			want: true,
 		},
 		{
 			name: "ping with forbidden value",
-			msg:  New(PingMsg, pointer(0), pointer(0), pointer(1), "").SetSender("player"),
+			msg:  New(PingMsg, ptr(0), ptr(0), ptr(1), "").SetSender("player"),
 			want: true,
 		},
 		{
 			name: "state with forbidden row",
-			msg:  New(StateMsg, pointer(0), nil, nil, "").SetSender("player"),
+			msg:  New(StateMsg, ptr(0), nil, nil, "").SetSender("player"),
 			want: true,
 		},
 		{
 			name: "state with forbidden column",
-			msg:  New(StateMsg, nil, pointer(0), nil, "").SetSender("player"),
+			msg:  New(StateMsg, nil, ptr(0), nil, "").SetSender("player"),
 			want: true,
 		},
 		{
 			name: "state with forbidden value",
-			msg:  New(StateMsg, nil, nil, pointer(1), "").SetSender("player"),
+			msg:  New(StateMsg, nil, nil, ptr(1), "").SetSender("player"),
 			want: true,
 		},
 		{

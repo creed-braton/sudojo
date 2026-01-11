@@ -11,8 +11,8 @@ import (
 // Creates a mock lobby with a pre-initialized game from game.NewMock().
 // Invalid parameters may produce undefined state. Caller must ensure
 // parameters are valid as no error is returned for simplicity.
-func NewMock(start, strict bool, maxSize int) *lobby {
-	config, _ := NewConfig(strict, false, false, maxSize)
+func NewMock(start, strict, ping bool, maxSize int) *lobby {
+	config, _ := NewConfig(strict, ping, false, maxSize)
 
 	return New(
 		uuid.NewString(),

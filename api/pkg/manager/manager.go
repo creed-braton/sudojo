@@ -89,7 +89,7 @@ func (m *manager) insert(msg message.Message) {
 	current, err := m.lobby.Insert(*msg.Row(), *msg.Column(), *msg.Value(), msg.Sender(), now)
 	event.SetCurrent(current)
 
-	if err != game.ErrIncorrect && err != game.ErrRowConflict &&
+	if err != nil && err != game.ErrIncorrect && err != game.ErrRowConflict &&
 		err != game.ErrColConflict && err != game.ErrBoxConflict {
 		event.SetError(err.Error())
 		m.hub.Send(msg.Sender(), event)

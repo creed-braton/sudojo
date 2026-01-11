@@ -7,6 +7,7 @@ import (
 )
 
 const (
+	SystemEvent = "system"
 	LeaveEvent  = "leave"
 	JoinEvent   = "join"
 	StateEvent  = "state"

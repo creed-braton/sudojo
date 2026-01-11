@@ -11,7 +11,7 @@ import (
 
 func TestPlayer(t *testing.T) {
 	t.Run("existing player", func(t *testing.T) {
-		l := NewMock(true, false, 4)
+		l := NewMock(true, false, true, 4)
 
 		token, err := l.Create("alice")
 		if err != nil {
@@ -28,7 +28,7 @@ func TestPlayer(t *testing.T) {
 	})
 
 	t.Run("non-existing player", func(t *testing.T) {
-		l := NewMock(true, false, 4)
+		l := NewMock(true, false, true, 4)
 
 		token := player.NewToken()
 		p := l.Player(token)
@@ -40,7 +40,7 @@ func TestPlayer(t *testing.T) {
 
 func TestCreate(t *testing.T) {
 	t.Run("invalid name", func(t *testing.T) {
-		l := NewMock(true, false, 4)
+		l := NewMock(true, false, true, 4)
 
 		_, err := l.Create("username123456789")
 		if err == nil {
@@ -50,7 +50,7 @@ func TestCreate(t *testing.T) {
 
 	t.Run("full lobby", func(t *testing.T) {
 		size := 4
-		l := NewMock(true, false, size)
+		l := NewMock(true, false, true, size)
 
 		for range size {
 			_, err := l.Create("")
@@ -70,7 +70,7 @@ func TestCreate(t *testing.T) {
 
 func TestJoin(t *testing.T) {
 	t.Run("non-existing player", func(t *testing.T) {
-		l := NewMock(true, false, 4)
+		l := NewMock(true, false, true, 4)
 
 		token := player.NewToken()
 		_, err := l.Join(token)
@@ -83,7 +83,7 @@ func TestJoin(t *testing.T) {
 	})
 
 	t.Run("join player", func(t *testing.T) {
-		l := NewMock(true, false, 4)
+		l := NewMock(true, false, true, 4)
 
 		token, err := l.Create("")
 		if err != nil {
@@ -102,7 +102,7 @@ func TestJoin(t *testing.T) {
 	})
 
 	t.Run("join initial player", func(t *testing.T) {
-		l := NewMock(true, false, 4)
+		l := NewMock(true, false, true, 4)
 
 		token, err := l.Create("")
 		if err != nil {
@@ -125,7 +125,7 @@ func TestJoin(t *testing.T) {
 
 func TestLeave(t *testing.T) {
 	t.Run("leave player", func(t *testing.T) {
-		l := NewMock(true, false, 4)
+		l := NewMock(true, false, true, 4)
 
 		token, err := l.Create("")
 		if err != nil {
@@ -150,7 +150,7 @@ func TestLeave(t *testing.T) {
 
 func TestInsert(t *testing.T) {
 	t.Run("strict insert call", func(t *testing.T) {
-		l := NewMock(true, true, 4)
+		l := NewMock(true, true, true, 4)
 
 		_, err := l.Insert(8, 8, 10, "", int64(42)) // invalid value range
 		if err == nil {
@@ -162,7 +162,7 @@ func TestInsert(t *testing.T) {
 	})
 
 	t.Run("lax insert call", func(t *testing.T) {
-		l := NewMock(true, false, 4)
+		l := NewMock(true, false, true, 4)
 
 		_, err := l.Insert(8, 8, 10, "", int64(42)) // invalid value range
 		if err == nil {
@@ -195,7 +195,7 @@ func TestInsert(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			l := NewMock(true, tt.strict, 4)
+			l := NewMock(true, tt.strict, true, 4)
 
 			l.Insert(tt.input[0], tt.input[1], tt.input[2], "", int64(42))
 			got := len(l.history.Artifacts()) > 0
@@ -207,7 +207,7 @@ func TestInsert(t *testing.T) {
 
 	t.Run("history on not started game", func(t *testing.T) {
 		want := false
-		l := NewMock(false, true, 4)
+		l := NewMock(false, true, true, 4)
 
 		l.Insert(0, 0, 7, "", int64(42))
 		got := len(l.history.Artifacts()) > 0
@@ -218,7 +218,7 @@ func TestInsert(t *testing.T) {
 
 	t.Run("history on finished game", func(t *testing.T) {
 		want := false
-		l := NewMock(true, true, 4)
+		l := NewMock(true, true, true, 4)
 		l.game.Finish(int64(42))
 
 		l.Insert(0, 0, 7, "", int64(42))
@@ -234,7 +234,7 @@ func TestUnderLoad(t *testing.T) {
 	iterations := 1000
 
 	for i := 0; i < 100; i++ {
-		l := NewMock(true, true, 8)
+		l := NewMock(true, true, true, 8)
 
 		tokens := make([]string, 8)
 		for j := 0; j < 8; j++ {
