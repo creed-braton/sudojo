@@ -55,7 +55,12 @@ func (s *server) getPlayer(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid lobby id", 400)
 		return
 	}
-	token := r.URL.Query().Get("token")
+	cookie, err := r.Cookie("session_token")
+	if err != nil {
+		http.Error(w, "missing session token", 401)
+		return
+	}
+	token := cookie.Value
 	if len(token) != 32 {
 		http.Error(w, "invalid token format", 400)
 		return
@@ -110,20 +115,17 @@ func (s *server) postPlayer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("content-type", "text/plain")
-	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(token))
-}
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_token",
+		Value:    token,
+		Path:     "/api/lobbies/" + id,
+		HttpOnly: true,
+		Secure:   s.secure,
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   2592000, // 30 days
+	})
 
-type response struct {
-	Current    [][]int   `json:"current_board"`
-	Initial    [][]int   `json:"initial_board"`
-	Started    *int64    `json:"started_at"`
-	Finished   *int64    `json:"finished_at"`
-	History    []history `json:"history"`
-	Strict     bool      `json:"strict"`
-	MaxPlayer  int       `json:"max_player"`
-	Difficulty string    `json:"difficulty"`
+	w.WriteHeader(http.StatusCreated)
 }
 
 func (s *server) getLobby(w http.ResponseWriter, r *http.Request) {
@@ -166,7 +168,12 @@ func (s *server) getSocket(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid lobby id", 400)
 		return
 	}
-	token := r.URL.Query().Get("token")
+	cookie, err := r.Cookie("session_token")
+	if err != nil {
+		http.Error(w, "missing session token", 401)
+		return
+	}
+	token := cookie.Value
 	if len(token) != 32 {
 		http.Error(w, "invalid token format", 400)
 		return

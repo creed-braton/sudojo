@@ -16,15 +16,17 @@ type Server interface {
 type server struct {
 	port     string
 	origin   string
+	secure   bool
 	router   *http.ServeMux
 	upgrader websocket.Upgrader
 	tenant   tenant.Service
 }
 
-func New(port, origin string, tenant tenant.Service) *server {
+func New(port, origin string, secure bool, tenant tenant.Service) *server {
 	s := &server{
 		port:   port,
 		origin: origin,
+		secure: secure,
 		router: http.NewServeMux(),
 		upgrader: websocket.Upgrader{
 			ReadBufferSize:  1024,

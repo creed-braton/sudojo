@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 	"sudojo/adp/database"
 	"sudojo/adp/metrics"
 	"sudojo/adp/server"
@@ -28,6 +29,7 @@ func main() {
 	err = server.New(
 		envOrPanic("PORT"),
 		os.Getenv("ORIGIN"),
+		envBool("SECURE"),
 		tenant.New(db, slog.Default(), m, 60),
 	).Listen()
 
@@ -42,4 +44,9 @@ func envOrPanic(key string) string {
 		panic(fmt.Errorf("env variable '%s' missing", key))
 	}
 	return val
+}
+
+func envBool(key string) bool {
+	val := strings.ToLower(os.Getenv(key))
+	return val != "false"
 }
