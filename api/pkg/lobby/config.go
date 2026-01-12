@@ -11,7 +11,7 @@ type Config interface {
 	// Returns whether the lobby uses strict mode validation.
 	Strict() bool
 	// Returns whether ping functionality is enabled.
-	Ping() bool
+	Pings() bool
 	// Returns whether notes functionality is enabled.
 	Notes() bool
 	// Returns the maximum number of players allowed in the lobby.
@@ -20,7 +20,7 @@ type Config interface {
 
 type config struct {
 	strict  bool
-	ping    bool
+	pings   bool
 	notes   bool
 	maxSize int
 }
@@ -33,14 +33,14 @@ func validSize(maxSize int) bool {
 
 // Creates a new config with the specified settings. Returns
 // ErrInvalidSize if maxSize is not between 1 and 8.
-func NewConfig(strict, ping, notes bool, maxSize int) (*config, error) {
+func NewConfig(strict, pings, notes bool, maxSize int) (*config, error) {
 	if !validSize(maxSize) {
 		return nil, ErrInvalidSize
 	}
 
 	return &config{
 		strict:  strict,
-		ping:    ping,
+		pings:   pings,
 		notes:   notes,
 		maxSize: maxSize,
 	}, nil
@@ -50,8 +50,8 @@ func (c *config) Strict() bool {
 	return c.strict
 }
 
-func (c *config) Ping() bool {
-	return c.ping
+func (c *config) Pings() bool {
+	return c.pings
 }
 
 func (c *config) Notes() bool {

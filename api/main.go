@@ -2,10 +2,38 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
+	"sudojo/adp/database"
+	"sudojo/adp/metrics"
+	"sudojo/adp/server"
+	"sudojo/svc/tenant"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 func main() {
+	m := metrics.New(prometheus.DefaultRegisterer)
+
+	db, err := database.New(
+		envOrPanic("DB_HOST"),
+		envOrPanic("DB_PORT"),
+		envOrPanic("DB_NAME"),
+		envOrPanic("DB_USER"),
+		envOrPanic("DB_PASS"),
+	)
+	if err != nil {
+		panic(err)
+	}
+	err = server.New(
+		envOrPanic("PORT"),
+		os.Getenv("ORIGIN"),
+		tenant.New(db, slog.Default(), m, 60),
+	).Listen()
+
+	if err != nil {
+		panic(fmt.Errorf("failed starting server: %v", err))
+	}
 }
 
 func envOrPanic(key string) string {

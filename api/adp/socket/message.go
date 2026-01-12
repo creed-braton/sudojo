@@ -6,9 +6,9 @@ type Player struct {
 }
 
 type Config struct {
-	Strict  bool `json:"strict"`
-	Ping    bool `json:"ping"`
-	Notes   bool `json:"notes"`
+	Strict  bool `json:"strict_mode"`
+	Pings   bool `json:"pings_allowed"`
+	Notes   bool `json:"notes_allowed"`
 	MaxSize int  `json:"max_player"`
 }
 

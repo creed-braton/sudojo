@@ -27,7 +27,7 @@ func (db *database) createSchema() error {
 			id VARCHAR(36) PRIMARY KEY,
 			max_player INT NOT NULL,
 			strict_mode BOOLEAN NOT NULL DEFAULT TRUE,
-			ping_allowed BOOLEAN NOT NULL DEFAULT TRUE,
+			pings_allowed BOOLEAN NOT NULL DEFAULT TRUE,
 			notes_allowed BOOLEAN NOT NULL DEFAULT TRUE,
 			started_at BIGINT DEFAULT NULL,
 			finished_at BIGINT DEFAULT NULL,

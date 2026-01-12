@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sudojo/pkg/game"
 	"sudojo/pkg/history"
@@ -12,6 +13,10 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+var (
+	ErrDiffNotFound = errors.New("game with difficulty not available")
 )
 
 type Database interface {
@@ -120,13 +125,13 @@ func (db *database) Lobby(id string) (lobby.Lobby, error) {
 	var difficulty string
 	var start, finish pgtype.Int8
 	var initial, current, solution [][]int
-	var strict, ping, notes bool
+	var strict, pings, notes bool
 	var maxSize int
 	err := db.conn.QueryRow(
 		context.Background(),
 		`SELECT g.initial_board, l.current_board, g.solution,
 			 g.difficulty, l.started_at, l.finished_at, l.max_player,
-       l.strict_mode, l.ping_allowed, l.notes_allowed
+       l.strict_mode, l.pings_allowed, l.notes_allowed
 		FROM sudojo.lobbies AS l
 		JOIN sudojo.games AS g ON l.game_hash = g.hash
 		WHERE l.id = $1;`,
@@ -134,7 +139,7 @@ func (db *database) Lobby(id string) (lobby.Lobby, error) {
 	).Scan(
 		&initial, &current, &solution,
 		&difficulty, &start, &finish,
-		&maxSize, &strict, &ping, &notes,
+		&maxSize, &strict, &pings, &notes,
 	)
 	if err == pgx.ErrNoRows {
 		return nil, nil
@@ -171,7 +176,7 @@ func (db *database) Lobby(id string) (lobby.Lobby, error) {
 	}
 
 	config, err := lobby.NewConfig(
-		strict, ping, notes, maxSize,
+		strict, pings, notes, maxSize,
 	)
 	if err != nil {
 		return nil, err
@@ -198,12 +203,12 @@ func (db *database) InsertLobby(lobby lobby.Lobby) error {
 	_, err = db.conn.Exec(
 		context.Background(),
 		`INSERT INTO sudojo.lobbies (
-			id, strict_mode, ping_allowed, notes_allowed, 
+			id, strict_mode, pings_allowed, notes_allowed, 
 			max_player,  started_at, game_hash, current_board
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`,
 		lobby.Id(),
 		lobby.Config().Strict(),
-		lobby.Config().Ping(),
+		lobby.Config().Pings(),
 		lobby.Config().Notes(),
 		lobby.Config().MaxSize(),
 		lobby.Game().StartedAt(),
@@ -283,7 +288,7 @@ func (db *database) SampleGame(difficulty string) (game.Game, error) {
 		difficulty,
 	).Scan(&initial, &solution)
 	if err == pgx.ErrNoRows {
-		return nil, nil
+		return nil, ErrDiffNotFound
 	} else if err != nil {
 		return nil, err
 	}

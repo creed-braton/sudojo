@@ -89,16 +89,20 @@ type game struct {
 
 var _ Game = &game{}
 
+func ValidDifficulty(difficulty string) bool {
+	return difficulty == Beginner || difficulty == Easy ||
+		difficulty == Medium || difficulty == Hard ||
+		difficulty == Expert || difficulty == Extreme ||
+		difficulty == Joker
+}
+
 // Creates a game with the provided board states, timestamps, and difficulty.
 // Returns ErrDifficulty if the difficulty is not valid.
 func New(
 	current, initial, solution sudoku.Sudoku,
 	started, finished *int64, difficulty string,
 ) (*game, error) {
-	if difficulty != Beginner && difficulty != Easy &&
-		difficulty != Medium && difficulty != Hard &&
-		difficulty != Expert && difficulty != Extreme &&
-		difficulty != Joker {
+	if !ValidDifficulty(difficulty) {
 		return nil, ErrDifficulty
 	}
 

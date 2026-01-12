@@ -53,8 +53,8 @@ func assert(t *testing.T, want, got lobby.Lobby) {
 	if want.Config().Strict() != got.Config().Strict() {
 		t.Errorf("expected strict '%t', got '%t'", want.Config().Strict(), got.Config().Strict())
 	}
-	if want.Config().Ping() != got.Config().Ping() {
-		t.Errorf("expected ping '%t', got '%t'", want.Config().Ping(), got.Config().Ping())
+	if want.Config().Pings() != got.Config().Pings() {
+		t.Errorf("expected pings '%t', got '%t'", want.Config().Pings(), got.Config().Pings())
 	}
 	if want.Config().Notes() != got.Config().Notes() {
 		t.Errorf("expected strict '%t', got '%t'", want.Config().Notes(), got.Config().Notes())

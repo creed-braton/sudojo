@@ -26,16 +26,16 @@ func TestValidSize(t *testing.T) {
 }
 
 func TestConfig(t *testing.T) {
-	strict, ping, notes, maxSize := false, true, false, 6
-	c, err := NewConfig(strict, ping, notes, maxSize)
+	strict, pings, notes, maxSize := false, true, false, 6
+	c, err := NewConfig(strict, pings, notes, maxSize)
 	if err != nil {
 		t.Fatalf("unexpected error: '%v'", err)
 	}
 	if c.Strict() != strict {
 		t.Errorf("expected strict: '%t', got: '%t'", strict, c.Strict())
 	}
-	if c.Ping() != ping {
-		t.Errorf("expected ping: '%t', got: '%t'", ping, c.Ping())
+	if c.Pings() != pings {
+		t.Errorf("expected pings: '%t', got: '%t'", pings, c.Pings())
 	}
 	if c.Notes() != notes {
 		t.Errorf("expected notes: '%t', got: '%t'", notes, c.Notes())

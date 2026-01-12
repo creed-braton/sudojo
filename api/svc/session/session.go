@@ -22,6 +22,7 @@ type Service interface {
 	CreatePlayer(name string) (string, error)
 	JoinPlayer(token string, client socket.Socket) error
 	CreatedAt() int64
+	Count() int
 }
 
 type service struct {
@@ -31,7 +32,7 @@ type service struct {
 	metrics metrics.Metrics
 	created int64
 	clients map[string]socket.Socket
-	lock    sync.Mutex
+	lock    sync.RWMutex
 	once    sync.Once
 	closed  atomic.Bool
 }
@@ -60,6 +61,7 @@ func (s *service) Lobby() lobby.Lobby {
 
 func (s *service) Close(code int, msg string) {
 	s.once.Do(func() {
+		s.logger.Info("close lobby", "code", code, "message", msg)
 		s.closed.Store(true)
 		s.lock.Lock()
 		for _, c := range s.clients {
@@ -195,7 +197,7 @@ func (s *service) ping(client socket.Socket, in *socket.Message) {
 func (s *service) state(client socket.Socket, in *socket.Message) {
 	config := &socket.Config{
 		Strict:  s.lobby.Config().Strict(),
-		Ping:    s.lobby.Config().Ping(),
+		Pings:   s.lobby.Config().Pings(),
 		Notes:   s.lobby.Config().Notes(),
 		MaxSize: s.lobby.Config().MaxSize(),
 	}
@@ -277,4 +279,11 @@ func (s *service) JoinPlayer(token string, client socket.Socket) error {
 
 func (s *service) CreatedAt() int64 {
 	return s.created
+}
+
+func (s *service) Count() int {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+
+	return len(s.clients)
 }
