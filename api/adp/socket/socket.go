@@ -1,136 +1,182 @@
 package socket
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"sudojo/adp/serial"
-	"sudojo/pkg/event"
-	"sudojo/pkg/message"
+	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-	"golang.org/x/time/rate"
 )
 
 const (
-	readDeadline  = 60
-	writeDeadline = 10
-	pingInterval  = 20
-	rateLimit     = 4
-	burstLimit    = 7
+	CloseTimeout  = 4001
+	CloseTakeover = 4002
+	CloseFinished = 4003
+	CloseNotFound = 4004
+	CloseIdle     = 4005
+	CloseStale    = 4006
 )
 
-type Client interface {
+var (
+	ErrClosed     = errors.New("connection is closed")
+	ErrBufferFull = errors.New("buffer is full")
+)
+
+type Socket interface {
+	Id() string
+	Close(code int, msg string)
+	Listen() error
+	Send(msg *Message) error
+	Receive() (*Message, error)
 }
 
-type client struct {
+type socket struct {
+	id      string
 	conn    *websocket.Conn
-	serial  serial.Serial
-	token   string
-	buffer  event.Buffer
-	msgChan chan message.Message
-	leave   func()
-	limiter *rate.Limiter
+	in      chan *Message
+	out     chan *Message
+	ctx     context.Context
+	cancel  context.CancelFunc
+	wg      sync.WaitGroup
+	once    sync.Once
+	closed  chan struct{}
+	timeout time.Duration
+	ping    time.Duration
 }
 
-var _ Client = &client{}
+var _ Socket = &socket{}
 
-func NewClient(
-	conn *websocket.Conn,
-	token string,
-	buffer event.Buffer,
-	msgChan chan message.Message,
-	leave func(),
-) *client {
-	return &client{
+func New(conn *websocket.Conn, timeout, ping time.Duration) *socket {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	return &socket{
+		id:      uuid.NewString(),
 		conn:    conn,
-		serial:  serial.New(),
-		token:   token,
-		buffer:  buffer,
-		msgChan: msgChan,
-		leave:   leave,
-		limiter: rate.NewLimiter(rateLimit, burstLimit),
+		in:      make(chan *Message, 32),
+		out:     make(chan *Message, 32),
+		ctx:     ctx,
+		cancel:  cancel,
+		closed:  make(chan struct{}),
+		timeout: timeout,
+		ping:    ping,
 	}
 }
 
-func (c *client) WritePump() error {
-	ticker := time.NewTicker(pingInterval * time.Second)
-	defer func() {
-		ticker.Stop()
-		msg := websocket.FormatCloseMessage(
-			c.buffer.Reason()+4000, "",
-		)
-		_ = c.conn.WriteControl(
+func (s *socket) Id() string {
+	return s.id
+}
+
+func (s *socket) Close(code int, msg string) {
+	s.once.Do(func() {
+		close(s.closed) // block sends first
+
+		_ = s.conn.WriteControl(
 			websocket.CloseMessage,
-			msg,
+			websocket.FormatCloseMessage(
+				code, msg,
+			),
 			time.Now().Add(time.Second),
 		)
 		time.Sleep(time.Second)
-		c.conn.Close()
-	}()
+
+		s.cancel()
+		s.conn.Close()
+	})
+}
+
+func (s *socket) writePump() error {
+	ticker := time.NewTicker(s.ping * time.Second)
+	defer ticker.Stop()
 
 	for {
 		select {
-		case event, ok := <-c.buffer.Chan():
-			if !ok {
-				return errors.New("event buffer is closed")
-			}
+		case <-s.ctx.Done():
+			return s.ctx.Err()
 
-			b, err := c.serial.MarshalEvent(event)
+		case msg := <-s.out:
+			b, err := json.Marshal(msg)
 			if err != nil {
 				continue
 			}
 
-			c.conn.SetWriteDeadline(time.Now().Add(writeDeadline * time.Second))
-			if err := c.conn.WriteMessage(websocket.TextMessage, b); err != nil {
+			s.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			if err := s.conn.WriteMessage(websocket.TextMessage, b); err != nil {
 				return fmt.Errorf("failed sending message: %w", err)
 			}
 
 		case <-ticker.C:
-			c.conn.SetWriteDeadline(time.Now().Add(writeDeadline * time.Second))
-			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
-				c.buffer.Close(event.TimeoutReason)
+			s.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			if err := s.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				s.Close(websocket.CloseNormalClosure, "connection broken")
 				return fmt.Errorf("failed sending ping: %w", err)
 			}
 		}
 	}
 }
 
-func (c *client) ReadPump() error {
+func (s *socket) readPump() error {
 	defer func() {
-		close(c.msgChan)
+		close(s.in)
 	}()
 
-	c.conn.SetPongHandler(func(string) error {
-		c.conn.SetReadDeadline(time.Now().Add(readDeadline * time.Second))
+	s.conn.SetPongHandler(func(string) error {
+		s.conn.SetReadDeadline(time.Now().Add(s.timeout * time.Second))
 		return nil
 	})
 
+	s.conn.SetReadDeadline(time.Now().Add(s.timeout * time.Second))
+
 	for {
-		c.conn.SetReadDeadline(time.Now().Add(readDeadline * time.Second))
-		t, b, err := c.conn.ReadMessage()
+		t, b, err := s.conn.ReadMessage()
 		if err != nil {
-			return fmt.Errorf("failed receiving message: %w", err)
+			s.Close(CloseTimeout, "heartbeat timeout")
+			return err
 		}
 
 		if t != websocket.TextMessage {
 			continue
 		}
 
-		if !c.limiter.Allow() {
-			event := event.New(event.SystemEvent, time.Now().UTC().UnixNano(), "").
-				SetError("rate limit exceeded")
-			c.buffer.Send(event)
+		msg := &Message{}
+		if err := json.Unmarshal(b, msg); err != nil || len(msg.Type) < 1 {
 			continue
 		}
 
-		msg, err := c.serial.UnmarshalMsg(b)
-		if err != nil {
-			event := event.New(event.SystemEvent, time.Now().UTC().UnixNano(), "").
-				SetError(err.Error())
-			c.buffer.Send(event)
-		}
-
-		c.msgChan <- msg
+		s.in <- msg
 	}
+}
+
+func (s *socket) Listen() error {
+	s.wg.Add(1)
+	go func() {
+		defer s.wg.Done()
+		s.writePump()
+	}()
+
+	err := s.readPump()
+	s.wg.Wait()
+	return err
+}
+
+func (s *socket) Send(msg *Message) error {
+	select {
+	case <-s.closed:
+		return ErrClosed
+	case s.out <- msg:
+		return nil
+	default:
+		return ErrBufferFull
+	}
+}
+
+func (s *socket) Receive() (*Message, error) {
+	msg, ok := <-s.in
+	if !ok {
+		return nil, ErrClosed
+	}
+	return msg, nil
 }

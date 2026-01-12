@@ -1,8 +1,7 @@
 services:
   database:
     container_name: database
-    build:
-      context: ./database
+    image: postgres:18.1-alpine3.23
     restart: unless-stopped
     ports:
       - 5432:5432

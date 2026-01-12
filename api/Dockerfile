@@ -6,10 +6,7 @@ COPY go.mod go.sum ./
 
 RUN go mod download
 
-COPY main.go ./main.go
-COPY pkg ./pkg
-COPY adapter ./adapter
-COPY service ./service
+COPY main.go pkg adp svc ./
 
 RUN go build -o ./bin ./main.go
 

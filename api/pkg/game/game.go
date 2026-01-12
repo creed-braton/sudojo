@@ -24,12 +24,13 @@ var (
 )
 
 const (
-	Easy    = "easy"
-	Medium  = "medium"
-	Hard    = "hard"
-	Expert  = "expert"
-	Extreme = "extreme"
-	Joker   = "joker"
+	Beginner = "beginner"
+	Easy     = "easy"
+	Medium   = "medium"
+	Hard     = "hard"
+	Expert   = "expert"
+	Extreme  = "extreme"
+	Joker    = "joker"
 )
 
 // Represents a Sudoku game that encapsulates the current puzzle state, original
@@ -70,7 +71,8 @@ type Game interface {
 	Finish(now int64) error
 	// Returns nanosecond finish timestamp, nil if not finished.
 	FinishedAt() *int64
-	// Returns the difficulty of the game (easy, medium, hard, expert, extreme, joker).
+	// Returns the difficulty of the game (beginner, easy, medium, hard, expert, extreme
+	// or joker).
 	Difficulty() string
 }
 
@@ -93,9 +95,10 @@ func New(
 	current, initial, solution sudoku.Sudoku,
 	started, finished *int64, difficulty string,
 ) (*game, error) {
-	if difficulty != Easy && difficulty != Medium &&
-		difficulty != Hard && difficulty != Expert &&
-		difficulty != Extreme && difficulty != Joker {
+	if difficulty != Beginner && difficulty != Easy &&
+		difficulty != Medium && difficulty != Hard &&
+		difficulty != Expert && difficulty != Extreme &&
+		difficulty != Joker {
 		return nil, ErrDifficulty
 	}
 
