@@ -16,6 +16,7 @@ import (
 )
 
 type Service interface {
+	Lobby() lobby.Lobby
 	Close(code int, msg string)
 	Player(token string) bool
 	CreatePlayer(name string) (string, error)
@@ -51,6 +52,10 @@ func New(
 		created: time.Now().UTC().UnixNano(),
 		clients: make(map[string]socket.Socket),
 	}
+}
+
+func (s *service) Lobby() lobby.Lobby {
+	return s.lobby
 }
 
 func (s *service) Close(code int, msg string) {
