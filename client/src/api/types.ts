@@ -91,24 +91,54 @@ const isHistory = (value: unknown): value is History => {
   );
 };
 
-export type Difficulty = "easy" | "medium" | "hard" | "extreme" | "joker";
+export type Difficulty =
+  | "beginner"
+  | "easy"
+  | "medium"
+  | "hard"
+  | "expert"
+  | "extreme"
+  | "joker";
 
 const isDifficulty = (value: unknown): value is Difficulty => {
   return (
+    value === "beginner" ||
     value === "easy" ||
     value === "medium" ||
     value === "hard" ||
+    value === "expert" ||
     value === "extreme" ||
     value === "joker"
   );
 };
 
+export type Config = {
+  strict_mode: boolean;
+  pings_allowed: boolean;
+  notes_allowed: boolean;
+  max_player: number;
+};
+
+const isConfig = (value: unknown): value is Config => {
+  if (typeof value !== "object" || value === null) return false;
+  const config = value as Record<string, unknown>;
+
+  if (typeof config.strict_mode !== "boolean") return false;
+  if (typeof config.pings_allowed !== "boolean") return false;
+  if (typeof config.notes_allowed !== "boolean") return false;
+
+  if (typeof config.max_player !== "number") return false;
+  if (!Number.isInteger(config.max_player)) return false;
+  if (config.max_player < 1) return false;
+
+  return true;
+};
+
 export type Lobby = {
   current_board: Sudoku;
   initial_board: Sudoku;
-  max_player: number;
-  strict: boolean;
   history: History[];
+  config: Config;
   started_at: number;
   finished_at: number | null;
   difficulty: Difficulty;
@@ -120,8 +150,7 @@ export const isLobby = (value: unknown): value is Lobby => {
 
   if (!("current_board" in lobby)) return false;
   if (!("initial_board" in lobby)) return false;
-  if (!("max_player" in lobby)) return false;
-  if (!("strict" in lobby)) return false;
+  if (!("config" in lobby)) return false;
   if (!("history" in lobby)) return false;
   if (!("started_at" in lobby)) return false;
   if (!("finished_at" in lobby)) return false;
@@ -129,12 +158,7 @@ export const isLobby = (value: unknown): value is Lobby => {
 
   if (!isSudoku(lobby.current_board)) return false;
   if (!isSudoku(lobby.initial_board)) return false;
-
-  if (typeof lobby.max_player !== "number") return false;
-  if (!Number.isInteger(lobby.max_player)) return false;
-  if (lobby.max_player < 1) return false;
-
-  if (typeof lobby.strict !== "boolean") return false;
+  if (!isConfig(lobby.config)) return false;
 
   if (!Array.isArray(lobby.history)) return false;
   if (!lobby.history.every(isHistory)) return false;
@@ -199,9 +223,8 @@ export type StateMessage = {
   trace?: string;
   current_board: Sudoku;
   initial_board: Sudoku;
+  config: Config;
   players: Player[];
-  max_player: number;
-  strict: boolean;
   difficulty: Difficulty;
 };
 
@@ -216,20 +239,14 @@ export const isStateMessage = (value: unknown): value is StateMessage => {
   if (!("current_board" in message)) return false;
   if (!("initial_board" in message)) return false;
   if (!("players" in message)) return false;
-  if (!("max_player" in message)) return false;
-  if (!("strict" in message)) return false;
-  if (!("difficulty" in message)) return false;
+  if (!("config" in message)) return false;
 
   if ("trace" in message && typeof message.trace !== "string") return false;
   if (!isSudoku(message.current_board)) return false;
   if (!isSudoku(message.initial_board)) return false;
+  if (!isConfig(message.config)) return false;
   if (!Array.isArray(message.players)) return false;
   if (!message.players.every(isPlayer)) return false;
-  if (typeof message.max_player !== "number") return false;
-  if (!Number.isInteger(message.max_player)) return false;
-  if (message.max_player < 1) return false;
-  if (typeof message.strict !== "boolean") return false;
-  if (!isDifficulty(message.difficulty)) return false;
 
   return true;
 };
@@ -311,25 +328,6 @@ export const isPingMessage = (value: unknown): value is PingMessage => {
     if (!Number.isInteger(message.column)) return false;
     if (message.column < 0 || message.column >= 9) return false;
   }
-
-  return true;
-};
-
-export type SystemMessage = {
-  type: string;
-  error: string;
-};
-
-export const isSystemMessage = (value: unknown): value is SystemMessage => {
-  if (typeof value !== "object" || value === null) return false;
-  const message = value as Record<string, unknown>;
-
-  if (!("type" in message)) return false;
-  if (typeof message.type !== "string") return false;
-  if (message.type !== "system") return false;
-
-  if (!("error" in message)) return false;
-  if (typeof message.error !== "string") return false;
 
   return true;
 };

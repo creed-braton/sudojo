@@ -26,6 +26,7 @@ services:
       DB_USER: postgres
       DB_PASS: password
       ORIGIN: http://localhost:5173
+      SECURE: false
     depends_on:
       database:
         condition: "service_healthy"

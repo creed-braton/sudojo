@@ -17,6 +17,7 @@ type server struct {
 	port     string
 	origin   string
 	secure   bool
+	sameSite http.SameSite
 	router   *http.ServeMux
 	upgrader websocket.Upgrader
 	tenant   tenant.Service
@@ -36,6 +37,11 @@ func New(port, origin string, secure bool, tenant tenant.Service) *server {
 			},
 		},
 		tenant: tenant,
+	}
+	if secure {
+		s.sameSite = http.SameSiteStrictMode
+	} else {
+		s.sameSite = http.SameSiteLaxMode
 	}
 
 	routes := map[string]map[string]http.HandlerFunc{

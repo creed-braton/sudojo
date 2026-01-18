@@ -6,7 +6,10 @@ COPY go.mod go.sum ./
 
 RUN go mod download
 
-COPY main.go pkg adp svc ./
+COPY main.go ./main.go
+COPY pkg ./pkg
+COPY adp ./adp
+COPY svc ./svc
 
 RUN go build -o ./bin ./main.go
 

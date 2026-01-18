@@ -121,7 +121,7 @@ func (s *server) postPlayer(w http.ResponseWriter, r *http.Request) {
 		Path:     "/api/lobbies/" + id,
 		HttpOnly: true,
 		Secure:   s.secure,
-		SameSite: http.SameSiteStrictMode,
+		SameSite: s.sameSite,
 		MaxAge:   2592000, // 30 days
 	})
 
