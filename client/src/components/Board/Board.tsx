@@ -13,12 +13,17 @@ const Board = ({ board, cursor, setCursor }: BoardProps): ReactElement => {
     <table className={style.board} role="grid">
       <tbody className={style.body}>
         {board.map((row: Cell[], i: number) => (
-          <tr className={style.row} key={`row-${i}`}>
+          <tr className={style.row} key={i}>
             {row.map((cell: Cell, j: number) => (
               <td
                 className={style.cell}
-                aria-selected={cursor?.row === i && cursor?.column === j}
-                key={`cell-${i}-${j}`}
+                aria-selected={
+                  cell.animation === null &&
+                  cursor?.row === i &&
+                  cursor?.column === j
+                }
+                data-animation={cell.animation?.type}
+                key={j}
               >
                 <button
                   className={style.button}

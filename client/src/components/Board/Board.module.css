@@ -1,32 +1,41 @@
 .board {
   height: 100%;
   aspect-ratio: 1;
-  background: rgba(60 60 60);
-  border-collapse: collapse;
+  background: rgba(22, 29, 38);
+  box-shadow: 0px 4px 24px rgba(0 0 0);
+  border-collapse: separate;
+  border: 1px solid rgba(120 120 120);
+  border-radius: 3%;
 }
 
 .body {
   display: grid;
   grid-template-rows: repeat(9, 1fr);
+  gap: 1px;
+  overflow: hidden;
   height: 100%;
   aspect-ratio: 1;
+  background: rgba(100 100 100);
+  border: 1px solid rgba(100 100 100);
+  margin: 5%;
 }
 
 .row {
   display: grid;
   grid-template-columns: repeat(9, 1fr);
+  gap: 1px;
 }
 
 .cell {
   height: 100%;
   width: 100%;
   position: relative;
-  border: 1px solid rgba(80 80 80);
+  background: rgba(60 60 60);
 }
 
 .cell[aria-selected="true"] {
   outline: 1px solid rgba(65, 105, 225, 0.7);
-  outline-offset: -2px;
+  outline-offset: -1px;
 }
 
 .cell[aria-selected="true"]::after {
@@ -77,7 +86,7 @@
 
 .button span[data-initial="true"] {
   font-weight: bold;
-  color: rgba(256 256 256);
+  color: rgba(255 255 255);
 }
 
 .button .notes {
@@ -95,5 +104,39 @@
   align-items: center;
   font-size: 20cqmin;
   font-weight: bold;
-  color: rgba(256 256 256);
+  color: rgba(255 255 255);
+}
+
+.cell[data-animation="ping"] {
+  outline: 1px solid rgba(180, 100, 40, 0.7);
+  outline-offset: -1px;
+}
+
+.cell[data-animation="ping"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at center,
+    transparent 20%,
+    rgba(180, 100, 40, 0.3) 100%
+  );
+  pointer-events: none;
+}
+
+.cell[data-animation="conflict"] {
+  outline: 1px solid rgba(220, 60, 60, 0.7);
+  outline-offset: -1px;
+}
+
+.cell[data-animation="conflict"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at center,
+    transparent 20%,
+    rgba(220, 60, 60, 0.3) 100%
+  );
+  pointer-events: none;
 }

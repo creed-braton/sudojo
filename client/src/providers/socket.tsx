@@ -31,6 +31,8 @@ export type SocketContextProps = {
   setOnInsert: (
     callback: (row: number, column: number, value: number) => void,
   ) => void;
+  setOnConflict: (callback: (row: number, column: number) => void) => void;
+  setOnPing: (callback: (row: number, column: number) => void) => void;
 };
 
 const SocketContext = createContext<SocketContextProps | null>(null);
@@ -52,11 +54,24 @@ export const SocketProvider = ({ url, children }: SocketProviderProps) => {
   const onInsertRef: RefObject<
     (row: number, column: number, value: number) => void
   > = useRef<(row: number, column: number, value: number) => void>(() => {});
+  const onConflictRef: RefObject<(row: number, column: number) => void> =
+    useRef<(row: number, column: number) => void>(() => {});
+  const onPingRef: RefObject<(row: number, column: number) => void> = useRef<
+    (row: number, column: number) => void
+  >(() => {});
 
   const setOnInsert = (
     callback: (row: number, column: number, value: number) => void,
   ): void => {
     onInsertRef.current = callback;
+  };
+  const setOnConflict = (
+    callback: (row: number, column: number) => void,
+  ): void => {
+    onConflictRef.current = callback;
+  };
+  const setOnPing = (callback: (row: number, column: number) => void): void => {
+    onPingRef.current = callback;
   };
 
   useEffect((): void => {
@@ -114,9 +129,17 @@ export const SocketProvider = ({ url, children }: SocketProviderProps) => {
               message.current_board[message.row][message.column],
             );
           }
+          if (
+            message.row !== undefined &&
+            message.column !== undefined &&
+            message.conflict !== undefined
+          ) {
+            onConflictRef.current(message.row, message.column);
+          }
           message.error && console.error(message.error);
         } else if (isPingMessage(message)) {
           if (message.row !== undefined && message.column !== undefined) {
+            onPingRef.current(message.row, message.column);
           } else if (message.error !== undefined) {
             console.error(message.error);
           }
@@ -160,6 +183,8 @@ export const SocketProvider = ({ url, children }: SocketProviderProps) => {
     insert,
     ping,
     setOnInsert,
+    setOnConflict,
+    setOnPing,
   };
 
   return (

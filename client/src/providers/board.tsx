@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -9,9 +10,17 @@ import {
 import { useSocket, type SocketContextProps } from "./socket";
 import { useNotes, type NotesContextProps } from "./notes";
 
+export type AnimationType = "conflict" | "ping";
+
+export type Animation = {
+  id: string;
+  type: AnimationType;
+};
+
 export type Cell = {
   value: number;
   initial: boolean;
+  animation: Animation | null;
   notes: Set<number>;
 };
 
@@ -33,8 +42,56 @@ type BoardProviderProps = {
 };
 
 export const BoardProvider = ({ children }: BoardProviderProps) => {
-  const { id, initial, current }: SocketContextProps = useSocket();
+  const { id, initial, current, setOnConflict, setOnPing }: SocketContextProps =
+    useSocket();
   const { notes }: NotesContextProps = useNotes();
+
+  const [animations, setAnimations] = useState<Map<string, Animation>>(
+    new Map(),
+  );
+
+  const triggerAnimation = useCallback(
+    (type: AnimationType, row: number, column: number): void => {
+      const key: string = `${row}-${column}`;
+      const id: string = crypto.randomUUID();
+
+      setAnimations((prev): Map<string, Animation> => {
+        const next: Map<string, Animation> = new Map(prev);
+        next.set(key, { id: id, type });
+        return next;
+      });
+
+      setTimeout((): void => {
+        setAnimations((prev: Map<string, Animation>) => {
+          const current: Animation | undefined = prev.get(key);
+          if (current?.id !== id) return prev;
+          const next: Map<string, Animation> = new Map(prev);
+          next.delete(key);
+          return next;
+        });
+      }, 400);
+    },
+    [],
+  );
+
+  const handleConflict = useCallback(
+    (row: number, column: number): void => {
+      triggerAnimation("conflict", row, column);
+    },
+    [triggerAnimation],
+  );
+
+  const handlePing = useCallback(
+    (row: number, column: number): void => {
+      triggerAnimation("ping", row, column);
+    },
+    [triggerAnimation],
+  );
+
+  useEffect((): void => {
+    setOnConflict(handleConflict);
+    setOnPing(handlePing);
+  }, []);
 
   const board: Cell[][] | null = useMemo(() => {
     if (initial === null || current === null) return null;
@@ -47,13 +104,14 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
         board[row].push({
           value: current[row][col],
           initial: initial[row][col] !== 0,
+          animation: animations.get(key) ?? null,
           notes: notes.get(key) ?? new Set(),
         });
       }
     }
 
     return board;
-  }, [initial, current, notes]);
+  }, [initial, current, animations, notes]);
 
   const [cursor, setCursor] = useState<Position | null>(null);
 
