@@ -63,7 +63,13 @@ export const InputProvider = ({ children }: InputProviderProps) => {
 
     const row: number = board.cursor.row;
     const column: number = board.cursor.column;
-    if (board.board[row][column].value !== 0 && mode === "notes") return;
+    if (
+      board.board[row][column].value !== 0 &&
+      (mode === "notes" ||
+        socket.config?.strict_mode ||
+        board.board[row][column].initial)
+    )
+      return;
 
     mode === "notes"
       ? notes.insert(row, column, value)

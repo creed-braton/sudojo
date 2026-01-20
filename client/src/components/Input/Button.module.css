@@ -1,0 +1,17 @@
+.button {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  container-type: size;
+  width: 40px;
+  height: 40px;
+  background: rgba(29 34 41);
+  color: rgba(255 255 255);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
