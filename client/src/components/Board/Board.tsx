@@ -1,4 +1,4 @@
-import { type ReactElement } from "react";
+import { type ReactElement, type RefObject } from "react";
 import type { Cell, Position } from "../../providers/board";
 import style from "./Board.module.css";
 
@@ -6,11 +6,12 @@ type BoardProps = {
   board: Cell[][];
   cursor: Position | null;
   setCursor: (row: number, column: number) => void;
+  ref: RefObject<HTMLTableElement | null>;
 };
 
-const Board = ({ board, cursor, setCursor }: BoardProps): ReactElement => {
+const Board = ({ board, cursor, setCursor, ref }: BoardProps): ReactElement => {
   return (
-    <table className={style.board} role="grid">
+    <table ref={ref} className={style.board} role="grid">
       <tbody className={style.body}>
         {board.map((row: Cell[], i: number) => (
           <tr className={style.row} key={i}>

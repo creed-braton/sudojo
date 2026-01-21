@@ -16,8 +16,8 @@ const Game = (): ReactElement => {
   const board: BoardContextProps = useBoard();
   const input: InputContextProps = useInput();
 
-  const boardRef: RefObject<HTMLDivElement | null> =
-    useRef<HTMLDivElement>(null);
+  const boardRef: RefObject<HTMLTableElement | null> =
+    useRef<HTMLTableElement>(null);
   const [boardWidth, setBoardWidth] = useState<number>(0);
 
   useEffect((): void => {
@@ -36,10 +36,6 @@ const Game = (): ReactElement => {
     return () => observer.disconnect();
   }, [board.board]);
 
-  useEffect((): void => {
-    console.log(boardWidth);
-  }, [boardWidth]);
-
   return (
     <div
       style={{
@@ -48,32 +44,30 @@ const Game = (): ReactElement => {
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
+        padding: "1%",
         gap: "2%",
+        containerType: "size",
       }}
     >
       {board.board !== null && (
         <>
           <div
-            ref={boardRef}
             style={{
-              height: "80%",
-              width: "fit-content",
               display: "flex",
               justifyContent: "center",
+              height: "100%",
+              width: "100%",
+              containerType: "size",
             }}
           >
             <Board
               board={board.board}
               cursor={board.cursor}
               setCursor={input.setCursor}
+              ref={boardRef}
             />
           </div>
-          <div
-            style={{
-              height: "20%",
-              width: `${boardWidth}px`,
-            }}
-          >
+          <div style={{ minHeight: "20%", width: `${boardWidth}px` }}>
             <Input />
           </div>
         </>

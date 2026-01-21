@@ -1,6 +1,6 @@
 .board {
-  height: 100%;
-  wdith: 100%;
+  width: min(100cqw, 100cqh);
+  height: min(100cqw, 100cqh);
   aspect-ratio: 1;
   background: rgb(16 22 29);
   box-shadow: 0px 4px 24px rgba(0 0 0);
