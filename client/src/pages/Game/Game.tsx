@@ -44,6 +44,7 @@ const Game = (): ReactElement => {
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
+        justifyContent: "center",
         padding: "1%",
         gap: "2%",
         containerType: "size",
@@ -53,11 +54,7 @@ const Game = (): ReactElement => {
         <>
           <div
             style={{
-              display: "flex",
-              justifyContent: "center",
-              height: "100%",
-              width: "100%",
-              containerType: "size",
+              width: "min(100cqw, 80cqh)",
             }}
           >
             <Board
@@ -67,7 +64,7 @@ const Game = (): ReactElement => {
               ref={boardRef}
             />
           </div>
-          <div style={{ minHeight: "20%", width: `${boardWidth}px` }}>
+          <div style={{ aspectRatio: "5/1", width: `${boardWidth}px` }}>
             <Input />
           </div>
         </>

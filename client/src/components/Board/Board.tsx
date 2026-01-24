@@ -6,10 +6,15 @@ type BoardProps = {
   board: Cell[][];
   cursor: Position | null;
   setCursor: (row: number, column: number) => void;
-  ref: RefObject<HTMLTableElement | null>;
+  ref?: RefObject<HTMLTableElement | null> | null;
 };
 
-const Board = ({ board, cursor, setCursor, ref }: BoardProps): ReactElement => {
+const Board = ({
+  board,
+  cursor,
+  setCursor,
+  ref = null,
+}: BoardProps): ReactElement => {
   return (
     <table ref={ref} className={style.board} role="grid">
       <tbody className={style.body}>

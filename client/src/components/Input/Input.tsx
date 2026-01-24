@@ -5,7 +5,7 @@ import style from "./Input.module.css";
 const Input = (): ReactElement => {
   return (
     <div className={style.input}>
-      <Button />
+      <Button>1</Button>
     </div>
   );
 };
