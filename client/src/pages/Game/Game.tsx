@@ -64,8 +64,13 @@ const Game = (): ReactElement => {
               ref={boardRef}
             />
           </div>
-          <div style={{ aspectRatio: "5/1", width: `${boardWidth}px` }}>
-            <Input />
+          <div style={{ maxWidth: `${boardWidth}px` }}>
+            <Input
+              mode={input.mode}
+              togglePing={input.togglePing}
+              toggleNotes={input.toggleNotes}
+              input={input.input}
+            />
           </div>
         </>
       )}

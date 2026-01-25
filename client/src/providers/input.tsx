@@ -9,7 +9,10 @@ import { useSocket, type SocketContextProps } from "./socket";
 import { useBoard, type BoardContextProps } from "./board";
 import { useNotes, type NotesContextProps } from "./notes";
 
+export type InputMode = "ping" | "notes" | "insert";
+
 export type InputContextProps = {
+  mode: InputMode;
   togglePing: () => void;
   toggleNotes: () => void;
   setCursor: (row: number, column: number) => void;
@@ -25,8 +28,6 @@ const InputContext = createContext<InputContextProps | null>(null);
 type InputProviderProps = {
   children: ReactNode;
 };
-
-type InputMode = "ping" | "notes" | "insert";
 
 export const InputProvider = ({ children }: InputProviderProps) => {
   const socket: SocketContextProps = useSocket();
@@ -137,6 +138,7 @@ export const InputProvider = ({ children }: InputProviderProps) => {
   };
 
   const value: InputContextProps = {
+    mode,
     togglePing,
     toggleNotes,
     setCursor,
