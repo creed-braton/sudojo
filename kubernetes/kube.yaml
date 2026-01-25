@@ -113,7 +113,7 @@ spec:
             - name: ORIGIN
               value: http://localhost:5173
             - name: SECURE
-              value: true
+              value: "true"
 
 ---
 apiVersion: v1
