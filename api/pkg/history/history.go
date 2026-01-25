@@ -6,11 +6,11 @@ import (
 	"sync"
 )
 
-// Represents an insert artifact which holds metadata about an insert event.
+// Represents an artifact which holds metadata about an insert event.
 type Artifact interface {
 	// Token of the player who initiated the event.
 	Player() string
-	// Timestamp when the event occurred.
+	// Nanosecond timestamp when the event occurred.
 	Timestamp() int64
 	// Row of the insertion.
 	Row() int
@@ -21,23 +21,25 @@ type Artifact interface {
 }
 
 type artifact struct {
-	player    string
-	timestamp int64
 	row       int
 	column    int
 	value     int
+	player    string
+	timestamp int64
 }
 
 var _ Artifact = &artifact{}
 
-// Creates a new artifact with provided values.
-func NewArtifact(player string, ts int64, row, col, val int) *artifact {
+// Creates a new artifact with the token of the player which made the insertion,
+// row and column of the cell position, the inserted value, and the current time
+// in nanoseconds.
+func NewArtifact(row, col, val int, player string, now int64) *artifact {
 	return &artifact{
-		player:    player,
-		timestamp: ts,
 		row:       row,
 		column:    col,
 		value:     val,
+		player:    player,
+		timestamp: now,
 	}
 }
 
@@ -61,11 +63,11 @@ func (a *artifact) Value() int {
 	return a.value
 }
 
-// Thread-safe lobby history to track insertion events of the game session.
+// Concurrency-safe lobby history to track insertion events of the game session.
 // Holds an initial and current map of artifacts. The initial artifacts were
-// provided to the constructor of the instance and are expected to be persisted.
-// The new artifact are kept seperate to remember which artifacts needs to be
-// persisted when tearing down the history instance.
+// provided to the constructor of the instance and are expected to already be
+// persisted. The new artifact are kept seperate to remember which artifacts needs
+// to be persisted when tearing down the history instance.
 type History interface {
 	// Appends a new artifact to the history, drops (player, row, col, val)
 	// duplicates.

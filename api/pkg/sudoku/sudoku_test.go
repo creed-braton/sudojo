@@ -3,6 +3,7 @@ package sudoku
 import "testing"
 
 func TestReadWrite(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		input [3]int // [row, col, val]
@@ -17,6 +18,7 @@ func TestReadWrite(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			row, col, val := tt.input[0], tt.input[1], tt.input[2]
 
 			t.Run("consistency", func(t *testing.T) {
@@ -60,6 +62,7 @@ func TestReadWrite(t *testing.T) {
 }
 
 func TestEqual(t *testing.T) {
+	t.Parallel()
 	var tests = []struct {
 		name  string
 		input [2]*sudoku
@@ -158,6 +161,7 @@ func TestEqual(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			// boards should always be in both directions equal
 			got := tt.input[0].Equal(tt.input[1]) &&
 				tt.input[1].Equal(tt.input[0])
@@ -169,6 +173,7 @@ func TestEqual(t *testing.T) {
 }
 
 func TestSerialization(t *testing.T) {
+	t.Parallel()
 	s := &sudoku{
 		{5, 3, 0, 0, 7, 0, 0, 0, 0},
 		{6, 0, 0, 1, 9, 5, 0, 0, 0},
@@ -205,6 +210,7 @@ func TestSerialization(t *testing.T) {
 }
 
 func TestValidBounds(t *testing.T) {
+	t.Parallel()
 	var tests = []struct {
 		name  string
 		input [2]int
@@ -223,6 +229,7 @@ func TestValidBounds(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got := ValidBounds(tt.input[0], tt.input[1])
 			if tt.want != got {
 				t.Errorf("got: %t, want: %t", got, tt.want)
@@ -232,6 +239,7 @@ func TestValidBounds(t *testing.T) {
 }
 
 func TestValidVal(t *testing.T) {
+	t.Parallel()
 	var tests = []struct {
 		name  string
 		input int
@@ -246,6 +254,7 @@ func TestValidVal(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got := ValidVal(tt.input)
 			if tt.want != got {
 				t.Errorf("got: %t, want: %t", got, tt.want)
@@ -255,6 +264,7 @@ func TestValidVal(t *testing.T) {
 }
 
 func TestValidRow(t *testing.T) {
+	t.Parallel()
 	type input struct {
 		s   *sudoku
 		row int
@@ -287,6 +297,7 @@ func TestValidRow(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got := tt.input.s.ValidRow(tt.input.row, tt.input.val)
 			if tt.want != got {
 				t.Errorf("got: %t, want: %t", got, tt.want)
@@ -296,6 +307,7 @@ func TestValidRow(t *testing.T) {
 }
 
 func TestValidCol(t *testing.T) {
+	t.Parallel()
 	type input struct {
 		s   *sudoku
 		col int
@@ -328,6 +340,7 @@ func TestValidCol(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got := tt.input.s.ValidCol(tt.input.col, tt.input.val)
 			if tt.want != got {
 				t.Errorf("got: %t, want: %t", got, tt.want)
@@ -337,6 +350,7 @@ func TestValidCol(t *testing.T) {
 }
 
 func TestValidBox(t *testing.T) {
+	t.Parallel()
 	type input struct {
 		s   *sudoku
 		row int
@@ -375,6 +389,7 @@ func TestValidBox(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got := tt.input.s.ValidBox(
 				tt.input.row,
 				tt.input.col,
@@ -388,6 +403,7 @@ func TestValidBox(t *testing.T) {
 }
 
 func TestComplete(t *testing.T) {
+	t.Parallel()
 	var tests = []struct {
 		name  string
 		input *sudoku
@@ -473,6 +489,7 @@ func TestComplete(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got := tt.input.Complete()
 			if tt.want != got {
 				t.Errorf("got: %t, want: %t", got, tt.want)
@@ -482,6 +499,7 @@ func TestComplete(t *testing.T) {
 }
 
 func TestFill(t *testing.T) {
+	t.Parallel()
 	for seed := range 1000 {
 		s := New()
 		s.Fill(int64(seed))
@@ -492,19 +510,21 @@ func TestFill(t *testing.T) {
 
 		for row := 0; row < BoardSize; row++ {
 			for col := 0; col < BoardSize; col++ {
-				val := s[row][col]
-				s[row][col] = EmptyCell
+				val := s.Cell(row, col)
+				s.SetCell(row, col, EmptyCell)
 				if !s.ValidRow(row, val) || !s.ValidCol(col, val) || !s.ValidBox(row, col, val) {
 					t.Errorf("invalid board for seed %d at cell (%d,%d)", seed, row, col)
 				}
-				s[row][col] = val
+				s.SetCell(row, col, val)
 			}
 		}
 	}
 }
 
 func TestCopy(t *testing.T) {
+	t.Parallel()
 	t.Run("partially filled board", func(t *testing.T) {
+		t.Parallel()
 		s := &sudoku{
 			{0, 0, 0, 0, 0, 0, 0, 1, 0},
 			{0, 0, 0, 0, 0, 2, 0, 0, 3},
@@ -523,13 +543,14 @@ func TestCopy(t *testing.T) {
 		if !s.Equal(c) {
 			t.Error("copy not equal")
 		}
-		s[4][4] = 5
+		s.SetCell(4, 4, 5)
 		if s.Equal(c) {
 			t.Error("copy pointer not independent")
 		}
 	})
 
 	t.Run("complete boards", func(t *testing.T) {
+		t.Parallel()
 		for seed := range 1000 {
 			s := New()
 			s.Fill(int64(seed))
@@ -540,7 +561,7 @@ func TestCopy(t *testing.T) {
 			if !s.Equal(c) {
 				t.Errorf("copy not equal for seed %d", seed)
 			}
-			s[4][4] = 0
+			s.SetCell(4, 4, 0)
 			if s.Equal(c) {
 				t.Errorf("copy pointer not independent for seed %d", seed)
 			}
@@ -549,6 +570,7 @@ func TestCopy(t *testing.T) {
 }
 
 func TestClues(t *testing.T) {
+	t.Parallel()
 	var tests = []struct {
 		name  string
 		input *sudoku
@@ -604,6 +626,7 @@ func TestClues(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got := tt.input.clues()
 			if tt.want != got {
 				t.Errorf("got: %d, want: %d", got, tt.want)
@@ -613,6 +636,7 @@ func TestClues(t *testing.T) {
 }
 
 func TestUniqueSolution(t *testing.T) {
+	t.Parallel()
 	var tests = []struct {
 		name  string
 		input *sudoku
@@ -668,6 +692,7 @@ func TestUniqueSolution(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			c := New()
 			tt.input.Copy(c)
 			got := c.UniqueSolution()
@@ -684,12 +709,12 @@ func TestUniqueSolution(t *testing.T) {
 
 				for row := 0; row < BoardSize; row++ {
 					for col := 0; col < BoardSize; col++ {
-						val := c[row][col]
-						c[row][col] = EmptyCell
+						val := c.Cell(row, col)
+						c.SetCell(row, col, EmptyCell)
 						if !c.ValidRow(row, val) || !c.ValidCol(col, val) || !c.ValidBox(row, col, val) {
 							t.Errorf("invalid solution at cell (%d,%d)", row, col)
 						}
-						c[row][col] = val
+						c.SetCell(row, col, val)
 					}
 				}
 			} else {
@@ -701,7 +726,117 @@ func TestUniqueSolution(t *testing.T) {
 	}
 }
 
+func TestHash(t *testing.T) {
+	t.Parallel()
+	var tests = []struct {
+		name  string
+		input [2]*sudoku
+		want  bool
+	}{
+		{
+			name:  "empty boards",
+			input: [2]*sudoku{New(), New()},
+			want:  true,
+		},
+		{
+			name: "identical complete boards",
+			input: [2]*sudoku{
+				{
+					{5, 3, 4, 6, 7, 8, 9, 1, 2},
+					{6, 7, 2, 1, 9, 5, 3, 4, 8},
+					{1, 9, 8, 3, 4, 2, 5, 6, 7},
+					{8, 5, 9, 7, 6, 1, 4, 2, 3},
+					{4, 2, 6, 8, 5, 3, 7, 9, 1},
+					{7, 1, 3, 9, 2, 4, 8, 5, 6},
+					{9, 6, 1, 5, 3, 7, 2, 8, 4},
+					{2, 8, 7, 4, 1, 9, 6, 3, 5},
+					{3, 4, 5, 2, 8, 6, 1, 7, 9},
+				},
+				{
+					{5, 3, 4, 6, 7, 8, 9, 1, 2},
+					{6, 7, 2, 1, 9, 5, 3, 4, 8},
+					{1, 9, 8, 3, 4, 2, 5, 6, 7},
+					{8, 5, 9, 7, 6, 1, 4, 2, 3},
+					{4, 2, 6, 8, 5, 3, 7, 9, 1},
+					{7, 1, 3, 9, 2, 4, 8, 5, 6},
+					{9, 6, 1, 5, 3, 7, 2, 8, 4},
+					{2, 8, 7, 4, 1, 9, 6, 3, 5},
+					{3, 4, 5, 2, 8, 6, 1, 7, 9},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "single cell different",
+			input: [2]*sudoku{
+				{
+					{1, 0, 0, 0, 0, 0, 0, 0, 0},
+					{0, 0, 0, 0, 0, 0, 0, 0, 0},
+					{0, 0, 0, 0, 0, 0, 0, 0, 0},
+					{0, 0, 0, 0, 0, 0, 0, 0, 0},
+					{0, 0, 0, 0, 0, 0, 0, 0, 0},
+					{0, 0, 0, 0, 0, 0, 0, 0, 0},
+					{0, 0, 0, 0, 0, 0, 0, 0, 0},
+					{0, 0, 0, 0, 0, 0, 0, 0, 0},
+					{0, 0, 0, 0, 0, 0, 0, 0, 0},
+				},
+				{
+					{2, 0, 0, 0, 0, 0, 0, 0, 0},
+					{0, 0, 0, 0, 0, 0, 0, 0, 0},
+					{0, 0, 0, 0, 0, 0, 0, 0, 0},
+					{0, 0, 0, 0, 0, 0, 0, 0, 0},
+					{0, 0, 0, 0, 0, 0, 0, 0, 0},
+					{0, 0, 0, 0, 0, 0, 0, 0, 0},
+					{0, 0, 0, 0, 0, 0, 0, 0, 0},
+					{0, 0, 0, 0, 0, 0, 0, 0, 0},
+					{0, 0, 0, 0, 0, 0, 0, 0, 0},
+				},
+			},
+			want: false,
+		},
+		{
+			name: "same value different position",
+			input: [2]*sudoku{
+				{
+					{5, 0, 0, 0, 0, 0, 0, 0, 0},
+					{0, 0, 0, 0, 0, 0, 0, 0, 0},
+					{0, 0, 0, 0, 0, 0, 0, 0, 0},
+					{0, 0, 0, 0, 0, 0, 0, 0, 0},
+					{0, 0, 0, 0, 0, 0, 0, 0, 0},
+					{0, 0, 0, 0, 0, 0, 0, 0, 0},
+					{0, 0, 0, 0, 0, 0, 0, 0, 0},
+					{0, 0, 0, 0, 0, 0, 0, 0, 0},
+					{0, 0, 0, 0, 0, 0, 0, 0, 0},
+				},
+				{
+					{0, 5, 0, 0, 0, 0, 0, 0, 0},
+					{0, 0, 0, 0, 0, 0, 0, 0, 0},
+					{0, 0, 0, 0, 0, 0, 0, 0, 0},
+					{0, 0, 0, 0, 0, 0, 0, 0, 0},
+					{0, 0, 0, 0, 0, 0, 0, 0, 0},
+					{0, 0, 0, 0, 0, 0, 0, 0, 0},
+					{0, 0, 0, 0, 0, 0, 0, 0, 0},
+					{0, 0, 0, 0, 0, 0, 0, 0, 0},
+					{0, 0, 0, 0, 0, 0, 0, 0, 0},
+				},
+			},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := tt.input[0].Hash() == tt.input[1].Hash()
+			if tt.want != got {
+				t.Errorf("got: %t, want: %t", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestGeneratePuzzle(t *testing.T) {
+	t.Parallel()
 	for seed := range 100 {
 		s := New()
 		s.Fill(int64(seed))

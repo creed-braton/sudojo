@@ -2,14 +2,11 @@ package lobby
 
 import (
 	"errors"
-	"sort"
 	"sudojo/pkg/game"
 	"sudojo/pkg/history"
 	"sudojo/pkg/player"
+	"sudojo/pkg/sudoku"
 	"sync"
-	"time"
-
-	"github.com/google/uuid"
 )
 
 var (
@@ -17,18 +14,26 @@ var (
 	ErrPlayerNotFound = errors.New("player not found")
 )
 
-// Holds game state, player state and metadata.
+// Represents a multiplayer game session that manages players, game state,
+// and insert history.
 type Lobby interface {
 	// Returns the ID of the lobby.
 	Id() string
-	// Returns the shared game state.
+	// Returns the config of the lobby.
+	Config() Config
+	// Returns concurrency-safe game state of the lobby.
 	Game() game.Game
-	// Returns thread-safe insert history of the lobby.
+	// Returns concurrency-safe game history of the lobby.
 	History() history.History
+	// Returns a list of all players in the lobby with their
+	// name and whether they are active or not.
+	Players() []player.Player
+	// Returns the player with the token in the lobby. Returns nil if no
+	// specified token exists.
+	Player(token string) player.Player
 	// Creates a player with provided name and returns the generated
 	// token. Returns ErrLobbyFull if lobby is full, player.ErrNameTooLong
-	// if name is too long and player.ErrInvalidChar if name contains
-	// an illegal character.
+	// or player.ErrInvalidChar if the player name is invalid.
 	Create(name string) (string, error)
 	// Sets the player associated with the provided token to active.
 	// Returns updated list of player state if successful. Returns
@@ -39,58 +44,44 @@ type Lobby interface {
 	// Returns updated list of player state if successful. Returns
 	// ErrPlayerNotFound if no player is associated with the token.
 	Leave(token string) ([]player.Player, error)
-	// Returns a list of all player names in the lobby with their
-	// and whether they are active or not.
-	Players() []player.Player
-	// Whether the lobby is in strict mode or not.
-	Strict() bool
-	// Maximum amount of players the lobby can hold.
-	Size() int
+	// Inserts the value at the specified cell position and adds the
+	// insertion to the lobby history. Returns the new board state if
+	// changed, otherwise nil. Returns game.ErrOutOfBounds if row or col
+	// is invalid, game.ErrFinished if the game is already finished,
+	// game.ErrNotStarted if not yet started, or game.ErrInitialClue if
+	// the position is an initial clue. Strict lobbies may additionally
+	// return game.ErrStrictValRange or game.ErrIncorrect. Lax lobbies
+	// may return game.ErrLaxValRange, game.ErrRowConflict,
+	// game.ErrColConflict, or game.ErrBoxConflict.
+	Insert(row, col, val int, token string, now int64) (sudoku.Sudoku, error)
 }
 
 type lobby struct {
 	id      string
+	config  Config
 	game    game.Game
-	players map[string]player.Player
 	history history.History
-	strict  bool
-	size    int
+	players map[string]player.Player
 	lock    sync.RWMutex
 }
 
 var _ Lobby = &lobby{}
 
-// Returns a lobby instance with the provided states and settings.
+// Creates a new lobby with the specified id, config, game, history,
+// and initial players.
 func New(
 	id string,
+	config Config,
 	game game.Game,
-	players map[string]player.Player,
 	history history.History,
-	strict bool,
-	size int,
+	players map[string]player.Player,
 ) *lobby {
 	return &lobby{
 		id:      id,
+		config:  config,
 		game:    game,
-		players: players,
 		history: history,
-		strict:  strict,
-		size:    size,
-	}
-}
-
-// Creates a new lobby instance with the provided settings.
-func Open(strict bool, size int) *lobby {
-	now := time.Now().UTC().UnixNano()
-	game := game.Generate(now)
-	game.Start()
-	return &lobby{
-		id:      uuid.NewString(),
-		game:    game,
-		players: make(map[string]player.Player, size),
-		history: history.New([]history.Artifact{}),
-		strict:  strict,
-		size:    size,
+		players: players,
 	}
 }
 
@@ -98,26 +89,34 @@ func (l *lobby) Id() string {
 	return l.id
 }
 
+func (l *lobby) Config() Config {
+	return l.config
+}
+
 func (l *lobby) Game() game.Game {
 	return l.game
+}
+
+func (l *lobby) Player(token string) player.Player {
+	l.lock.RLock()
+	defer l.lock.RUnlock()
+
+	return l.players[token]
+}
+
+func (l *lobby) Players() []player.Player {
+	l.lock.RLock()
+	defer l.lock.RUnlock()
+
+	return player.Sort(l.players)
 }
 
 func (l *lobby) History() history.History {
 	return l.history
 }
 
-func (l *lobby) Player(token string) error {
-	l.lock.RLock()
-	defer l.lock.RUnlock()
-
-	if _, ok := l.players[token]; !ok {
-		return ErrPlayerNotFound
-	}
-	return nil
-}
-
 func (l *lobby) Create(name string) (string, error) {
-	if l.game.Finished() != nil {
+	if l.game.FinishedAt() != nil {
 		return "", game.ErrFinished
 	}
 
@@ -130,7 +129,7 @@ func (l *lobby) Create(name string) (string, error) {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 
-	if len(l.players) >= l.size {
+	if len(l.players) >= l.config.MaxSize() {
 		return "", ErrLobbyFull
 	}
 
@@ -138,63 +137,52 @@ func (l *lobby) Create(name string) (string, error) {
 	return token, nil
 }
 
-// Returns all players sorted alphabetically by token (caller must hold lock).
-func (l *lobby) sortedPlayers() []player.Player {
-	tokens := make([]string, 0, len(l.players))
-	for token := range l.players {
-		tokens = append(tokens, token)
-	}
-	sort.Strings(tokens)
-
-	players := make([]player.Player, 0, len(l.players))
-	for _, token := range tokens {
-		players = append(players, l.players[token])
-	}
-
-	return players
-}
-
 func (l *lobby) Join(token string) ([]player.Player, error) {
-	if l.game.Finished() != nil {
+	if l.game.FinishedAt() != nil {
 		return nil, game.ErrFinished
 	}
 
 	l.lock.Lock()
 	defer l.lock.Unlock()
 
-	player, exist := l.players[token]
+	p, exist := l.players[token]
 	if !exist {
 		return nil, ErrPlayerNotFound
 	}
-	player.SetActive(true)
+	p.SetActive(true)
 
-	return l.sortedPlayers(), nil
+	return player.Sort(l.players), nil
 }
 
 func (l *lobby) Leave(token string) ([]player.Player, error) {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 
-	player, exist := l.players[token]
+	p, exist := l.players[token]
 	if !exist {
 		return nil, ErrPlayerNotFound
 	}
-	player.SetActive(false)
+	p.SetActive(false)
 
-	return l.sortedPlayers(), nil
+	return player.Sort(l.players), nil
 }
 
-func (l *lobby) Players() []player.Player {
-	l.lock.RLock()
-	defer l.lock.RUnlock()
+func (l *lobby) Insert(row, col, val int, token string, now int64) (sudoku.Sudoku, error) {
+	var (
+		current sudoku.Sudoku
+		err     error
+	)
 
-	return l.sortedPlayers()
-}
+	if l.config.Strict() {
+		current, err = l.Game().Strict(row, col, val, now)
+	} else {
+		current, err = l.Game().Lax(row, col, val, now)
+	}
 
-func (l *lobby) Strict() bool {
-	return l.strict
-}
+	if current != nil || err == game.ErrRowConflict ||
+		err == game.ErrColConflict || err == game.ErrBoxConflict {
+		l.history.Append(history.NewArtifact(row, col, val, token, now))
+	}
 
-func (l *lobby) Size() int {
-	return l.size
+	return current, err
 }

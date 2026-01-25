@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"sort"
 	"sync/atomic"
 	"unicode"
 )
@@ -79,4 +80,20 @@ func ValidName(name string) error {
 		}
 	}
 	return nil
+}
+
+// Returns values of the provided player map in a by token sorted list.
+func Sort(players map[string]Player) []Player {
+	tokens := make([]string, 0, len(players))
+	for token := range players {
+		tokens = append(tokens, token)
+	}
+	sort.Strings(tokens)
+
+	sorted := make([]Player, 0, len(players))
+	for _, token := range tokens {
+		sorted = append(sorted, players[token])
+	}
+
+	return sorted
 }

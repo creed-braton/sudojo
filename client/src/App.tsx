@@ -2,34 +2,38 @@ import { useEffect, type ReactElement } from "react";
 import {
   Route,
   Routes,
+  useLocation,
   useNavigate,
   type NavigateFunction,
 } from "react-router-dom";
-import type { LobbyProps } from "./hooks/lobby";
-import useLobby from "./hooks/lobby";
-import Home from "./components/Home/Home";
-import Lobby from "./components/Lobby/Lobby";
-import Statistic from "./components/Statistic/Statistic";
+import { postLobby, postPlayer } from "./api/api";
+import Game from "./pages/Game/Game";
 
 const App = (): ReactElement => {
-  const lobby: LobbyProps = useLobby();
   const navigate: NavigateFunction = useNavigate();
+  const location = useLocation();
 
   useEffect((): void => {
-    lobby.id && navigate(`/l/${lobby.id}`);
-  }, [lobby.id]);
+    const id: string[] = location.pathname.split("/");
+    if (id.length === 3) return;
+
+    postLobby(6, true, true, true, "joker").then(
+      (id: string): void =>
+        void postPlayer(id).then((): void => void navigate(`/l/${id}`)),
+    );
+  }, []);
 
   return (
-    <>
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+      }}
+    >
       <Routes>
-        <Route path="/" element={<Home createLobby={lobby.create} />} />
-        <Route
-          path="/l/:id"
-          element={<Lobby joinLobby={lobby.join} getToken={lobby.getToken} />}
-        />
-        <Route path="/s/:id" element={<Statistic />} />
+        <Route path="/l/:id" element={<Game />} />
       </Routes>
-    </>
+    </div>
   );
 };
 

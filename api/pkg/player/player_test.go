@@ -7,7 +7,7 @@ func TestPlayer(t *testing.T) {
 	p := New(token, name)
 
 	if p == nil {
-		t.Fatal("unexpected nil player")
+		t.Fatal("expected player, got nil")
 	}
 	if p.Token() != token {
 		t.Errorf("expected token '%s', got '%s'", token, p.Token())
@@ -50,8 +50,35 @@ func TestValidName(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			got := ValidName(test.input)
 			if test.want != got {
-				t.Errorf("want: %v, got: %v", test.want, got)
+				t.Errorf("expected error: '%v', got: '%v'", test.want, got)
 			}
 		})
+	}
+}
+
+func TestSort(t *testing.T) {
+	players := map[string]Player{
+		"charlie": New("charlie", ""),
+		"alice":   New("alice", ""),
+		"bob":     New("bob", ""),
+		"bard":    New("bard", ""),
+	}
+
+	sorted := Sort(players)
+
+	if len(sorted) != 4 {
+		t.Fatalf("expected 4 players, got %d", len(sorted))
+	}
+	if sorted[0].Token() != "alice" {
+		t.Errorf("expected first player token 'alice', got '%s'", sorted[0].Token())
+	}
+	if sorted[1].Token() != "bard" {
+		t.Errorf("expected second player token 'bard', got '%s'", sorted[1].Token())
+	}
+	if sorted[2].Token() != "bob" {
+		t.Errorf("expected third player token 'bob', got '%s'", sorted[2].Token())
+	}
+	if sorted[3].Token() != "charlie" {
+		t.Errorf("expected fourth player token 'charlie', got '%s'", sorted[3].Token())
 	}
 }

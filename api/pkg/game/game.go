@@ -6,61 +6,73 @@ import (
 	"sudojo/pkg/sudoku"
 	"sync"
 	"sync/atomic"
-	"time"
 )
 
 var (
-	ErrIncorrect         = errors.New("input incorrect")
-	ErrRowConflict       = errors.New("value already exist in row")
-	ErrColConflict       = errors.New("value already exist in column")
-	ErrBoxConflict       = errors.New("value already exist in box")
-	ErrOutOfBounds       = errors.New("cell position out of bounds")
-	errLaxValRange       = fmt.Errorf("input must be between %d and %d", sudoku.EmptyCell, sudoku.MaxValue)
-	errStrictValRange    = fmt.Errorf("input must be between %d and %d", sudoku.MinValue, sudoku.MaxValue)
-	errInitialClue       = errors.New("cannot overwrite initial clue")
-	ErrFinished          = errors.New("game is already finish")
-	ErrNotFinished       = errors.New("game is not finished")
-	errNotStarted        = errors.New("game has not started yet")
-	ErrInvalidDifficulty = errors.New("invalid game difficulty")
+	ErrIncorrect      = errors.New("input value incorrect")
+	ErrRowConflict    = errors.New("value already exist in row")
+	ErrColConflict    = errors.New("value already exist in column")
+	ErrBoxConflict    = errors.New("value already exist in box")
+	ErrOutOfBounds    = errors.New("cell position out of bounds")
+	ErrFinished       = errors.New("game is already finished")
+	ErrNotFinished    = errors.New("game is not finished")
+	ErrNotStarted     = errors.New("game has not started yet")
+	ErrDifficulty     = errors.New("invalid game difficulty")
+	ErrLaxValRange    = fmt.Errorf("input value must be between %d and %d", sudoku.EmptyCell, sudoku.MaxValue)
+	ErrStrictValRange = fmt.Errorf("input value must be between %d and %d", sudoku.MinValue, sudoku.MaxValue)
+	ErrInitialClue    = errors.New("cannot overwrite initial clue")
 )
 
 const (
-	Easy    = "easy"
-	Medium  = "medium"
-	Hard    = "hard"
-	Extreme = "extreme"
-	Joker   = "joker"
+	Beginner = "beginner"
+	Easy     = "easy"
+	Medium   = "medium"
+	Hard     = "hard"
+	Expert   = "expert"
+	Extreme  = "extreme"
+	Joker    = "joker"
 )
 
 // Represents a Sudoku game that encapsulates the current puzzle state, original
-// puzzle setup, complete solution, and additional metadata. Provides thread-safe
-// methods for interacting with the shared mutable current board state.
+// puzzle setup, complete solution, and additional metadata. Safe for concurrent use.
 type Game interface {
 	// Hash of initial board state to identify same games.
 	Hash() string
-	// Puts the game in started state by setting the start timestamp if not already set.
-	Start()
-	// Thread-safely inserts a value into the current board if within bounds, not
-	// an initial clue, and causes no row, column, or box conflicts. Returns the
-	// updated board if inserted, otherwise nil, and an error for invalid or
-	// conflicting inputs.
-	Lax(row, col, val int) (sudoku.Sudoku, error)
-	// Thread-safely inserts a value into the current board if within bounds and
-	// not an initial clue. The correct solution value is placed regardless of the
-	// input, and an error is returned if the provided value does not match the
-	// solution.
-	Strict(row, col, val int) (sudoku.Sudoku, error)
-	// Returns a thread-safe copy of the current board state.
+	// Inserts a value into the current board if within bounds, not an initial clue,
+	// and causes no row, column, or box conflicts. Returns the updated board if
+	// inserted, otherwise nil, and an error for invalid or conflicting inputs.
+	// The now parameter is used as the finish timestamp if the move completes the board.
+	// Returns ErrOutOfBounds, ErrLaxValRange, ErrInitialClue, ErrNotStarted,
+	// ErrFinished, or ErrRowConflict, ErrColConflict, ErrBoxConflict on conflict.
+	// Safe for concurrent use.
+	Lax(row, col, val int, now int64) (sudoku.Sudoku, error)
+	// Inserts a value into the current board if within bounds and not an initial
+	// clue. The correct solution value is placed regardless of the input, and an
+	// error is returned if the provided value does not match the solution.
+	// The now parameter is used as the finish timestamp if the move completes the board.
+	// Returns ErrOutOfBounds, ErrStrictValRange, ErrInitialClue, ErrNotStarted,
+	// ErrFinished, or ErrIncorrect if the value doesn't match the solution.
+	// Safe for concurrent use.
+	Strict(row, col, val int, now int64) (sudoku.Sudoku, error)
+	// Returns a copy of the current board state. Safe for concurrent use.
 	Current() sudoku.Sudoku
-	// Returns the initial board state.
+	// Returns the initial board state. The returned value is immutable and must
+	// not be altered; safe for concurrent reads.
 	Initial() sudoku.Sudoku
-	// Returns the solution of the puzzle.
+	// Returns the solution of the puzzle. The returned value is immutable and must
+	// not be altered; safe for concurrent reads.
 	Solution() sudoku.Sudoku
-	// Returns nano second start timestamp, nil if not started.
-	Started() *int64
-	// Returns nano second finish timestamp, nil if not finished.
-	Finished() *int64
-	// Returns the difficulty of the game (easy, medium, hard, expert, joker).
+	// Puts the game in started state by setting the start timestamp if not already set.
+	Start(now int64)
+	// Returns nanosecond start timestamp, nil if not started.
+	StartedAt() *int64
+	// Puts the game in finished state by setting the finish timestamp if not already set.
+	// Game must be started otherwise will return ErrNotStarted.
+	Finish(now int64) error
+	// Returns nanosecond finish timestamp, nil if not finished.
+	FinishedAt() *int64
+	// Returns the difficulty of the game (beginner, easy, medium, hard, expert, extreme
+	// or joker).
 	Difficulty() string
 }
 
@@ -77,14 +89,21 @@ type game struct {
 
 var _ Game = &game{}
 
+func ValidDifficulty(difficulty string) bool {
+	return difficulty == Beginner || difficulty == Easy ||
+		difficulty == Medium || difficulty == Hard ||
+		difficulty == Expert || difficulty == Extreme ||
+		difficulty == Joker
+}
+
+// Creates a game with the provided board states, timestamps, and difficulty.
+// Returns ErrDifficulty if the difficulty is not valid.
 func New(
 	current, initial, solution sudoku.Sudoku,
 	started, finished *int64, difficulty string,
 ) (*game, error) {
-	if difficulty != Easy && difficulty != Medium &&
-		difficulty != Hard && difficulty != Extreme &&
-		difficulty != Joker {
-		return nil, ErrInvalidDifficulty
+	if !ValidDifficulty(difficulty) {
+		return nil, ErrDifficulty
 	}
 
 	g := &game{
@@ -131,23 +150,14 @@ func (g *game) Hash() string {
 	return g.initial.Hash()
 }
 
-func (g *game) Start() {
-	g.lock.Lock()
-	defer g.lock.Unlock()
-
-	if g.started.Load() == nil {
-		start := time.Now().UTC().UnixNano()
-		g.started.Store(&start)
-	}
-}
-
 // Updates the current board with the given value and marks the game as finished
-// if the board becomes complete. Returns a deep copy of the updated state.
-func (g *game) insert(row, col, val int) sudoku.Sudoku {
+// using the provided now timestamp if the board becomes complete. Returns a deep
+// copy of the updated state. Isn't concurrency-safe so write lock must be held
+// by the caller.
+func (g *game) insert(row, col, val int, now int64) sudoku.Sudoku {
 	g.current.SetCell(row, col, val)
 	if g.current.Complete() {
-		finished := time.Now().UTC().UnixNano()
-		g.finished.Store(&finished)
+		g.finished.Store(&now)
 	}
 
 	current := sudoku.New()
@@ -155,22 +165,22 @@ func (g *game) insert(row, col, val int) sudoku.Sudoku {
 	return current
 }
 
-func (g *game) Lax(row, col, val int) (sudoku.Sudoku, error) {
+func (g *game) Lax(row, col, val int, now int64) (sudoku.Sudoku, error) {
 	if !sudoku.ValidBounds(row, col) {
 		return nil, ErrOutOfBounds
 	}
 	if val != sudoku.EmptyCell && !sudoku.ValidVal(val) {
-		return nil, errLaxValRange
+		return nil, ErrLaxValRange
 	}
 	if g.initial.Cell(row, col) != sudoku.EmptyCell {
-		return nil, errInitialClue
+		return nil, ErrInitialClue
 	}
 
 	g.lock.Lock()
 	defer g.lock.Unlock()
 
 	if g.started.Load() == nil {
-		return nil, errNotStarted
+		return nil, ErrNotStarted
 	}
 	if g.finished.Load() != nil {
 		return nil, ErrFinished
@@ -191,25 +201,25 @@ func (g *game) Lax(row, col, val int) (sudoku.Sudoku, error) {
 		}
 	}
 
-	return g.insert(row, col, val), nil
+	return g.insert(row, col, val, now), nil
 }
 
-func (g *game) Strict(row, col, val int) (sudoku.Sudoku, error) {
+func (g *game) Strict(row, col, val int, now int64) (sudoku.Sudoku, error) {
 	if !sudoku.ValidBounds(row, col) {
 		return nil, ErrOutOfBounds
 	}
 	if !sudoku.ValidVal(val) {
-		return nil, errStrictValRange
+		return nil, ErrStrictValRange
 	}
 	if g.initial.Cell(row, col) != sudoku.EmptyCell {
-		return nil, errInitialClue
+		return nil, ErrInitialClue
 	}
 
 	g.lock.Lock()
 	defer g.lock.Unlock()
 
 	if g.started.Load() == nil {
-		return nil, errNotStarted
+		return nil, ErrNotStarted
 	}
 	if g.finished.Load() != nil {
 		return nil, ErrFinished
@@ -223,7 +233,7 @@ func (g *game) Strict(row, col, val int) (sudoku.Sudoku, error) {
 		err = ErrIncorrect
 	}
 
-	return g.insert(row, col, g.solution.Cell(row, col)), err
+	return g.insert(row, col, g.solution.Cell(row, col), now), err
 }
 
 func (g *game) Current() sudoku.Sudoku {
@@ -250,11 +260,34 @@ func (g *game) Solution() sudoku.Sudoku {
 	return g.solution
 }
 
-func (g *game) Started() *int64 {
+func (g *game) Start(now int64) {
+	g.lock.Lock()
+	defer g.lock.Unlock()
+
+	if g.started.Load() == nil {
+		g.started.Store(&now)
+	}
+}
+
+func (g *game) StartedAt() *int64 {
 	return g.started.Load()
 }
 
-func (g *game) Finished() *int64 {
+func (g *game) Finish(now int64) error {
+	g.lock.Lock()
+	defer g.lock.Unlock()
+
+	if g.started.Load() == nil {
+		return ErrNotStarted
+	}
+
+	if g.finished.Load() == nil {
+		g.finished.Store(&now)
+	}
+	return nil
+}
+
+func (g *game) FinishedAt() *int64 {
 	return g.finished.Load()
 }
 

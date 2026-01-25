@@ -1,8 +1,7 @@
 services:
   database:
     container_name: database
-    build:
-      context: ./database
+    image: postgres:18.1-alpine3.23
     restart: unless-stopped
     ports:
       - 5432:5432
@@ -27,6 +26,7 @@ services:
       DB_USER: postgres
       DB_PASS: password
       ORIGIN: http://localhost:5173
+      SECURE: false
     depends_on:
       database:
         condition: "service_healthy"

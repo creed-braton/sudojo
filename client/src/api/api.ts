@@ -29,13 +29,17 @@ export const getLobby = async (id: string): Promise<Lobby> => {
 export const postLobby = async (
   maxPlayer: number,
   strict: boolean,
+  pings: boolean,
+  notes: boolean,
   difficulty: string,
 ): Promise<UUID> => {
   const response: Response = await fetch(HTTP_URL + "/lobbies", {
     method: "POST",
     body: JSON.stringify({
+      strict_mode: strict,
+      pings_allowed: pings,
+      notes_allowed: notes,
       max_player: maxPlayer,
-      strict: strict,
       difficulty: difficulty,
     }),
   });
@@ -58,7 +62,25 @@ export const postPlayer = async (
   const url = new URL(`${HTTP_URL}/lobbies/${id}/players`);
   if (name) url.searchParams.append("name", name);
 
-  const response: Response = await fetch(url.toString(), { method: "POST" });
+  const response: Response = await fetch(url.toString(), {
+    method: "POST",
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    throw new HttpError(response.status, await response.text());
+  }
+
+  return response.text();
+};
+
+export const getPlayer = async (id: string): Promise<string> => {
+  const url = new URL(`${HTTP_URL}/lobbies/${id}/players`);
+
+  const response: Response = await fetch(url.toString(), {
+    method: "GET",
+    credentials: "include",
+  });
 
   if (!response.ok) {
     throw new HttpError(response.status, await response.text());

@@ -5,38 +5,40 @@ import (
 	"testing"
 )
 
+const now = int64(42)
+
 func TestArtifact(t *testing.T) {
-	player, ts, row, col, val := "test-player", int64(1234567890), 5, 3, 8
-	a := NewArtifact(player, ts, row, col, val)
+	player, row, col, val := "test", 5, 3, 8
+	a := NewArtifact(row, col, val, player, now)
 
 	if a == nil {
-		t.Fatal("unexpected nil artifact")
+		t.Fatal("expected artifact, got nil")
 	}
 
 	if a.Player() != player {
 		t.Errorf("expected player '%s', got '%s'", player, a.Player())
 	}
-	if a.Timestamp() != ts {
-		t.Errorf("expected timestamp '%d', got '%d'", ts, a.Timestamp())
+	if a.Timestamp() != now {
+		t.Errorf("expected timestamp %d, got %d", now, a.Timestamp())
 	}
 	if a.Row() != row {
-		t.Errorf("expected row '%d', got '%d'", row, a.Row())
+		t.Errorf("expected row %d, got %d", row, a.Row())
 	}
 	if a.Column() != col {
-		t.Errorf("expected column '%d', got '%d'", col, a.Column())
+		t.Errorf("expected column %d, got %d", col, a.Column())
 	}
 	if a.Value() != val {
-		t.Errorf("expected value '%d', got '%d'", val, a.Value())
+		t.Errorf("expected value %d, got %d", val, a.Value())
 	}
 }
 
 func TestAppend(t *testing.T) {
 	t.Run("drops duplicates", func(t *testing.T) {
 		initial := []Artifact{
-			NewArtifact("player", 100, 1, 2, 3),
+			NewArtifact(1, 2, 3, "player", now),
 		}
 		h := New(initial)
-		h.Append(NewArtifact("player", 200, 1, 2, 3))
+		h.Append(NewArtifact(1, 2, 3, "player", now))
 		got := h.Artifacts()
 		if len(got) != 1 {
 			t.Errorf("expected 1 artifact, got %d", len(got))
@@ -55,7 +57,7 @@ func TestAppend(t *testing.T) {
 			go func(id int) {
 				defer wg.Done()
 				for j := 0; j < num; j++ {
-					a := NewArtifact("player", int64(id*1000+j), id*num+j, 0, 1)
+					a := NewArtifact(id*num+j, 0, 1, "player", int64(id*1000+j))
 					h.Append(a)
 				}
 			}(i)
@@ -77,7 +79,7 @@ func TestFlush(t *testing.T) {
 		num := 100
 
 		for i := 0; i < num; i++ {
-			a := NewArtifact("player", int64(i), i, i, i)
+			a := NewArtifact(i, i, i, "player", int64(i))
 			h.Append(a)
 		}
 
@@ -89,11 +91,11 @@ func TestFlush(t *testing.T) {
 
 	t.Run("flush initialized history", func(t *testing.T) {
 		initial := []Artifact{
-			NewArtifact("", 0, 1, 0, 0),
-			NewArtifact("", 0, 0, 1, 0),
-			NewArtifact("", 0, 0, 0, 1),
-			NewArtifact("", 0, 1, 1, 0),
-			NewArtifact("", 0, 1, 0, 1),
+			NewArtifact(0, 1, 0, "", now),
+			NewArtifact(0, 0, 1, "", now),
+			NewArtifact(0, 0, 0, "", now),
+			NewArtifact(0, 1, 1, "", now),
+			NewArtifact(0, 1, 0, "", now),
 		}
 		h := New(initial)
 
@@ -107,7 +109,7 @@ func TestFlush(t *testing.T) {
 		h := New(nil)
 
 		for i := 0; i < 100; i++ {
-			a := NewArtifact("player", int64(i), i, i, i)
+			a := NewArtifact(i, i, i, "player", int64(i))
 			h.Append(a)
 		}
 		h.Flush()
@@ -122,11 +124,11 @@ func TestFlush(t *testing.T) {
 func TestArtifacts(t *testing.T) {
 	t.Run("only initial artifacts", func(t *testing.T) {
 		initial := []Artifact{
-			NewArtifact("", 0, 1, 0, 0),
-			NewArtifact("", 0, 0, 1, 0),
-			NewArtifact("", 0, 0, 0, 1),
-			NewArtifact("", 0, 1, 1, 0),
-			NewArtifact("", 0, 1, 0, 1),
+			NewArtifact(1, 0, 0, "", now),
+			NewArtifact(0, 1, 0, "", now),
+			NewArtifact(0, 0, 1, "", now),
+			NewArtifact(1, 1, 0, "", now),
+			NewArtifact(1, 0, 1, "", now),
 		}
 		h := New(initial)
 		got := h.Artifacts()
@@ -145,15 +147,15 @@ func TestArtifacts(t *testing.T) {
 
 	t.Run("initial and current artifacts", func(t *testing.T) {
 		initial := []Artifact{
-			NewArtifact("", 0, 1, 0, 0),
-			NewArtifact("", 0, 0, 1, 0),
-			NewArtifact("", 0, 0, 0, 1),
-			NewArtifact("", 0, 1, 1, 0),
-			NewArtifact("", 0, 1, 0, 1),
+			NewArtifact(1, 0, 0, "", now),
+			NewArtifact(0, 1, 0, "", now),
+			NewArtifact(0, 0, 1, "", now),
+			NewArtifact(1, 1, 0, "", now),
+			NewArtifact(1, 0, 1, "", now),
 		}
 		h := New(initial)
 		for i := 0; i < 5; i++ {
-			h.Append(NewArtifact("", 0, i, i, i))
+			h.Append(NewArtifact(i, i, i, "", now))
 		}
 		got := h.Artifacts()
 		if len(got[""]) != 10 {
@@ -164,7 +166,7 @@ func TestArtifacts(t *testing.T) {
 	t.Run("current artifacts after flush", func(t *testing.T) {
 		h := New(nil)
 		for i := 0; i < 5; i++ {
-			h.Append(NewArtifact("", 0, i, i, i))
+			h.Append(NewArtifact(i, i, i, "", now))
 		}
 		h.Flush()
 		got := h.Artifacts()
@@ -175,12 +177,12 @@ func TestArtifacts(t *testing.T) {
 
 	t.Run("concurrent reads", func(t *testing.T) {
 		initial := []Artifact{
-			NewArtifact("", 0, 1, 0, 0),
-			NewArtifact("", 0, 0, 1, 0),
+			NewArtifact(1, 0, 0, "", now),
+			NewArtifact(0, 1, 0, "", now),
 		}
 		h := New(initial)
 		for i := 0; i < 3; i++ {
-			h.Append(NewArtifact("", 0, i, i, i))
+			h.Append(NewArtifact(i, i, i, "", now))
 		}
 		reader := 8
 		num := 100
@@ -203,13 +205,13 @@ func TestArtifacts(t *testing.T) {
 
 	t.Run("returns true copy", func(t *testing.T) {
 		initial := []Artifact{
-			NewArtifact("", 0, 1, 0, 0),
-			NewArtifact("", 0, 0, 1, 0),
+			NewArtifact(1, 0, 0, "", now),
+			NewArtifact(0, 1, 0, "", now),
 		}
 		h := New(initial)
-		h.Append(NewArtifact("", 0, 0, 0, 1))
+		h.Append(NewArtifact(0, 0, 0, "", 1))
 		got := h.Artifacts()
-		got[""] = append(got[""], NewArtifact("", 0, 1, 1, 0))
+		got[""] = append(got[""], NewArtifact(0, 1, 1, "", 0))
 		check := h.Artifacts()
 		if len(check[""]) != 3 {
 			t.Errorf("expected 3 artifacts after modification, got %d", len(check[""]))
@@ -225,7 +227,7 @@ func TestArtifacts(t *testing.T) {
 
 		for _, player := range players {
 			for i := 0; i < 100; i++ {
-				h.Append(NewArtifact(player, int64(i*17%100), i, i, i))
+				h.Append(NewArtifact(i, i, i, player, int64(i*17%100)))
 			}
 		}
 
@@ -237,7 +239,7 @@ func TestArtifacts(t *testing.T) {
 		for _, player := range players {
 			artifacts := got[player]
 			if len(artifacts) != 100 {
-				t.Errorf("expected 100 artifacts for %s, got %d", player, len(artifacts))
+				t.Errorf("expected 100 artifacts for '%s', got %d", player, len(artifacts))
 			}
 
 			for i := 0; i < len(artifacts)-1; i++ {

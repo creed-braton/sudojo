@@ -1,16 +1,27 @@
-import type { ReactElement } from "react";
+import type { ReactElement, ReactNode } from "react";
 import style from "./Button.module.css";
 
-const Button = ({
-  onClick,
-  label,
-}: {
+type ButtonProps = {
+  children: ReactNode;
   onClick: () => void;
-  label: string;
-}): ReactElement => {
+  selected?: boolean;
+  title?: string | undefined;
+};
+
+const Button = ({
+  children,
+  onClick = () => {},
+  selected = false,
+  title = undefined,
+}: ButtonProps): ReactElement => {
   return (
-    <button className={style.button} onClick={onClick}>
-      {label}
+    <button
+      className={style.button}
+      onClick={onClick}
+      aria-selected={selected}
+      title={title}
+    >
+      {children}
     </button>
   );
 };

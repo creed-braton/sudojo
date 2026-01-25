@@ -8,8 +8,8 @@ RUN go mod download
 
 COPY main.go ./main.go
 COPY pkg ./pkg
-COPY adapter ./adapter
-COPY service ./service
+COPY adp ./adp
+COPY svc ./svc
 
 RUN go build -o ./bin ./main.go
 

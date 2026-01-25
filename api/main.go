@@ -2,11 +2,13 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
-	"sudojo/adapter/database"
-	"sudojo/adapter/metrics"
-	"sudojo/adapter/server"
-	"sudojo/service/tenant"
+	"strings"
+	"sudojo/adp/database"
+	"sudojo/adp/metrics"
+	"sudojo/adp/server"
+	"sudojo/svc/tenant"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -27,7 +29,8 @@ func main() {
 	err = server.New(
 		envOrPanic("PORT"),
 		os.Getenv("ORIGIN"),
-		tenant.New(db, m),
+		envBool("SECURE"),
+		tenant.New(db, slog.Default(), m, 60),
 	).Listen()
 
 	if err != nil {
@@ -41,4 +44,9 @@ func envOrPanic(key string) string {
 		panic(fmt.Errorf("env variable '%s' missing", key))
 	}
 	return val
+}
+
+func envBool(key string) bool {
+	val := strings.ToLower(os.Getenv(key))
+	return val != "false"
 }
