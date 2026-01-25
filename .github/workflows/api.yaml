@@ -6,13 +6,11 @@ on:
     branches: ["main"]
     paths:
       - "api/**"
-      - "database/**"
       - ".github/workflows/api.yaml"
   pull_request:
     branches: ["main"]
     paths:
       - "api/**"
-      - "database/**"
       - ".github/workflows/api.yaml"
 
 jobs:
@@ -51,15 +49,14 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v6
 
-      - name: Build and start database container
-        working-directory: .
+      - name: Pull and start database container
         run: |
-          docker build -t test-db ./database
+          docker pull postgres:18.1-alpine3.23
           docker run -d \
             --name test-db \
             -p 5432:5432 \
             -e POSTGRES_PASSWORD=password \
-            test-db
+            postgres:18.1-alpine3.23
 
       - name: Wait for database to be ready
         run: |

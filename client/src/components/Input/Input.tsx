@@ -4,6 +4,7 @@ import type { InputMode } from "../../providers/input";
 import PingIcon from "../../icons/Ping";
 import CrossIcon from "../../icons/Cross";
 import NotesIcon from "../../icons/Notes";
+import Button from "../Button/Button";
 
 type InputProps = {
   mode: InputMode;
@@ -22,43 +23,45 @@ const Input = ({
     <div className={style.input}>
       <div className={style.row}>
         {[1, 2, 3, 4, 5].map((num: number) => (
-          <button key={num} className={style.button} onClick={() => {}}>
+          <Button
+            key={num}
+            onClick={() => {
+              input(num);
+            }}
+          >
             {num}
-          </button>
+          </Button>
         ))}
-        <button
-          className={style.button}
-          aria-selected={mode === "ping"}
+        <Button
+          selected={mode === "ping"}
           onClick={togglePing}
           title={
             mode === "ping" ? "Switch to insert mode" : "Switch to ping mode"
           }
         >
           <PingIcon className={style.icon} />
-        </button>
+        </Button>
       </div>
       <div className={style.row}>
         {[6, 7, 8, 9, 0].map((num: number) => (
-          <button
+          <Button
             key={num}
-            className={style.button}
             onClick={() => {
               input(num);
             }}
           >
             {num !== 0 ? num : <CrossIcon className={style.icon} />}
-          </button>
+          </Button>
         ))}
-        <button
-          className={style.button}
-          aria-selected={mode === "notes"}
+        <Button
+          selected={mode === "notes"}
           onClick={toggleNotes}
           title={
             mode === "notes" ? "Switch to insert mode" : "Switch to notes mode"
           }
         >
           <NotesIcon className={style.icon} />
-        </button>
+        </Button>
       </div>
     </div>
   );

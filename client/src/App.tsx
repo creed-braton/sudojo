@@ -14,7 +14,7 @@ const App = (): ReactElement => {
   const location = useLocation();
 
   useEffect((): void => {
-    const id = location.pathname.split("/");
+    const id: string[] = location.pathname.split("/");
     if (id.length === 3) return;
 
     postLobby(6, true, true, true, "joker").then(

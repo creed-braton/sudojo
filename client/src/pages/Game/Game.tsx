@@ -10,6 +10,7 @@ import { useInput, type InputContextProps } from "../../providers/input";
 import { useSocket, type SocketContextProps } from "../../providers/socket";
 import Board from "../../components/Board/Board";
 import Input from "../../components/Input/Input";
+import { getPlayer, postPlayer } from "../../api/api";
 
 const Game = (): ReactElement => {
   const socket: SocketContextProps = useSocket();
@@ -22,7 +23,9 @@ const Game = (): ReactElement => {
 
   useEffect((): void => {
     const id: string = location.pathname.split("/")[2];
-    socket.setId(id);
+    getPlayer(id)
+      .then((): void => socket.setId(id))
+      .catch(() => postPlayer(id).then(() => socket.setId(id)));
   }, [location.pathname]);
 
   useEffect(() => {
