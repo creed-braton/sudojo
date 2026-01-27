@@ -74,27 +74,50 @@ export const SocketProvider = ({ url, children }: SocketProviderProps) => {
     onPingRef.current = callback;
   };
 
-  useEffect((): void => {
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-    }
+  const retryCountRef: RefObject<number> = useRef<number>(0);
+  const retryTimeoutRef: RefObject<ReturnType<typeof setTimeout> | null> =
+    useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    if (!isUUID(id)) return;
-
+  const connect = (): void => {
     try {
       const ws: WebSocket = new WebSocket(`${url}/lobbies/${id}/ws`);
       wsRef.current = ws;
 
       ws.onopen = (): void => {
+        retryCountRef.current = 0;
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({ type: "state" }));
         }
       };
 
-      ws.onclose = (_: CloseEvent): void => {
+      ws.onclose = (event: CloseEvent): void => {
         if (wsRef.current === ws) {
           wsRef.current = null;
+        }
+
+        console.log("closed websocket connection with code:", event.code);
+
+        if (
+          event.code !== 4002 &&
+          event.code !== 4003 &&
+          event.code !== 1005 &&
+          event.code !== 1001
+        ) {
+          const baseDelay: number = 1000;
+          const maxDelay: number = 30000;
+          const delay: number = Math.min(
+            baseDelay * Math.pow(2, retryCountRef.current),
+            maxDelay,
+          );
+
+          const jitter: number = delay * 0.25 * (Math.random() * 2 - 1);
+          const finalDelay: number = Math.round(delay + jitter);
+
+          console.log(
+            `Reconnecting in ${finalDelay}ms (attempt ${retryCountRef.current + 1})`,
+          );
+          retryCountRef.current++;
+          retryTimeoutRef.current = setTimeout(connect, finalDelay);
         }
       };
 
@@ -148,6 +171,18 @@ export const SocketProvider = ({ url, children }: SocketProviderProps) => {
     } catch (error) {
       console.error(error);
     }
+  };
+
+  useEffect((): void => {
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+
+    if (!isUUID(id)) return;
+
+    retryCountRef.current = 0;
+    connect();
   }, [id]);
 
   const insert = (row: number, column: number, value: number): void => {

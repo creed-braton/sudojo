@@ -6,8 +6,8 @@ import {
   useNavigate,
   type NavigateFunction,
 } from "react-router-dom";
-import { postLobby, postPlayer } from "./api/api";
-import Game from "./pages/Game/Game";
+import { postLobby } from "./api/api";
+import Lobby from "./pages/Lobby/Lobby";
 
 const App = (): ReactElement => {
   const navigate: NavigateFunction = useNavigate();
@@ -17,9 +17,8 @@ const App = (): ReactElement => {
     const id: string[] = location.pathname.split("/");
     if (id.length === 3) return;
 
-    postLobby(6, true, true, true, "joker").then(
-      (id: string): void =>
-        void postPlayer(id).then((): void => void navigate(`/l/${id}`)),
+    postLobby(8, true, true, true, "joker").then(
+      (id: string): void => void navigate(`/l/${id}`),
     );
   }, []);
 
@@ -31,7 +30,7 @@ const App = (): ReactElement => {
       }}
     >
       <Routes>
-        <Route path="/l/:id" element={<Game />} />
+        <Route path="/l/:id" element={<Lobby />} />
       </Routes>
     </div>
   );

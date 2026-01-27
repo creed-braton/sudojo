@@ -142,3 +142,19 @@
   );
   pointer-events: none;
 }
+
+@media (max-width: 500px) {
+  .body {
+    margin: 3%;
+  }
+
+  .cell:nth-child(3),
+  .cell:nth-child(6) {
+    border-right: 1px solid rgba(160 160 160);
+  }
+
+  .row:nth-child(3) .cell,
+  .row:nth-child(6) .cell {
+    border-bottom: 1px solid rgba(160 160 160);
+  }
+}

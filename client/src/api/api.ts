@@ -1,7 +1,7 @@
 import { HTTP_URL } from "./config";
 import { isLobby, isUUID, type Lobby, type UUID } from "./types";
 
-class HttpError extends Error {
+export class HttpError extends Error {
   status: number;
   message: string;
   constructor(status: number, message: string) {

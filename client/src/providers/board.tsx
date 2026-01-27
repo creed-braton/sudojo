@@ -41,6 +41,10 @@ type BoardProviderProps = {
   children: ReactNode;
 };
 
+const randomId = (): string => {
+  return Math.random().toString(36).substring(2) + Date.now().toString(36);
+};
+
 export const BoardProvider = ({ children }: BoardProviderProps) => {
   const { id, initial, current, setOnConflict, setOnPing }: SocketContextProps =
     useSocket();
@@ -53,7 +57,7 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
   const triggerAnimation = useCallback(
     (type: AnimationType, row: number, column: number): void => {
       const key: string = `${row}-${column}`;
-      const id: string = crypto.randomUUID();
+      const id: string = randomId();
 
       setAnimations((prev): Map<string, Animation> => {
         const next: Map<string, Animation> = new Map(prev);

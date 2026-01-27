@@ -67,8 +67,13 @@ func (s *server) getPlayer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	svc, err := s.tenant.Session(id)
+	if err == game.ErrFinished {
+		http.Error(w, err.Error(), 423)
+		return
+	}
 	if err != nil {
 		http.Error(w, "internal server error", 500)
+		return
 	}
 	if svc == nil {
 		http.Error(w, "lobby not found", 404)
@@ -94,8 +99,13 @@ func (s *server) postPlayer(w http.ResponseWriter, r *http.Request) {
 	name := r.URL.Query().Get("name")
 
 	svc, err := s.tenant.Session(id)
+	if err == game.ErrFinished {
+		http.Error(w, err.Error(), 423)
+		return
+	}
 	if err != nil {
 		http.Error(w, "internal server error", 500)
+		return
 	}
 	if svc == nil {
 		http.Error(w, "lobby not found", 404)
@@ -181,7 +191,7 @@ func (s *server) getSocket(w http.ResponseWriter, r *http.Request) {
 
 	svc, err := s.tenant.Session(id)
 	if err == game.ErrFinished {
-		http.Error(w, err.Error(), 410)
+		http.Error(w, err.Error(), 423)
 		return
 	}
 	if err != nil {
