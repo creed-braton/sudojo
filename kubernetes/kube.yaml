@@ -96,7 +96,7 @@ spec:
     spec:
       containers:
         - name: api
-          image: ghcr.io/creed-braton/sudojo-api:v1.2.1-beta
+          image: ghcr.io/creed-braton/sudojo-api:v1.2.2-beta
           ports:
             - containerPort: 8080
           env:
@@ -150,7 +150,7 @@ spec:
     spec:
       containers:
         - name: proxy
-          image: ghcr.io/creed-braton/sudojo-proxy:v1.2.1-beta
+          image: ghcr.io/creed-braton/sudojo-proxy:v1.2.2-beta
           ports:
             - containerPort: 80
 
