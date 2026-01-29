@@ -1,14 +1,10 @@
 import { useEffect, useState, type ReactElement } from "react";
 import { getPlayer, HttpError, postPlayer } from "../../api/api";
 import { useSocket, type SocketContextProps } from "../../providers/socket";
-import { useBoard, type BoardContextProps } from "../../providers/board";
-import { useInput, type InputContextProps } from "../../providers/input";
-import Game from "../../components/Game/Game";
+import Game from "../Game/Game";
 
 const Lobby = (): ReactElement => {
   const socket: SocketContextProps = useSocket();
-  const board: BoardContextProps = useBoard();
-  const input: InputContextProps = useInput();
   const [_, setError] = useState<string | undefined>(undefined);
 
   useEffect((): void => {
@@ -29,17 +25,7 @@ const Lobby = (): ReactElement => {
 
   return (
     <div style={{ width: "100%", height: "100%" }}>
-      {board.board !== null && (
-        <Game
-          board={board.board}
-          cursor={board.cursor}
-          setCursor={input.setCursor}
-          mode={input.mode}
-          togglePing={input.togglePing}
-          toggleNotes={input.toggleNotes}
-          input={input.input}
-        />
-      )}
+      <Game />
     </div>
   );
 };
