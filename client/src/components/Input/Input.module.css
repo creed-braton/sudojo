@@ -25,9 +25,3 @@
   font-size: clamp(12px, 4vw, 18px);
   color: rgba(255 255 255);
 }
-
-@media (max-width: 500px) {
-  .input {
-    padding: 16px;
-  }
-}
