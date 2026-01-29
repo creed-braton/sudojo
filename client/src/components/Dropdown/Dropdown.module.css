@@ -1,0 +1,61 @@
+.container {
+  position: relative;
+  display: inline-block;
+  height: 100%;
+}
+
+.trigger {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  padding: 0 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  height: 100%;
+  font-size: clamp(0.7rem, 3vw, 1rem);
+  background: rgba(29 34 41);
+  color: rgba(255 255 255);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: 400ms all ease;
+}
+
+.trigger:hover {
+  background: rgba(42 47 54);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.label {
+  white-space: nowrap;
+}
+
+.arrow {
+  display: flex;
+  align-items: center;
+  color: rgba(107 114 128);
+}
+
+.list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 100%;
+  width: max-content;
+  margin: 0;
+  padding: 0.5rem 0;
+  list-style: none;
+  background: rgba(29 34 41);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 10;
+}
+
+.list > :global(*) {
+  padding: 0.5rem 1rem;
+  color: rgba(255 255 255);
+  font-size: clamp(0.7rem, 3vw, 1rem);
+  white-space: nowrap;
+}

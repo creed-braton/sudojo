@@ -1,4 +1,10 @@
-import { type ReactElement, type RefObject } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ReactElement,
+  type RefObject,
+} from "react";
 import type { Cell, Position } from "../../providers/board";
 import style from "./Board.module.css";
 
@@ -6,17 +12,28 @@ type BoardProps = {
   board: Cell[][];
   cursor: Position | null;
   setCursor: (row: number, column: number) => void;
-  ref?: RefObject<HTMLTableElement | null> | null;
 };
 
-const Board = ({
-  board,
-  cursor,
-  setCursor,
-  ref = null,
-}: BoardProps): ReactElement => {
+const Board = ({ board, cursor, setCursor }: BoardProps): ReactElement => {
+  const ref: RefObject<HTMLTableElement | null> = useRef(null);
+  const [compact, setCompact] = useState<boolean>(true);
+
+  useEffect((): (() => void) | void => {
+    const table: HTMLTableElement | null = ref.current;
+    if (table === null) return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setCompact(entry.contentRect.width < 450);
+      }
+    });
+
+    observer.observe(table);
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <table ref={ref} className={style.board} role="grid">
+    <table ref={ref} className={style.board} data-compact={compact} role="grid">
       <tbody className={style.body}>
         {board.map((row: Cell[], i: number) => (
           <tr className={style.row} key={i}>

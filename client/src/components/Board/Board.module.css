@@ -1,7 +1,7 @@
 .board {
-  width: 100%;
-  max-width: 100%;
-  height: 100%;
+  height: 100cqmin;
+  max-height: 100%;
+  aspect-ratio: 1;
   background: rgb(16 22 29);
   box-shadow: 0px 4px 24px rgba(0 0 0);
   border-collapse: separate;
@@ -143,18 +143,16 @@
   pointer-events: none;
 }
 
-@media (max-width: 500px) {
-  .body {
-    margin: 3%;
-  }
+.board[data-compact="true"] .body {
+  margin: 3%;
+}
 
-  .cell:nth-child(3),
-  .cell:nth-child(6) {
-    border-right: 1px solid rgba(160 160 160);
-  }
+.board[data-compact="true"] .cell:nth-child(3),
+.board[data-compact="true"] .cell:nth-child(6) {
+  border-right: 1px solid rgba(160 160 160);
+}
 
-  .row:nth-child(3) .cell,
-  .row:nth-child(6) .cell {
-    border-bottom: 1px solid rgba(160 160 160);
-  }
+.board[data-compact="true"] .row:nth-child(3) .cell,
+.board[data-compact="true"] .row:nth-child(6) .cell {
+  border-bottom: 1px solid rgba(160 160 160);
 }

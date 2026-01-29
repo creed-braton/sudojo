@@ -10,6 +10,17 @@
   container-type: size;
 }
 
+.info {
+  height: 6%;
+}
+
 .board {
-  width: min(100cqw, 80cqh);
+  max-height: 74%;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.input {
+  max-height: 20%;
 }
