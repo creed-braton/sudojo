@@ -12,14 +12,23 @@ type BannerProps = {
   height?: number;
 };
 
-const Banner = ({ variant, children, width, height }: BannerProps): ReactElement => {
+const Banner = ({
+  variant,
+  children,
+  width,
+  height,
+}: BannerProps): ReactElement => {
   const inlineStyle: CSSProperties = {
     width: width !== undefined ? `${width}px` : "100%",
     height: height !== undefined ? `${height}px` : "100%",
   };
 
   return (
-    <aside className={`${style.banner} ${style[variant]}`} role="alert" style={inlineStyle}>
+    <aside
+      className={`${style.banner} ${style[variant]}`}
+      role="alert"
+      style={inlineStyle}
+    >
       {variant === "error" && <ErrorIcon className={style.icon} />}
       {variant === "warning" && <WarnIcon className={style.icon} />}
       <div className={style.divider} />
