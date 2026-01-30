@@ -22,6 +22,8 @@ import {
 export type SocketContextProps = {
   id: string;
   setId: (state: string) => void;
+  closeCode: number | null;
+  open: () => boolean;
   initial: Sudoku | null;
   current: Sudoku | null;
   players: Player[];
@@ -44,6 +46,7 @@ type SocketProviderProps = {
 
 export const SocketProvider = ({ url, children }: SocketProviderProps) => {
   const [id, setId] = useState<string>("");
+  const [closeCode, setCloseCode] = useState<number | null>(null);
   const wsRef: RefObject<WebSocket | null> = useRef<WebSocket | null>(null);
 
   const [initial, setInitial] = useState<Sudoku | null>(null);
@@ -84,6 +87,7 @@ export const SocketProvider = ({ url, children }: SocketProviderProps) => {
       wsRef.current = ws;
 
       ws.onopen = (): void => {
+        setCloseCode(null);
         retryCountRef.current = 0;
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({ type: "state" }));
@@ -91,6 +95,7 @@ export const SocketProvider = ({ url, children }: SocketProviderProps) => {
       };
 
       ws.onclose = (event: CloseEvent): void => {
+        setCloseCode(event.code);
         if (wsRef.current === ws) {
           wsRef.current = null;
         }
@@ -208,9 +213,15 @@ export const SocketProvider = ({ url, children }: SocketProviderProps) => {
       );
   };
 
+  const open = (): boolean => {
+    return wsRef.current?.readyState === WebSocket.OPEN;
+  };
+
   const value: SocketContextProps = {
     id,
     setId,
+    closeCode,
+    open,
     initial,
     current,
     players,

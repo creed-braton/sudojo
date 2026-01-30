@@ -1,0 +1,49 @@
+.banner {
+  padding: 3cqmin;
+  border-radius: 2cqmin;
+  display: flex;
+  align-items: center;
+  gap: 3cqmin;
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: max(4cqmin, 1.5rem);
+}
+
+.divider {
+  width: 1px;
+  align-self: stretch;
+}
+
+.content {
+  color: rgba(255, 255, 255);
+}
+
+.error {
+  background: rgba(220, 60, 60, 0.2);
+  border: 1px solid rgba(220, 60, 60, 0.7);
+}
+
+.error .icon {
+  color: rgba(220, 60, 60);
+}
+
+.error .divider {
+  background: rgba(220, 60, 60, 0.7);
+}
+
+.warning {
+  background: rgba(180, 100, 40, 0.2);
+  border: 1px solid rgba(180, 100, 40, 0.7);
+}
+
+.warning .icon {
+  color: rgba(180, 100, 40);
+}
+
+.warning .divider {
+  background: rgba(180, 100, 40, 0.7);
+}

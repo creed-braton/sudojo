@@ -10,6 +10,11 @@
   container-type: size;
 }
 
+.banner {
+  width: 94%;
+  max-width: 30rem;
+}
+
 .info {
   max-height: 3.5rem;
   height: 8%;

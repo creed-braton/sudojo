@@ -6,6 +6,7 @@ import Input from "../../components/Input/Input";
 import { useBoard, type BoardContextProps } from "../../providers/board";
 import { useInput, type InputContextProps } from "../../providers/input";
 import { useSocket, type SocketContextProps } from "../../providers/socket";
+import Banner from "../../components/Banner/Banner";
 
 const Game = (): ReactElement => {
   const board: BoardContextProps = useBoard();
@@ -16,12 +17,28 @@ const Game = (): ReactElement => {
   const copyUrl = (): void => {
     navigator.clipboard.writeText(window.location.href);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout((): void => setCopied(false), 2000);
   };
 
   return (
     <div className={style.game}>
-      {board.board !== null && (
+      {socket.closeCode === 4002 && (
+        <div className={style.banner}>
+          <Banner variant={"warning"}>
+            It seems you opened this lobby in another tab which has taken over
+            the session!
+          </Banner>
+        </div>
+      )}
+      {socket.closeCode === 4003 && (
+        <div className={style.banner}>
+          <Banner variant={"error"}>
+            The game has finished and something went wrong redirecting you to
+            the analysis, try reloading!
+          </Banner>
+        </div>
+      )}
+      {board.board !== null && socket.open() && (
         <>
           <div className={style.info}>
             <Info
