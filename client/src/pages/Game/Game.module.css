@@ -11,16 +11,17 @@
 }
 
 .info {
-  height: 6%;
+  max-height: 3.5rem;
+  height: 8%;
 }
 
 .board {
-  max-height: 74%;
+  max-height: 66%;
   width: 100%;
   display: flex;
   justify-content: center;
 }
 
 .input {
-  max-height: 20%;
+  height: 20%;
 }
