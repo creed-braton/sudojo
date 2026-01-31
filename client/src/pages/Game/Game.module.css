@@ -16,12 +16,11 @@
 }
 
 .info {
-  max-height: 3.5rem;
-  height: 8%;
+  height: 3.5rem;
 }
 
 .board {
-  max-height: 72%;
+  max-height: calc(80% - 4rem);
   width: 100%;
   display: flex;
   justify-content: center;
