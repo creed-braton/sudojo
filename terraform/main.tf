@@ -22,7 +22,7 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_config" "main" {
   config {
     ingress_rule {
       hostname = cloudflare_record.main.hostname
-      service  = "http://proxy-service.sudojo.svc.cluster.local:80"
+      service  = "http://app-service.sudojo.svc.cluster.local:8080"
       origin_request {
         connect_timeout = "3m0s"
       }
