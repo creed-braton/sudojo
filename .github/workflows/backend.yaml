@@ -1,17 +1,17 @@
-name: API
+name: Backend
 
 on:
   push:
     tags: ["v*"]
     branches: ["main"]
     paths:
-      - "api/**"
-      - ".github/workflows/api.yaml"
+      - "backend/**"
+      - ".github/workflows/backend.yaml"
   pull_request:
     branches: ["main"]
     paths:
-      - "api/**"
-      - ".github/workflows/api.yaml"
+      - "backend/**"
+      - ".github/workflows/backend.yaml"
 
 jobs:
   lint:
@@ -19,7 +19,7 @@ jobs:
     timeout-minutes: 3
     defaults:
       run:
-        working-directory: ./api
+        working-directory: ./backend
     steps:
       - name: Checkout source code
         uses: actions/checkout@v6
@@ -28,7 +28,7 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version: "1.25.1"
-          cache-dependency-path: ./api/go.sum
+          cache-dependency-path: ./backend/go.sum
 
       - name: Check formatting
         run: |
@@ -44,7 +44,7 @@ jobs:
     needs: [lint]
     defaults:
       run:
-        working-directory: ./api
+        working-directory: ./backend
     steps:
       - name: Checkout source code
         uses: actions/checkout@v6
@@ -69,7 +69,7 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version: "1.25.1"
-          cache-dependency-path: ./api/go.sum
+          cache-dependency-path: ./backend/go.sum
 
       - name: Run tests
         run: go test -v ./...
@@ -80,14 +80,14 @@ jobs:
     needs: [lint, test]
     defaults:
       run:
-        working-directory: ./api
+        working-directory: ./backend
     steps:
       - name: Checkout source code
         uses: actions/checkout@v6
 
       - name: Build image
         run: |
-          docker build -t api .
+          docker build -t backend .
 
   publish:
     runs-on: ubuntu-24.04-arm
@@ -99,14 +99,14 @@ jobs:
       packages: write
     defaults:
       run:
-        working-directory: ./api
+        working-directory: ./backend
     steps:
       - name: Checkout source code
         uses: actions/checkout@v6
 
       - name: Build image
         run: |
-          docker build -t api .
+          docker build -t backend .
 
       - name: Get tag name
         id: tag
@@ -121,5 +121,5 @@ jobs:
 
       - name: Tag and push
         run: |
-          docker tag api ghcr.io/creed-braton/sudojo-api:${{ steps.tag.outputs.VERSION }}
+          docker tag backend ghcr.io/creed-braton/sudojo-api:${{ steps.tag.outputs.VERSION }}
           docker push ghcr.io/creed-braton/sudojo-api:${{ steps.tag.outputs.VERSION }}

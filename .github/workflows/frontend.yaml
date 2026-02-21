@@ -1,17 +1,17 @@
-name: Client
+name: Frontend
 
 on:
   push:
     tags: ["v*"]
     branches: ["main"]
     paths:
-      - "client/**"
-      - ".github/workflows/client.yaml"
+      - "frontend/**"
+      - ".github/workflows/frontend.yaml"
   pull_request:
     branches: ["main"]
     paths:
-      - "client/**"
-      - ".github/workflows/client.yaml"
+      - "frontend/**"
+      - ".github/workflows/frontend.yaml"
 
 jobs:
   lint:
@@ -19,7 +19,7 @@ jobs:
     timeout-minutes: 3
     defaults:
       run:
-        working-directory: ./client
+        working-directory: ./frontend
     steps:
       - name: Checkout source code
         uses: actions/checkout@v6
@@ -29,7 +29,7 @@ jobs:
         with:
           node-version: "22"
           cache: "npm"
-          cache-dependency-path: ./client/package-lock.json
+          cache-dependency-path: ./frontend/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -43,7 +43,7 @@ jobs:
     needs: lint
     defaults:
       run:
-        working-directory: ./client
+        working-directory: ./frontend
     steps:
       - name: Checkout source code
         uses: actions/checkout@v6
@@ -62,7 +62,7 @@ jobs:
       packages: write
     defaults:
       run:
-        working-directory: ./client
+        working-directory: ./frontend
     steps:
       - name: Checkout source code
         uses: actions/checkout@v6
