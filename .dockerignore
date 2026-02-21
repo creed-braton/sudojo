@@ -1,0 +1,16 @@
+**/.env
+**/.env.*
+**/*.env
+**/*.pem
+**/*.key
+**/*.crt
+**/*.cert
+**/*.secret
+**/*.credentials
+**/credentials.*
+**/*.token
+**/secrets.*
+**/node_modules
+**/dist
+**/bin
+**/.git

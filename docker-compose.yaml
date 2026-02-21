@@ -1,6 +1,6 @@
 services:
-  database:
-    container_name: database
+  db:
+    container_name: db
     image: postgres:18.1-alpine3.23
     restart: unless-stopped
     ports:
@@ -13,14 +13,14 @@ services:
       timeout: 10s
       retries: 5
 
-  api:
-    container_name: api
+  app:
+    container_name: app
     build:
-      context: ./api
+      context: ./
     ports:
       - 8080:8080
     environment:
-      DB_HOST: database
+      DB_HOST: db
       DB_PORT: 5432
       DB_NAME: postgres
       DB_USER: postgres
@@ -28,5 +28,5 @@ services:
       ORIGIN: http://localhost:5173
       SECURE: false
     depends_on:
-      database:
+      db:
         condition: "service_healthy"

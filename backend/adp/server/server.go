@@ -69,6 +69,18 @@ func New(port, origin string, secure bool, tenant tenant.Service) *server {
 	}
 	s.router.Handle("/metrics", promhttp.Handler())
 
+	static := http.Dir("./static")
+	fileServer := http.FileServer(static)
+	s.router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		f, err := static.Open(r.URL.Path)
+		if err != nil {
+			http.ServeFile(w, r, "./static/index.html")
+			return
+		}
+		f.Close()
+		fileServer.ServeHTTP(w, r)
+	})
+
 	return s
 }
 
