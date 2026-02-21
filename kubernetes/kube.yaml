@@ -96,7 +96,7 @@ spec:
     spec:
       containers:
         - name: app
-          image: docker pull ghcr.io/creed-braton/sudojo:v1.4.0-beta
+          image: ghcr.io/creed-braton/sudojo:v1.4.0-beta
           ports:
             - containerPort: 8080
           env:
