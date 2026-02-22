@@ -35,6 +35,7 @@ export type SocketContextProps = {
   ) => void;
   setOnConflict: (callback: (row: number, column: number) => void) => void;
   setOnPing: (callback: (row: number, column: number) => void) => void;
+  setOnFinish: (callback: () => void) => void;
 };
 
 const SocketContext = createContext<SocketContextProps | null>(null);
@@ -62,6 +63,7 @@ export const SocketProvider = ({ url, children }: SocketProviderProps) => {
   const onPingRef: RefObject<(row: number, column: number) => void> = useRef<
     (row: number, column: number) => void
   >(() => {});
+  const onFinishRef: RefObject<() => void> = useRef<() => void>(() => {});
 
   const setOnInsert = (
     callback: (row: number, column: number, value: number) => void,
@@ -75,6 +77,9 @@ export const SocketProvider = ({ url, children }: SocketProviderProps) => {
   };
   const setOnPing = (callback: (row: number, column: number) => void): void => {
     onPingRef.current = callback;
+  };
+  const setOnFinish = (callback: () => void): void => {
+    onFinishRef.current = callback;
   };
 
   const retryCountRef: RefObject<number> = useRef<number>(0);
@@ -101,8 +106,9 @@ export const SocketProvider = ({ url, children }: SocketProviderProps) => {
         }
 
         console.log("closed websocket connection with code:", event.code);
-
-        if (
+        if (event.code === 4003) {
+          onFinishRef.current();
+        } else if (
           event.code !== 4002 &&
           event.code !== 4003 &&
           event.code !== 1005 &&
@@ -231,6 +237,7 @@ export const SocketProvider = ({ url, children }: SocketProviderProps) => {
     setOnInsert,
     setOnConflict,
     setOnPing,
+    setOnFinish,
   };
 
   return (

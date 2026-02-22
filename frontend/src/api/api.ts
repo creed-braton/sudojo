@@ -11,8 +11,13 @@ export class HttpError extends Error {
   }
 }
 
-export const getLobby = async (id: string): Promise<Lobby> => {
-  const response: Response = await fetch(HTTP_URL + `/lobbies/${id}`);
+export const getLobby = async (
+  id: string,
+  signal?: AbortSignal,
+): Promise<Lobby> => {
+  const response: Response = await fetch(HTTP_URL + `/lobbies/${id}`, {
+    signal,
+  });
 
   if (!response.ok) {
     throw new HttpError(response.status, await response.text());

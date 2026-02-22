@@ -6,6 +6,7 @@ import {
   type RefObject,
 } from "react";
 import type { Cell, Position } from "../../providers/board";
+import CrossIcon from "../../icons/Cross";
 import style from "./Board.module.css";
 
 type BoardProps = {
@@ -51,10 +52,20 @@ const Board = ({ board, cursor, setCursor }: BoardProps): ReactElement => {
                 <button
                   className={style.button}
                   onClick={() => setCursor(i, j)}
+                  title={cell.tooltip}
                   type="button"
                 >
                   {cell.value !== 0 ? (
-                    <span data-initial={cell.initial}>{cell.value}</span>
+                    cell.mistake ? (
+                      <CrossIcon className={style.mistake} />
+                    ) : (
+                      <span
+                        data-initial={cell.initial}
+                        style={cell.color ? { color: cell.color } : undefined}
+                      >
+                        {cell.value}
+                      </span>
+                    )
                   ) : (
                     cell.notes !== undefined && (
                       <div className={style.notes}>

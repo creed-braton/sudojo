@@ -7,11 +7,16 @@ import { useBoard, type BoardContextProps } from "../../providers/board";
 import { useInput, type InputContextProps } from "../../providers/input";
 import { useSocket, type SocketContextProps } from "../../providers/socket";
 import Banner from "../../components/Banner/Banner";
+import {
+  useAnalysis,
+  type AnalysisContextProps,
+} from "../../providers/analysis";
 
 const Game = (): ReactElement => {
   const board: BoardContextProps = useBoard();
   const input: InputContextProps = useInput();
   const socket: SocketContextProps = useSocket();
+  const analysis: AnalysisContextProps = useAnalysis();
   const [copied, setCopied] = useState(false);
 
   const copyUrl = (): void => {
@@ -30,14 +35,16 @@ const Game = (): ReactElement => {
           </Banner>
         </div>
       )}
-      {socket.closeCode === 4003 && (
-        <div className={style.banner}>
-          <Banner variant={"error"}>
-            The game has finished and something went wrong redirecting you to
-            the analysis, try reloading!
-          </Banner>
-        </div>
-      )}
+      {socket.closeCode === 4003 &&
+        !analysis.loading &&
+        analysis.lobby === null && (
+          <div className={style.banner}>
+            <Banner variant={"error"}>
+              The game has finished and something went wrong redirecting you to
+              the analysis, try reloading!
+            </Banner>
+          </div>
+        )}
       {board.board !== null && socket.open() && (
         <>
           <div className={style.info}>

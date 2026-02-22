@@ -22,6 +22,9 @@ export type Cell = {
   initial: boolean;
   animation: Animation | null;
   notes: Set<number>;
+  color?: string;
+  tooltip?: string;
+  mistake?: boolean;
 };
 
 export type Position = {

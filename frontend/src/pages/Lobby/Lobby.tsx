@@ -4,9 +4,15 @@ import { useSocket, type SocketContextProps } from "../../providers/socket";
 import Game from "../Game/Game";
 import Username from "../../components/Username/Username";
 import style from "./Lobby.module.css";
+import {
+  useAnalysis,
+  type AnalysisContextProps,
+} from "../../providers/analysis";
+import Analysis from "../Analysis/Analysis";
 
 const Lobby = (): ReactElement => {
   const socket: SocketContextProps = useSocket();
+  const analysis: AnalysisContextProps = useAnalysis();
   const [id, setId] = useState<string>("");
   const [username, setUsername] = useState<string>("");
   const [_, setError] = useState<string | undefined>(undefined);
@@ -22,6 +28,8 @@ const Lobby = (): ReactElement => {
       .then((): void => socket.setId(id))
       .catch((error: Error) => {
         if (error instanceof HttpError && error.status == 423) {
+          // game is finished
+          analysis.setLobbyId(id);
         } else if (error instanceof HttpError && error.status == 401) {
           // nothing happens user must put in name
         } else {
@@ -33,14 +41,20 @@ const Lobby = (): ReactElement => {
 
   const joinGame = (): void => {
     postPlayer(id, username)
-      .then(() => socket.setId(id))
+      .then(() => {
+        socket.setId(id);
+        socket.setOnFinish((): void => analysis.setLobbyId(id));
+      })
       .catch((error: Error) => setError(error.message));
   };
 
   return (
     <div className={style.lobby}>
       {!loading &&
-        (socket.id.length < 1 ? (
+        !analysis.loading &&
+        (analysis.board !== null ? (
+          <Analysis />
+        ) : socket.id.length < 1 ? (
           <div className={style.username}>
             <Username
               username={username}

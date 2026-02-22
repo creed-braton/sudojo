@@ -9,20 +9,23 @@ import { BrowserRouter } from "react-router-dom";
 import { BoardProvider } from "./providers/board.tsx";
 import { InputProvider } from "./providers/input.tsx";
 import { KeyboardProvider } from "./providers/keyboard.tsx";
+import { AnalysisProvider } from "./providers/analysis.tsx";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <BrowserRouter>
       <SocketProvider url={WS_URL}>
-        <NotesProvider>
-          <BoardProvider>
-            <InputProvider>
-              <KeyboardProvider>
-                <App />
-              </KeyboardProvider>
-            </InputProvider>
-          </BoardProvider>
-        </NotesProvider>
+        <AnalysisProvider>
+          <NotesProvider>
+            <BoardProvider>
+              <InputProvider>
+                <KeyboardProvider>
+                  <App />
+                </KeyboardProvider>
+              </InputProvider>
+            </BoardProvider>
+          </NotesProvider>
+        </AnalysisProvider>
       </SocketProvider>
     </BrowserRouter>
   </StrictMode>,

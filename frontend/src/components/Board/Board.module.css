@@ -86,6 +86,15 @@
   line-height: 1;
 }
 
+.button .mistake {
+  color: grey;
+  font-size: 40cqmin;
+  line-height: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
 .button span[data-initial="true"] {
   font-weight: bold;
   color: rgba(255 255 255);
