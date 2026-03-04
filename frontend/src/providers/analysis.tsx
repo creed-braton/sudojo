@@ -8,8 +8,12 @@ import {
 } from "react";
 import { isUUID, type History, type Lobby } from "../api/types";
 import { getLobby } from "../api/api";
-import { useSocket, type SocketContextProps } from "./socket";
 import type { Cell } from "./board";
+
+export type Series = {
+  xValues: number[];
+  yValues: Map<string, number[]>;
+};
 
 export type AnalysisContextProps = {
   lobbyId: string;
@@ -18,6 +22,8 @@ export type AnalysisContextProps = {
   loading: boolean;
   board: Cell[][] | null;
   players: Map<string, string>;
+  maxPlayers: number;
+  series: Series | null;
 };
 
 const AnalysisContext = createContext<AnalysisContextProps | null>(null);
@@ -80,9 +86,57 @@ export const AnalysisProvider = ({ children }: AnalysisProviderProps) => {
     return new Map(
       lobby.history.map((history: History, index: number): [string, string] => [
         PLAYER_COLORS[index % PLAYER_COLORS.length],
-        history.player_name,
+        history.player_name.length > 0 ? history.player_name : "<anonym>",
       ]),
     );
+  }, [lobby]);
+
+  const series: Series | null = useMemo((): Series | null => {
+    if (lobby === null) return null;
+
+    const playerArtifacts: Array<{
+      color: string;
+      artifacts: (typeof lobby.history)[0]["artifacts"];
+    }> = lobby.history.map((history: History, index: number) => ({
+      color: PLAYER_COLORS[index % PLAYER_COLORS.length],
+      artifacts: history.artifacts.filter(
+        (a) =>
+          a.value !== 0 && a.value === lobby.current_board[a.row][a.column],
+      ),
+    }));
+
+    const timestampSet: Set<number> = new Set<number>();
+    for (const { artifacts } of playerArtifacts) {
+      for (const artifact of artifacts) {
+        timestampSet.add(artifact.timestamp);
+      }
+    }
+    const sortedTimestamps: number[] = [...timestampSet].sort(
+      (a: number, b: number) => a - b,
+    );
+
+    const xValues: number[] = [
+      0,
+      ...sortedTimestamps.map((t: number) => t - lobby.started_at),
+    ];
+
+    const yValues: Map<string, number[]> = new Map<string, number[]>();
+    for (const { color, artifacts } of playerArtifacts) {
+      const sorted = [...artifacts].sort((a, b) => a.timestamp - b.timestamp);
+      let idx: number = 0;
+      let count: number = 0;
+      const counts: number[] = [0];
+      for (const timestamp of sortedTimestamps) {
+        while (idx < sorted.length && sorted[idx].timestamp <= timestamp) {
+          count++;
+          idx++;
+        }
+        counts.push(count);
+      }
+      yValues.set(color, counts);
+    }
+
+    return { xValues, yValues };
   }, [lobby]);
 
   useEffect((): (() => void) => {
@@ -112,6 +166,8 @@ export const AnalysisProvider = ({ children }: AnalysisProviderProps) => {
     loading,
     board,
     players,
+    maxPlayers: lobby?.config.max_player ?? 0,
+    series,
   };
 
   return (

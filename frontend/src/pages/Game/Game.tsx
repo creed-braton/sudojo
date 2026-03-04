@@ -37,7 +37,7 @@ const Game = (): ReactElement => {
       )}
       {socket.closeCode === 4003 &&
         !analysis.loading &&
-        analysis.lobby === null && (
+        analysis.lobbyId.length < 1 && (
           <div className={style.banner}>
             <Banner variant={"error"}>
               The game has finished and something went wrong redirecting you to

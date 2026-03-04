@@ -1,0 +1,24 @@
+.player {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.65rem;
+  overflow: visible;
+}
+
+.dot {
+  height: 0.5rem;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.name {
+  font-size: 0.85rem;
+  line-height: 1;
+  color: rgba(255 255 255);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
