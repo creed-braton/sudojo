@@ -4,6 +4,7 @@ import {
   type AnalysisContextProps,
 } from "../../providers/analysis";
 import Board from "../../components/Board/Board";
+import Frequency from "../../components/Frequency/Frequency";
 import Plot from "../../components/Plot/Plot";
 import PlayerList from "../../components/PlayerList/PlayerList";
 import style from "./Analysis.module.css";
@@ -20,8 +21,15 @@ const Analysis = (): ReactElement => {
           </div>
         )}
         <div className={style.sidebar}>
-          <div className={style.players}>
-            <PlayerList players={analysis.players} maxPlayers={analysis.maxPlayers} />
+          <div className={style.row}>
+            <div className={style.players}>
+              <PlayerList players={analysis.players} maxPlayers={analysis.maxPlayers} />
+            </div>
+            {analysis.frequency !== null && (
+              <div className={style.frequency}>
+                <Frequency frequency={analysis.frequency} />
+              </div>
+            )}
           </div>
           {analysis.series !== null && (
             <div className={style.chart}>

@@ -31,9 +31,23 @@
   gap: 2%;
 }
 
+.row {
+  display: flex;
+  flex-direction: row;
+  gap: 2%;
+  flex: 0.5;
+  min-height: 0;
+}
+
 .players {
-  flex: 1;
   width: 10.5rem;
+  flex-shrink: 0;
+  min-height: 0;
+}
+
+.frequency {
+  flex: 1;
+  min-width: 0;
   min-height: 0;
 }
 
@@ -70,8 +84,12 @@
     flex: none;
   }
 
+  .row {
+    flex: none;
+    height: 6rem;
+  }
+
   .players {
-    height: 12rem;
     width: 10.5rem;
   }
 

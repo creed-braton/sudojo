@@ -24,6 +24,7 @@ export type AnalysisContextProps = {
   players: Map<string, string>;
   maxPlayers: number;
   series: Series | null;
+  frequency: number[] | null;
 };
 
 const AnalysisContext = createContext<AnalysisContextProps | null>(null);
@@ -139,6 +140,24 @@ export const AnalysisProvider = ({ children }: AnalysisProviderProps) => {
     return { xValues, yValues };
   }, [lobby]);
 
+  const frequency: number[] | null = useMemo((): number[] | null => {
+    if (lobby === null || lobby.finished_at === null) return null;
+    const duration = lobby.finished_at - lobby.started_at;
+    if (duration === 0) return null;
+    const bucketSize = duration / 30;
+    const buckets: number[] = new Array(30).fill(0);
+    for (const { artifacts } of lobby.history) {
+      for (const artifact of artifacts) {
+        const index = Math.min(
+          Math.floor((artifact.timestamp - lobby.started_at) / bucketSize),
+          29,
+        );
+        buckets[index]++;
+      }
+    }
+    return buckets;
+  }, [lobby]);
+
   useEffect((): (() => void) => {
     const controller = new AbortController();
 
@@ -168,6 +187,7 @@ export const AnalysisProvider = ({ children }: AnalysisProviderProps) => {
     players,
     maxPlayers: lobby?.config.max_player ?? 0,
     series,
+    frequency,
   };
 
   return (
